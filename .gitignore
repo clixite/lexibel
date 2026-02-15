@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+.turbo/
+
+# Build
+.next/
+dist/
+*.egg-info/
+
+# Environment
+.env
+.env.local
+.env.production
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker volumes (local)
+postgres_data/
+qdrant_data/
+minio_data/
+
+# Coverage
+.coverage
+htmlcov/
+coverage.xml
+
+# Secrets
+*.pem
+*.key
