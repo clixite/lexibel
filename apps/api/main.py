@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from apps.api.middleware.tenant import TenantMiddleware
 from apps.api.middleware.audit import AuditMiddleware
+from apps.api.auth.router import router as auth_router
 
 
 def create_app() -> FastAPI:
@@ -21,11 +22,11 @@ def create_app() -> FastAPI:
     # 5. Audit (innermost — runs last, captures status code + latency)
     app.add_middleware(AuditMiddleware)
 
-    # 4. Tenant (extracts tenant_id from header, future: JWT)
+    # 4. Tenant (extracts tenant_id from JWT claims or X-Tenant-ID header)
     app.add_middleware(TenantMiddleware)
 
-    # 3. Auth stub (LXB-009 will add JWT validation here)
-    # app.add_middleware(AuthMiddleware)
+    # 3. Auth — JWT validation is handled inside TenantMiddleware
+    #    (token is decoded there to extract tenant_id + user claims)
 
     # 2. RateLimit stub (future: slowapi or similar)
     # app.add_middleware(RateLimitMiddleware)
@@ -39,8 +40,10 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # ── Routes ──
+    # ── Routers ──
+    app.include_router(auth_router)
 
+    # ── Health check ──
     @app.get("/api/v1/health")
     async def health():
         return {"status": "ok", "service": "lexibel-api", "version": "0.1.0"}

@@ -2,6 +2,9 @@
 
 These are used with Depends() in route handlers to get the current
 tenant, user, and an RLS-scoped database session.
+
+User and tenant are extracted from JWT claims (set by TenantMiddleware
+on request.state). Falls back to X-Tenant-ID/X-User-ID headers for dev.
 """
 import uuid
 from collections.abc import AsyncGenerator
@@ -14,7 +17,7 @@ from packages.db.session import async_session_factory
 
 
 async def get_current_tenant(request: Request) -> uuid.UUID:
-    """Extract tenant_id from request state (set by TenantMiddleware)."""
+    """Extract tenant_id from request state (set by TenantMiddleware from JWT or header)."""
     tenant_id: uuid.UUID | None = getattr(request.state, "tenant_id", None)
     if tenant_id is None:
         raise HTTPException(
@@ -25,39 +28,25 @@ async def get_current_tenant(request: Request) -> uuid.UUID:
 
 
 async def get_current_user(request: Request) -> dict:
-    """Extract user info from request state.
+    """Extract user info from request state (set by TenantMiddleware from JWT claims).
 
     Returns a dict with user_id, email, role, tenant_id.
-    Until LXB-009 (JWT auth), reads from X-User-ID / X-User-Role headers.
     """
-    user_id_raw = request.headers.get("X-User-ID")
-    user_role = request.headers.get("X-User-Role", "junior")
-    user_email = request.headers.get("X-User-Email", "")
-
-    if not user_id_raw:
+    user_id: uuid.UUID | None = getattr(request.state, "user_id", None)
+    if user_id is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing X-User-ID header (JWT auth in LXB-009)",
-        )
-
-    try:
-        user_id = uuid.UUID(user_id_raw)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid X-User-ID: must be a valid UUID",
+            detail="Authentication required",
         )
 
     tenant_id: uuid.UUID | None = getattr(request.state, "tenant_id", None)
-
-    # Store in request.state for downstream middleware (audit)
-    request.state.user_id = user_id
-    request.state.user_role = user_role
+    role: str = getattr(request.state, "user_role", None) or "junior"
+    email: str = getattr(request.state, "user_email", "") or ""
 
     return {
         "user_id": user_id,
-        "email": user_email,
-        "role": user_role,
+        "email": email,
+        "role": role,
         "tenant_id": tenant_id,
     }
 
