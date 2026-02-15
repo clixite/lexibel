@@ -6,6 +6,8 @@ from apps.api.middleware.tenant import TenantMiddleware
 from apps.api.middleware.audit import AuditMiddleware
 from apps.api.auth.router import router as auth_router
 from apps.api.auth.mfa_router import mfa_router
+from apps.api.routers.cases import router as cases_router
+from apps.api.routers.contacts import router as contacts_router
 
 
 def create_app() -> FastAPI:
@@ -44,6 +46,8 @@ def create_app() -> FastAPI:
     # ── Routers ──
     app.include_router(auth_router)
     app.include_router(mfa_router)
+    app.include_router(cases_router)
+    app.include_router(contacts_router)
 
     # ── Health check ──
     @app.get("/api/v1/health")
