@@ -9,6 +9,10 @@ from packages.db.models.case_contact import CaseContact
 from packages.db.models.interaction_event import InteractionEvent
 from packages.db.models.evidence_link import EvidenceLink
 from packages.db.models.inbox_item import InboxItem
+from packages.db.models.time_entry import TimeEntry
+from packages.db.models.invoice import Invoice
+from packages.db.models.invoice_line import InvoiceLine
+from packages.db.models.third_party_entry import ThirdPartyEntry
 
 __all__ = [
     "Base",
@@ -21,4 +25,8 @@ __all__ = [
     "InteractionEvent",
     "EvidenceLink",
     "InboxItem",
+    "TimeEntry",
+    "Invoice",
+    "InvoiceLine",
+    "ThirdPartyEntry",
 ]

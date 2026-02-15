@@ -11,6 +11,9 @@ from apps.api.routers.contacts import router as contacts_router
 from apps.api.routers.timeline import router as timeline_router
 from apps.api.routers.documents import router as documents_router
 from apps.api.routers.inbox import router as inbox_router
+from apps.api.routers.time_entries import router as time_entries_router
+from apps.api.routers.invoices import router as invoices_router
+from apps.api.routers.third_party import router as third_party_router
 
 
 def create_app() -> FastAPI:
@@ -54,6 +57,9 @@ def create_app() -> FastAPI:
     app.include_router(timeline_router)
     app.include_router(documents_router)
     app.include_router(inbox_router)
+    app.include_router(time_entries_router)
+    app.include_router(invoices_router)
+    app.include_router(third_party_router)
 
     # ── Health check ──
     @app.get("/api/v1/health")
