@@ -1,8 +1,49 @@
-FROM node:20-alpine
+# ── Stage 1: Dependencies ──
+FROM node:20-alpine AS deps
+
 RUN npm install -g pnpm
-WORKDIR /app
+
+WORKDIR /app/apps/web
+
 COPY apps/web/package.json apps/web/pnpm-lock.yaml* ./
-RUN pnpm install
+RUN pnpm install --frozen-lockfile 2>/dev/null || pnpm install
+
+# ── Stage 2: Builder ──
+FROM node:20-alpine AS builder
+
+RUN npm install -g pnpm
+
+WORKDIR /app/apps/web
+
+COPY --from=deps /app/apps/web/node_modules ./node_modules
 COPY apps/web/ .
+
+ENV NEXT_TELEMETRY_DISABLED=1
+
+RUN pnpm build
+
+# ── Stage 3: Runner ──
+FROM node:20-alpine AS runner
+
+WORKDIR /app/apps/web
+
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1
+
+# Non-root user for security
+RUN addgroup --system --gid 1001 lexibel \
+    && adduser --system --uid 1001 lexibel
+
+# Copy standalone output from builder
+COPY --from=builder /app/apps/web/public ./public
+COPY --from=builder --chown=lexibel:lexibel /app/apps/web/.next/standalone ./
+COPY --from=builder --chown=lexibel:lexibel /app/apps/web/.next/static ./.next/static
+
+USER lexibel
+
 EXPOSE 3000
-CMD ["pnpm", "dev"]
+
+ENV PORT=3000 \
+    HOSTNAME="0.0.0.0"
+
+CMD ["node", "server.js"]

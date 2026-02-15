@@ -1,69 +1,9 @@
-version: "3.9"
-
 services:
-  # ── API ──
-  api:
-    build:
-      context: .
-      dockerfile: infra/docker/Dockerfile.api
-    ports:
-      - "8000:8000"
-    env_file: .env
-    environment:
-      - ENVIRONMENT=production
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_started
-    restart: always
-    deploy:
-      replicas: 2
-      resources:
-        limits:
-          cpus: "1.0"
-          memory: 1G
-
-  # ── Web ──
-  web:
-    build:
-      context: .
-      dockerfile: infra/docker/Dockerfile.web
-    ports:
-      - "3000:3000"
-    environment:
-      - NODE_ENV=production
-      - NEXT_PUBLIC_API_URL=https://lexibel.clixite.cloud/api/v1
-    restart: always
-    deploy:
-      resources:
-        limits:
-          cpus: "0.5"
-          memory: 512M
-
-  # ── Workers ──
-  worker:
-    build:
-      context: .
-      dockerfile: infra/docker/Dockerfile.api
-    command: celery -A apps.workers.main:app worker --loglevel=warning -Q default,indexing,migration,peppol --concurrency=4
-    env_file: .env
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_started
-    restart: always
-    deploy:
-      replicas: 2
-      resources:
-        limits:
-          cpus: "1.0"
-          memory: 1G
-
   # ── PostgreSQL 16 ──
   postgres:
     image: postgres:16-alpine
+    ports:
+      - "127.0.0.1:5432:5432"
     environment:
       POSTGRES_DB: lexibel
       POSTGRES_USER: lexibel
@@ -72,7 +12,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./packages/db/init:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U lexibel"]
+      test: ["CMD-SHELL", "pg_isready -U lexibel -d lexibel"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -83,17 +23,27 @@ services:
           cpus: "2.0"
           memory: 2G
 
-  # ── Redis ──
+  # ── Redis 7 ──
   redis:
     image: redis:7-alpine
     command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: always
 
   # ── Qdrant (Vector DB) ──
   qdrant:
     image: qdrant/qdrant:latest
+    ports:
+      - "127.0.0.1:6333:6333"
+      - "127.0.0.1:6334:6334"
     volumes:
       - qdrant_data:/qdrant/storage
     restart: always
@@ -102,12 +52,79 @@ services:
   minio:
     image: minio/minio:latest
     command: server /data --console-address ":9001"
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
     environment:
       MINIO_ROOT_USER: lexibel
       MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD}
     volumes:
       - minio_data:/data
     restart: always
+
+  # ── API (FastAPI) ──
+  api:
+    image: ghcr.io/clixite/lexibel-api:latest
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://lexibel:${POSTGRES_PASSWORD}@postgres:5432/lexibel
+      REDIS_URL: redis://redis:6379/0
+      QDRANT_URL: http://qdrant:6333
+      MINIO_ENDPOINT: minio:9000
+      SECRET_KEY: ${SECRET_KEY}
+      ENVIRONMENT: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: always
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+
+  # ── Worker (Celery) ──
+  worker:
+    image: ghcr.io/clixite/lexibel-api:latest
+    command: celery -A apps.workers.main:app worker --loglevel=warning -Q default,indexing,migration,peppol --concurrency=4
+    environment:
+      DATABASE_URL: postgresql+asyncpg://lexibel:${POSTGRES_PASSWORD}@postgres:5432/lexibel
+      REDIS_URL: redis://redis:6379/0
+      QDRANT_URL: http://qdrant:6333
+      MINIO_ENDPOINT: minio:9000
+      SECRET_KEY: ${SECRET_KEY}
+      ENVIRONMENT: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: always
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+
+  # ── Web (Next.js) ──
+  web:
+    image: ghcr.io/clixite/lexibel-web:latest
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: https://lexibel.clixite.cloud/api/v1
+      NODE_ENV: production
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
 
   # ── Nginx Reverse Proxy ──
   nginx:
