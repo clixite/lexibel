@@ -1,12 +1,11 @@
-import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
+"use client";
 
-export default async function Home() {
-  const session = await auth();
+import { useEffect } from "react";
 
-  if (session?.user) {
-    redirect("/dashboard");
-  }
+export default function Home() {
+  useEffect(() => {
+    window.location.href = "/login";
+  }, []);
 
-  redirect("/login");
+  return null;
 }

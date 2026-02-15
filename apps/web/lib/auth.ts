@@ -3,7 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
+const authConfig = NextAuth({
   providers: [
     Credentials({
       name: "LexiBel",
@@ -80,3 +80,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
   trustHost: true,
 });
+
+// Export only handlers for the API route — no server-side auth() in pages
+export const { handlers, signIn, signOut } = authConfig;

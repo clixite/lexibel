@@ -1,5 +1,7 @@
-import { auth } from "@/lib/auth";
-import { Briefcase, Clock, FileText, Inbox } from "lucide-react";
+"use client";
+
+import { useSession } from "next-auth/react";
+import { Briefcase, Clock, FileText, Inbox, Loader2 } from "lucide-react";
 
 const STAT_CARDS = [
   { label: "Dossiers actifs", value: "—", icon: Briefcase, color: "text-primary" },
@@ -8,8 +10,17 @@ const STAT_CARDS = [
   { label: "Inbox", value: "—", icon: Inbox, color: "text-success" },
 ];
 
-export default async function DashboardPage() {
-  const session = await auth();
+export default function DashboardPage() {
+  const { data: session, status } = useSession();
+
+  if (status === "loading") {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   const userName = session?.user?.name || session?.user?.email || "Utilisateur";
 
   return (

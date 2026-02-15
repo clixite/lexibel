@@ -1,6 +1,9 @@
-import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
-import { Scale, LogOut, Home, Briefcase, Clock, FileText, Users, Settings } from "lucide-react";
+"use client";
+
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { Scale, LogOut, Home, Briefcase, Clock, FileText, Users, Settings, Loader2 } from "lucide-react";
 
 const NAV_ITEMS = [
   { label: "Tableau de bord", href: "/dashboard", icon: Home },
@@ -11,15 +14,30 @@ const NAV_ITEMS = [
   { label: "Paramètres", href: "/dashboard/settings", icon: Settings },
 ];
 
-export default async function DashboardLayout({
+export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth();
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/login");
+    }
+  }, [status, router]);
+
+  if (status === "loading") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Loader2 className="w-10 h-10 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   if (!session?.user) {
-    redirect("/login");
+    return null;
   }
 
   return (
@@ -59,7 +77,7 @@ export default async function DashboardLayout({
                 {session.user.name || session.user.email}
               </p>
               <p className="text-xs text-primary-200 truncate">
-                {session.user.role}
+                {(session.user as any).role}
               </p>
             </div>
           </div>
