@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from apps.api.middleware.tenant import TenantMiddleware
 from apps.api.middleware.audit import AuditMiddleware
 from apps.api.auth.router import router as auth_router
+from apps.api.auth.mfa_router import mfa_router
 
 
 def create_app() -> FastAPI:
@@ -42,6 +43,7 @@ def create_app() -> FastAPI:
 
     # ── Routers ──
     app.include_router(auth_router)
+    app.include_router(mfa_router)
 
     # ── Health check ──
     @app.get("/api/v1/health")

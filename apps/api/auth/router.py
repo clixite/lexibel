@@ -1,6 +1,6 @@
 """Auth router — login, refresh, and /me endpoints.
 
-POST /api/v1/auth/login   — email + password → JWT pair
+POST /api/v1/auth/login   — email + password → JWT pair (or MFA challenge)
 POST /api/v1/auth/refresh — refresh token → new access token
 GET  /api/v1/auth/me      — current user profile from JWT
 """
@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from apps.api.auth.jwt import (
     TokenError,
     create_access_token,
+    create_mfa_token,
     create_refresh_token,
     verify_token,
 )
@@ -18,8 +19,8 @@ from apps.api.auth.passwords import verify_password
 from apps.api.auth.schemas import (
     AccessTokenResponse,
     LoginRequest,
+    LoginResponse,
     RefreshRequest,
-    TokenResponse,
     UserProfile,
 )
 from apps.api.dependencies import get_current_user
@@ -38,6 +39,8 @@ def register_stub_user(
     user_id: uuid.UUID,
     tenant_id: uuid.UUID,
     role: str = "junior",
+    mfa_enabled: bool = False,
+    mfa_secret: str | None = None,
 ) -> None:
     """Register a user in the stub store (for testing / bootstrap)."""
     _STUB_USERS[email] = {
@@ -46,15 +49,22 @@ def register_stub_user(
         "email": email,
         "hashed_password": hashed_password,
         "role": role,
+        "mfa_enabled": mfa_enabled,
+        "mfa_secret": mfa_secret,
     }
 
 
 # ── Endpoints ──
 
 
-@router.post("/login", response_model=TokenResponse)
-async def login(body: LoginRequest) -> TokenResponse:
-    """Authenticate with email + password, receive JWT pair."""
+@router.post("/login", response_model=LoginResponse)
+async def login(body: LoginRequest) -> LoginResponse:
+    """Authenticate with email + password.
+
+    If MFA is enabled on the user, returns mfa_required=true with a
+    short-lived mfa_token. The client must then call /mfa/challenge
+    with the TOTP code to complete authentication.
+    """
     user = _STUB_USERS.get(body.email)
     if user is None or not verify_password(body.password, user["hashed_password"]):
         raise HTTPException(
@@ -63,6 +73,16 @@ async def login(body: LoginRequest) -> TokenResponse:
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    # If MFA is enabled, return MFA challenge instead of full tokens
+    if user.get("mfa_enabled") and user.get("mfa_secret"):
+        mfa_token = create_mfa_token(
+            user_id=user["user_id"],
+            tenant_id=user["tenant_id"],
+            email=user["email"],
+        )
+        return LoginResponse(mfa_required=True, mfa_token=mfa_token)
+
+    # No MFA — issue full JWT pair
     access_token = create_access_token(
         user_id=user["user_id"],
         tenant_id=user["tenant_id"],
@@ -74,7 +94,7 @@ async def login(body: LoginRequest) -> TokenResponse:
         tenant_id=user["tenant_id"],
     )
 
-    return TokenResponse(access_token=access_token, refresh_token=refresh_token)
+    return LoginResponse(access_token=access_token, refresh_token=refresh_token)
 
 
 @router.post("/refresh", response_model=AccessTokenResponse)

@@ -2,6 +2,7 @@
 
 Access tokens (30 min) carry user identity + tenant + role.
 Refresh tokens (7 days) carry only user identity for rotation.
+MFA tokens (5 min) are issued after password auth when MFA is enabled.
 Algorithm: HS256 with SECRET_KEY from environment.
 """
 import os
@@ -14,6 +15,7 @@ SECRET_KEY: str = os.getenv("SECRET_KEY", "dev-secret-change-me-in-production")
 ALGORITHM: str = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+MFA_TOKEN_EXPIRE_MINUTES: int = 5
 
 
 class TokenError(Exception):
@@ -49,6 +51,28 @@ def create_refresh_token(user_id: uuid.UUID, tenant_id: uuid.UUID) -> str:
         "type": "refresh",
         "iat": now,
         "exp": now + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
+    }
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def create_mfa_token(
+    user_id: uuid.UUID,
+    tenant_id: uuid.UUID,
+    email: str,
+) -> str:
+    """Create a short-lived MFA token (5 min) after password auth.
+
+    This token proves the user passed password authentication but
+    still needs to complete the TOTP challenge.
+    """
+    now = datetime.now(timezone.utc)
+    payload = {
+        "sub": str(user_id),
+        "tid": str(tenant_id),
+        "email": email,
+        "type": "mfa",
+        "iat": now,
+        "exp": now + timedelta(minutes=MFA_TOKEN_EXPIRE_MINUTES),
     }
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
