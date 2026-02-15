@@ -18,6 +18,7 @@ from apps.api.webhooks.ringover import router as ringover_webhook_router
 from apps.api.webhooks.plaud import router as plaud_webhook_router
 from apps.api.routers.integrations import router as integrations_router
 from apps.api.routers.events import router as events_router
+from apps.api.routers.bootstrap import router as bootstrap_router
 
 
 def create_app() -> FastAPI:
@@ -68,6 +69,7 @@ def create_app() -> FastAPI:
     app.include_router(plaud_webhook_router)
     app.include_router(integrations_router)
     app.include_router(events_router)
+    app.include_router(bootstrap_router)
 
     # ── Health check ──
     @app.get("/api/v1/health")
