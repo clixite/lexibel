@@ -1,14 +1,22 @@
 import type { Metadata } from "next";
+import "./globals.css";
+import Providers from "./providers";
 
 export const metadata: Metadata = {
   title: "LexiBel",
   description: "AI-Native Legal Practice Management for Belgian Bar",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="fr">
-      <body>{children}</body>
+      <body>
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }
