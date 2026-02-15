@@ -6,5 +6,19 @@ from packages.db.models.audit_log import AuditLog
 from packages.db.models.case import Case
 from packages.db.models.contact import Contact
 from packages.db.models.case_contact import CaseContact
+from packages.db.models.interaction_event import InteractionEvent
+from packages.db.models.evidence_link import EvidenceLink
+from packages.db.models.inbox_item import InboxItem
 
-__all__ = ["Base", "Tenant", "User", "AuditLog", "Case", "Contact", "CaseContact"]
+__all__ = [
+    "Base",
+    "Tenant",
+    "User",
+    "AuditLog",
+    "Case",
+    "Contact",
+    "CaseContact",
+    "InteractionEvent",
+    "EvidenceLink",
+    "InboxItem",
+]

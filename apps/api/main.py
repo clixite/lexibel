@@ -8,6 +8,9 @@ from apps.api.auth.router import router as auth_router
 from apps.api.auth.mfa_router import mfa_router
 from apps.api.routers.cases import router as cases_router
 from apps.api.routers.contacts import router as contacts_router
+from apps.api.routers.timeline import router as timeline_router
+from apps.api.routers.documents import router as documents_router
+from apps.api.routers.inbox import router as inbox_router
 
 
 def create_app() -> FastAPI:
@@ -48,6 +51,9 @@ def create_app() -> FastAPI:
     app.include_router(mfa_router)
     app.include_router(cases_router)
     app.include_router(contacts_router)
+    app.include_router(timeline_router)
+    app.include_router(documents_router)
+    app.include_router(inbox_router)
 
     # ── Health check ──
     @app.get("/api/v1/health")
