@@ -1,7 +1,9 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 
-const API_URL = process.env.API_URL_INTERNAL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+function getApiUrl(): string {
+  return process.env.API_URL_INTERNAL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+}
 
 const authConfig = NextAuth({
   providers: [
@@ -17,7 +19,7 @@ const authConfig = NextAuth({
         }
 
         try {
-          const res = await fetch(`${API_URL}/auth/login`, {
+          const res = await fetch(`${getApiUrl()}/auth/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
