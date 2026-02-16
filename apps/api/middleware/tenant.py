@@ -68,12 +68,12 @@ class TenantMiddleware(BaseHTTPMiddleware):
                 request.state.user_id = uuid.UUID(claims["sub"])
                 request.state.user_role = claims.get("role")
                 request.state.user_email = claims.get("email", "")
-                return await call_next(request)
             except (TokenError, KeyError, ValueError):
                 return JSONResponse(
                     status_code=401,
                     content={"detail": "Invalid or expired access token"},
                 )
+            return await call_next(request)
 
         # Fallback: X-Tenant-ID header (dev/testing only)
         raw = request.headers.get("X-Tenant-ID")
