@@ -56,9 +56,9 @@ export default function TimeEntryApproval() {
     setProcessing(true);
     try {
       const endpoint = action === "approve" ? "approve" : "refuse";
-      for (const id of selected) {
+      Array.from(selected).forEach(async (id) => {
         await apiFetch(`/time-entries/${id}/${endpoint}`, token, { method: "POST" });
-      }
+      });
       // Reload
       const data = await apiFetch<{ items: TimeEntry[] }>("/time-entries?status=submitted", token);
       setEntries(data.items);
