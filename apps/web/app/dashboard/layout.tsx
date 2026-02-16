@@ -1,17 +1,16 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { Scale, LogOut, Home, Briefcase, Clock, FileText, Users, Settings, Loader2 } from "lucide-react";
+import { Scale, LogOut, Home, Briefcase, Clock, FileText, Users, Loader2 } from "lucide-react";
 
 const NAV_ITEMS = [
   { label: "Tableau de bord", href: "/dashboard", icon: Home },
   { label: "Dossiers", href: "/dashboard/cases", icon: Briefcase },
-  { label: "Temps", href: "/dashboard/time", icon: Clock },
-  { label: "Facturation", href: "/dashboard/invoices", icon: FileText },
   { label: "Contacts", href: "/dashboard/contacts", icon: Users },
-  { label: "Paramètres", href: "/dashboard/settings", icon: Settings },
+  { label: "Timeline", href: "/dashboard/timeline", icon: Clock },
+  { label: "Facturation", href: "/dashboard/invoices", icon: FileText },
 ];
 
 export default function DashboardLayout({
@@ -66,9 +65,9 @@ export default function DashboardLayout({
           ))}
         </nav>
 
-        {/* User section */}
+        {/* User section + Logout */}
         <div className="px-4 py-4 border-t border-primary-400">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 mb-3">
             <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-sm font-semibold">
               {session.user.email?.[0]?.toUpperCase() || "U"}
             </div>
@@ -81,6 +80,15 @@ export default function DashboardLayout({
               </p>
             </div>
           </div>
+          <button
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm font-medium
+                       text-primary-100 hover:bg-primary-400 hover:text-white
+                       transition-colors duration-150"
+          >
+            <LogOut className="w-4 h-4" />
+            Se déconnecter
+          </button>
         </div>
       </aside>
 
