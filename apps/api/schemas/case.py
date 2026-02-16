@@ -42,11 +42,11 @@ class CaseResponse(BaseModel):
     responsible_user_id: uuid.UUID
     opened_at: date
     closed_at: Optional[date]
-    metadata: dict
+    metadata: dict = Field(validation_alias="metadata_")
     created_at: datetime
     updated_at: datetime
 
-    model_config = {"from_attributes": True}
+    model_config = {"from_attributes": True, "populate_by_name": True}
 
 
 class CaseListResponse(BaseModel):
