@@ -72,16 +72,43 @@ async def update_case(
     case_id: uuid.UUID,
     **kwargs,
 ) -> Case | None:
-    """Update a case by ID. Only updates non-None fields."""
+    """Update a case by ID. Only updates non-None fields.
+
+    Automatically logs status transitions to the timeline.
+    """
+    from datetime import datetime
+
+    from packages.db.models.interaction_event import InteractionEvent
+
     case = await get_case(session, case_id)
     if case is None:
         return None
+
+    # Track status change for timeline logging
+    old_status = case.status
+    status_changed = "status" in kwargs and kwargs["status"] != old_status
 
     for key, value in kwargs.items():
         if value is not None:
             setattr(case, key, value)
 
     await session.flush()
+
+    # Log status transition to timeline
+    if status_changed:
+        event = InteractionEvent(
+            tenant_id=case.tenant_id,
+            case_id=case_id,
+            source="MANUAL",
+            event_type="STATUS_CHANGE",
+            title=f"Statut modifié: {old_status} → {kwargs['status']}",
+            body=f"Le statut du dossier a été modifié de '{old_status}' à '{kwargs['status']}'",
+            occurred_at=datetime.utcnow(),
+            metadata_={"old_status": old_status, "new_status": kwargs["status"]},
+        )
+        session.add(event)
+        await session.flush()
+
     await session.refresh(case)
     return case
 
@@ -89,19 +116,88 @@ async def update_case(
 async def conflict_check(
     session: AsyncSession,
     case_id: uuid.UUID,
+    contact_id: Optional[uuid.UUID] = None,
 ) -> dict:
-    """Stub: Check for conflicts of interest on a case.
+    """Check for conflicts of interest on a case.
 
-    Will be implemented with Neo4j graph traversal in Sprint 2.
-    Returns a placeholder result.
+    Queries all other active cases for contacts in opposing roles.
+    Opposing role pairs: client ↔ adverse, witness ↔ third_party.
     """
+    from packages.db.models.case_contact import CaseContact
+    from packages.db.models.contact import Contact
+
     case = await get_case(session, case_id)
     if case is None:
         return {"status": "error", "detail": "Case not found"}
 
+    # Get all contacts linked to this case
+    query = select(CaseContact).where(CaseContact.case_id == case_id)
+    if contact_id:
+        query = query.where(CaseContact.contact_id == contact_id)
+
+    result = await session.execute(query)
+    case_contacts = result.scalars().all()
+
+    if not case_contacts:
+        return {
+            "status": "clear",
+            "case_id": str(case_id),
+            "conflicts_found": 0,
+            "detail": "No contacts to check",
+        }
+
+    # Define opposing roles
+    opposing_roles = {
+        "client": "adverse",
+        "adverse": "client",
+        "witness": "third_party",
+        "third_party": "witness",
+    }
+
+    conflicts = []
+
+    for cc in case_contacts:
+        # Find opposing role
+        opposing_role = opposing_roles.get(cc.role)
+        if not opposing_role:
+            continue
+
+        # Query other active cases where this contact appears in opposing role
+        other_cases_query = (
+            select(Case, CaseContact.role, Contact.full_name)
+            .join(CaseContact, CaseContact.case_id == Case.id)
+            .join(Contact, Contact.id == CaseContact.contact_id)
+            .where(
+                CaseContact.contact_id == cc.contact_id,
+                CaseContact.role == opposing_role,
+                Case.id != case_id,
+                Case.status.in_(
+                    ["open", "in_progress", "pending"]
+                ),  # Active cases only
+            )
+        )
+
+        other_result = await session.execute(other_cases_query)
+        other_cases = other_result.all()
+
+        for other_case, role, contact_name in other_cases:
+            conflicts.append(
+                {
+                    "contact_id": str(cc.contact_id),
+                    "contact_name": contact_name,
+                    "current_role": cc.role,
+                    "conflicting_case_id": str(other_case.id),
+                    "conflicting_case_reference": other_case.reference,
+                    "conflicting_role": role,
+                }
+            )
+
     return {
-        "status": "clear",
+        "status": "warning" if conflicts else "clear",
         "case_id": str(case_id),
-        "conflicts_found": 0,
-        "detail": "No conflicts detected (stub — full graph check in Sprint 2)",
+        "conflicts_found": len(conflicts),
+        "conflicts": conflicts,
+        "detail": f"Found {len(conflicts)} potential conflict(s)"
+        if conflicts
+        else "No conflicts detected",
     }

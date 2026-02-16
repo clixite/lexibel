@@ -3,7 +3,34 @@
     "allow": [
       "Bash(git init:*)",
       "Bash(git branch:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git remote add:*)",
+      "Bash(git push:*)",
+      "Bash(python -c:*)",
+      "Bash(python -X utf8 -c:*)",
+      "Bash(python -m pytest:*)",
+      "Bash(pip install:*)",
+      "Bash(git status:*)",
+      "Bash(ruff check:*)",
+      "Bash(python -m ruff check:*)",
+      "Bash(python -m ruff format:*)",
+      "Bash(npx @anthropic-ai/skills add:*)",
+      "Bash(claude skills add:*)",
+      "Bash(git clone:*)",
+      "Bash(npx next build:*)",
+      "Bash(pnpm build:*)",
+      "Bash(pnpm install:*)",
+      "Bash(npx --yes typescript@5.3:*)",
+      "Bash(npx tsc:*)",
+      "Bash(ssh root@76.13.46.55:*)",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMDAwMDAwMC0wMDAwLTQwMDAtYTAwMC0wMDAwMDAwMDAwMTAiLCJ0aWQiOiIwMDAwMDAwMC0wMDAwLTQwMDAtYTAwMC0wMDAwMDAwMDAwMDEiLCJyb2xlIjoic3VwZXJfYWRtaW4iLCJlbWFpbCI6Im5pY29sYXNAY2xpeGl0ZS5iZSIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3NzEyNTU3ODYsImV4cCI6MTc3MTI1NzU4Nn0.ALt9kEp60aFBjBgimjkhVEO4cnxxDhxbm8FqlyQ7Lt8\")",
+      "Bash(TID=\"00000000-0000-4000-a000-000000000001\")",
+      "Bash(__NEW_LINE_9959e563acbe891c__ ssh root@76.13.46.55 \"curl -s https://lexibel.clixite.cloud/api/v1/cases -H ''Authorization: Bearer $TOKEN'' -H ''X-Tenant-ID: $TID''\")",
+      "Bash(__NEW_LINE_6ede7080d5f5f07e__ ssh root@76.13.46.55 \"curl -s https://lexibel.clixite.cloud/api/v1/contacts -H ''Authorization: Bearer $TOKEN'' -H ''X-Tenant-ID: $TID''\")",
+      "Bash(__NEW_LINE_2f3ae6130571136f__ ssh root@76.13.46.55 \"curl -s https://lexibel.clixite.cloud/api/v1/invoices -H ''Authorization: Bearer $TOKEN'' -H ''X-Tenant-ID: $TID''\")",
+      "Bash(__NEW_LINE_66734195911da5cb__ ssh root@76.13.46.55 \"curl -s https://lexibel.clixite.cloud/api/v1/time-entries -H ''Authorization: Bearer $TOKEN'' -H ''X-Tenant-ID: $TID''\")",
+      "Bash(ssh:*)"
     ]
   }
 }

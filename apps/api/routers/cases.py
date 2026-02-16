@@ -161,12 +161,103 @@ async def link_case_contact(
     }
 
 
-@router.post("/{case_id}/conflict-check")
-async def conflict_check(
+@router.delete(
+    "/{case_id}/contacts/{contact_id}", status_code=status.HTTP_204_NO_CONTENT
+)
+async def unlink_case_contact(
+    case_id: uuid.UUID,
+    contact_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db_session),
+) -> None:
+    """Unlink a contact from a case."""
+    from sqlalchemy import delete as sa_delete
+
+    from packages.db.models.case_contact import CaseContact
+
+    result = await session.execute(
+        sa_delete(CaseContact).where(
+            CaseContact.case_id == case_id,
+            CaseContact.contact_id == contact_id,
+        )
+    )
+    if result.rowcount == 0:
+        raise HTTPException(status_code=404, detail="Contact link not found")
+    await session.commit()
+
+
+@router.get("/{case_id}/time-entries")
+async def get_case_time_entries(
     case_id: uuid.UUID,
     session: AsyncSession = Depends(get_db_session),
 ) -> dict:
-    result = await case_service.conflict_check(session, case_id)
+    """List time entries for a case."""
+    from packages.db.models.time_entry import TimeEntry
+    from sqlalchemy import select as sa_select
+
+    result = await session.execute(
+        sa_select(TimeEntry)
+        .where(TimeEntry.case_id == case_id)
+        .order_by(TimeEntry.entry_date.desc())
+    )
+    entries = result.scalars().all()
+    return {
+        "items": [
+            {
+                "id": str(e.id),
+                "date": e.entry_date.isoformat(),
+                "description": e.description,
+                "duration_minutes": e.duration_minutes,
+                "billable": e.billable,
+                "status": e.status,
+                "amount": e.billable_amount_cents / 100
+                if e.billable_amount_cents
+                else None,
+            }
+            for e in entries
+        ]
+    }
+
+
+@router.get("/{case_id}/documents")
+async def get_case_documents(
+    case_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db_session),
+) -> dict:
+    """List documents linked to a case via its events."""
+    from packages.db.models.evidence_link import EvidenceLink
+    from packages.db.models.interaction_event import InteractionEvent
+    from sqlalchemy import select as sa_select
+
+    result = await session.execute(
+        sa_select(EvidenceLink)
+        .join(InteractionEvent, InteractionEvent.id == EvidenceLink.event_id)
+        .where(InteractionEvent.case_id == case_id)
+        .order_by(EvidenceLink.created_at.desc())
+    )
+    links = result.scalars().all()
+    return {
+        "items": [
+            {
+                "id": str(link.id),
+                "file_name": link.file_name,
+                "mime_type": link.mime_type,
+                "file_size_bytes": link.file_size_bytes,
+                "sha256": link.sha256,
+                "created_at": link.created_at.isoformat(),
+            }
+            for link in links
+        ]
+    }
+
+
+@router.post("/{case_id}/conflict-check")
+async def conflict_check(
+    case_id: uuid.UUID,
+    contact_id: Optional[uuid.UUID] = None,
+    session: AsyncSession = Depends(get_db_session),
+) -> dict:
+    """Check for conflicts of interest on a case or specific contact."""
+    result = await case_service.conflict_check(session, case_id, contact_id)
     if result["status"] == "error":
         raise HTTPException(status_code=404, detail=result["detail"])
     return result
