@@ -1,13 +1,13 @@
 """Tests for AI agents: Due Diligence, Emotional Radar, Document Assembler, Agent Router."""
+
 import uuid
 
 import pytest
-from dataclasses import asdict
 
 from apps.api.services.agents import AgentOrchestrator
 from apps.api.services.agents.due_diligence_agent import DueDiligenceAgent
 from apps.api.services.agents.emotional_radar import EmotionalRadar
-from apps.api.services.agents.document_assembler import DocumentAssembler, AVAILABLE_TEMPLATES
+from apps.api.services.agents.document_assembler import DocumentAssembler
 
 TENANT_ID = str(uuid.uuid4())
 USER_ID = str(uuid.uuid4())
@@ -26,7 +26,6 @@ def _auth_headers() -> dict:
 
 
 class TestDueDiligenceAgent:
-
     def setup_method(self):
         self.agent = DueDiligenceAgent()
 
@@ -38,7 +37,10 @@ class TestDueDiligenceAgent:
 
     def test_entity_extraction_from_events(self):
         events = [
-            {"id": "e1", "content": "Maître Dupont représente la SA Acme dans ce litige."},
+            {
+                "id": "e1",
+                "content": "Maître Dupont représente la SA Acme dans ce litige.",
+            },
         ]
         report = self.agent.analyze("case-002", "tenant-1", events=events)
         assert report.total_entities_checked >= 1
@@ -47,7 +49,10 @@ class TestDueDiligenceAgent:
 
     def test_sanctions_hit_detection(self):
         events = [
-            {"id": "e1", "content": "Maître Sanctioned Person a contacté le cabinet au sujet de Suspicious Corp SA."},
+            {
+                "id": "e1",
+                "content": "Maître Sanctioned Person a contacté le cabinet au sujet de Suspicious Corp SA.",
+            },
         ]
         report = self.agent.analyze("case-003", "tenant-1", events=events)
         assert report.sanctions_hits >= 1
@@ -63,7 +68,8 @@ class TestDueDiligenceAgent:
 
     def test_high_risk_keywords(self):
         report = self.agent.analyze(
-            "case-005", "tenant-1",
+            "case-005",
+            "tenant-1",
             documents_text="Suspicion de blanchiment d'argent et fraude fiscale.",
         )
         assert len(report.risk_flags) >= 1
@@ -71,7 +77,8 @@ class TestDueDiligenceAgent:
 
     def test_medium_risk_keywords(self):
         report = self.agent.analyze(
-            "case-006", "tenant-1",
+            "case-006",
+            "tenant-1",
             documents_text="Le litige porte sur des factures impayées et une mise en demeure.",
         )
         flags = report.risk_flags
@@ -79,15 +86,23 @@ class TestDueDiligenceAgent:
 
     def test_recommendations_generated(self):
         events = [
-            {"id": "e1", "content": "Maître Sanctioned Person a contacté le cabinet au sujet de Suspicious Corp SA."},
+            {
+                "id": "e1",
+                "content": "Maître Sanctioned Person a contacté le cabinet au sujet de Suspicious Corp SA.",
+            },
         ]
         report = self.agent.analyze("case-007", "tenant-1", events=events)
         assert len(report.recommendations) >= 1
-        assert any("URGENT" in r or "sanction" in r.lower() for r in report.recommendations)
+        assert any(
+            "URGENT" in r or "sanction" in r.lower() for r in report.recommendations
+        )
 
     def test_entity_deduplication(self):
         events = [
-            {"id": "e1", "content": "Maître Dupont a envoyé un courrier. Me Dupont a confirmé."},
+            {
+                "id": "e1",
+                "content": "Maître Dupont a envoyé un courrier. Me Dupont a confirmé.",
+            },
         ]
         report = self.agent.analyze("case-008", "tenant-1", events=events)
         names = [e.entity_name.lower() for e in report.entities]
@@ -96,7 +111,8 @@ class TestDueDiligenceAgent:
 
     def test_low_risk_clean_case(self):
         report = self.agent.analyze(
-            "case-009", "tenant-1",
+            "case-009",
+            "tenant-1",
             documents_text="Contrat de bail résidentiel standard sans particularité.",
         )
         assert report.overall_risk == "LOW"
@@ -106,7 +122,6 @@ class TestDueDiligenceAgent:
 
 
 class TestEmotionalRadar:
-
     def setup_method(self):
         self.radar = EmotionalRadar()
 
@@ -118,7 +133,12 @@ class TestEmotionalRadar:
 
     def test_cooperative_tone(self):
         events = [
-            {"id": "e1", "type": "email", "date": "2026-01-01", "content": "Merci pour votre proposition. Je suis d'accord avec le compromis proposé."},
+            {
+                "id": "e1",
+                "type": "email",
+                "date": "2026-01-01",
+                "content": "Merci pour votre proposition. Je suis d'accord avec le compromis proposé.",
+            },
         ]
         profile = self.radar.analyze("case-002", "tenant-1", events)
         assert profile.overall_score > 0
@@ -126,7 +146,12 @@ class TestEmotionalRadar:
 
     def test_hostile_tone(self):
         events = [
-            {"id": "e1", "type": "email", "date": "2026-01-01", "content": "Votre incompétence est inacceptable. Faute grave de votre part. Nous exigeons réparation."},
+            {
+                "id": "e1",
+                "type": "email",
+                "date": "2026-01-01",
+                "content": "Votre incompétence est inacceptable. Faute grave de votre part. Nous exigeons réparation.",
+            },
         ]
         profile = self.radar.analyze("case-003", "tenant-1", events)
         assert profile.overall_score < 0
@@ -134,7 +159,12 @@ class TestEmotionalRadar:
 
     def test_threatening_tone_flagged(self):
         events = [
-            {"id": "e1", "type": "email", "date": "2026-01-01", "content": "Je vais porter plainte pénale et des poursuites pour harcèlement."},
+            {
+                "id": "e1",
+                "type": "email",
+                "date": "2026-01-01",
+                "content": "Je vais porter plainte pénale et des poursuites pour harcèlement.",
+            },
         ]
         profile = self.radar.analyze("case-004", "tenant-1", events)
         assert len(profile.flagged_events) >= 1
@@ -142,27 +172,72 @@ class TestEmotionalRadar:
 
     def test_trend_deteriorating(self):
         events = [
-            {"id": "e1", "type": "email", "date": "2026-01-01", "content": "Merci pour votre accord et votre collaboration."},
-            {"id": "e2", "type": "email", "date": "2026-01-15", "content": "Merci, bien à vous, cordialement."},
-            {"id": "e3", "type": "email", "date": "2026-02-01", "content": "C'est inacceptable, je conteste cette décision."},
-            {"id": "e4", "type": "email", "date": "2026-02-15", "content": "Mise en demeure. Assignation devant le tribunal. Votre faute grave."},
+            {
+                "id": "e1",
+                "type": "email",
+                "date": "2026-01-01",
+                "content": "Merci pour votre accord et votre collaboration.",
+            },
+            {
+                "id": "e2",
+                "type": "email",
+                "date": "2026-01-15",
+                "content": "Merci, bien à vous, cordialement.",
+            },
+            {
+                "id": "e3",
+                "type": "email",
+                "date": "2026-02-01",
+                "content": "C'est inacceptable, je conteste cette décision.",
+            },
+            {
+                "id": "e4",
+                "type": "email",
+                "date": "2026-02-15",
+                "content": "Mise en demeure. Assignation devant le tribunal. Votre faute grave.",
+            },
         ]
         profile = self.radar.analyze("case-005", "tenant-1", events)
         assert profile.trend == "DETERIORATING"
 
     def test_trend_improving(self):
         events = [
-            {"id": "e1", "type": "email", "date": "2026-01-01", "content": "C'est inacceptable et incompétent."},
-            {"id": "e2", "type": "email", "date": "2026-01-15", "content": "Je conteste et désaccord total."},
-            {"id": "e3", "type": "email", "date": "2026-02-01", "content": "Merci pour votre proposition de compromis."},
-            {"id": "e4", "type": "email", "date": "2026-02-15", "content": "D'accord, accepté. Merci pour la collaboration."},
+            {
+                "id": "e1",
+                "type": "email",
+                "date": "2026-01-01",
+                "content": "C'est inacceptable et incompétent.",
+            },
+            {
+                "id": "e2",
+                "type": "email",
+                "date": "2026-01-15",
+                "content": "Je conteste et désaccord total.",
+            },
+            {
+                "id": "e3",
+                "type": "email",
+                "date": "2026-02-01",
+                "content": "Merci pour votre proposition de compromis.",
+            },
+            {
+                "id": "e4",
+                "type": "email",
+                "date": "2026-02-15",
+                "content": "D'accord, accepté. Merci pour la collaboration.",
+            },
         ]
         profile = self.radar.analyze("case-006", "tenant-1", events)
         assert profile.trend == "IMPROVING"
 
     def test_legal_threshold_detection(self):
         events = [
-            {"id": "e1", "type": "email", "date": "2026-01-01", "content": "Ceci constitue du harcèlement et de la calomnie."},
+            {
+                "id": "e1",
+                "type": "email",
+                "date": "2026-01-01",
+                "content": "Ceci constitue du harcèlement et de la calomnie.",
+            },
         ]
         profile = self.radar.analyze("case-007", "tenant-1", events)
         assert len(profile.flagged_events) >= 1
@@ -171,23 +246,48 @@ class TestEmotionalRadar:
 
     def test_escalation_risk_critical(self):
         events = [
-            {"id": "e1", "type": "email", "date": "2026-01-01", "content": "Menace de violence et harcèlement."},
-            {"id": "e2", "type": "email", "date": "2026-01-05", "content": "Poursuite pour diffamation et calomnie."},
-            {"id": "e3", "type": "email", "date": "2026-01-10", "content": "Menace de poursuites pénales."},
+            {
+                "id": "e1",
+                "type": "email",
+                "date": "2026-01-01",
+                "content": "Menace de violence et harcèlement.",
+            },
+            {
+                "id": "e2",
+                "type": "email",
+                "date": "2026-01-05",
+                "content": "Poursuite pour diffamation et calomnie.",
+            },
+            {
+                "id": "e3",
+                "type": "email",
+                "date": "2026-01-10",
+                "content": "Menace de poursuites pénales.",
+            },
         ]
         profile = self.radar.analyze("case-008", "tenant-1", events)
         assert profile.escalation_risk == "CRITICAL"
 
     def test_recommendations_for_high_risk(self):
         events = [
-            {"id": "e1", "type": "email", "date": "2026-01-01", "content": "Menace de poursuites, je vais vous détruire."},
+            {
+                "id": "e1",
+                "type": "email",
+                "date": "2026-01-01",
+                "content": "Menace de poursuites, je vais vous détruire.",
+            },
         ]
         profile = self.radar.analyze("case-009", "tenant-1", events)
         assert len(profile.recommendations) >= 1
 
     def test_neutral_events_no_flags(self):
         events = [
-            {"id": "e1", "type": "note", "date": "2026-01-01", "content": "Appel téléphonique pour fixer un rendez-vous."},
+            {
+                "id": "e1",
+                "type": "note",
+                "date": "2026-01-01",
+                "content": "Appel téléphonique pour fixer un rendez-vous.",
+            },
         ]
         profile = self.radar.analyze("case-010", "tenant-1", events)
         assert len(profile.flagged_events) == 0
@@ -206,7 +306,6 @@ class TestEmotionalRadar:
 
 
 class TestDocumentAssembler:
-
     def setup_method(self):
         self.assembler = DocumentAssembler()
 
@@ -358,7 +457,6 @@ class TestDocumentAssembler:
 
 
 class TestAgentOrchestrator:
-
     def setup_method(self):
         self.orchestrator = AgentOrchestrator()
 
@@ -367,8 +465,17 @@ class TestAgentOrchestrator:
         assert report.case_id == "case-1"
 
     def test_run_emotional_radar(self):
-        events = [{"id": "e1", "type": "email", "date": "2026-01-01", "content": "Merci cordialement."}]
-        profile = self.orchestrator.run_emotional_radar("case-1", "tenant-1", events=events)
+        events = [
+            {
+                "id": "e1",
+                "type": "email",
+                "date": "2026-01-01",
+                "content": "Merci cordialement.",
+            }
+        ]
+        profile = self.orchestrator.run_emotional_radar(
+            "case-1", "tenant-1", events=events
+        )
         assert profile.case_id == "case-1"
         assert profile.events_analyzed >= 1
 
@@ -398,7 +505,6 @@ class TestAgentOrchestrator:
 
 
 class TestAgentRouter:
-
     @pytest.fixture
     def client(self):
         from fastapi.testclient import TestClient
@@ -420,7 +526,16 @@ class TestAgentRouter:
     def test_run_emotional_radar_endpoint(self, client):
         resp = client.post(
             "/api/v1/agents/emotional-radar/case-002",
-            json={"events": [{"id": "e1", "type": "email", "date": "2026-01-01", "content": "Merci bien."}]},
+            json={
+                "events": [
+                    {
+                        "id": "e1",
+                        "type": "email",
+                        "date": "2026-01-01",
+                        "content": "Merci bien.",
+                    }
+                ]
+            },
             headers=_auth_headers(),
         )
         assert resp.status_code == 200

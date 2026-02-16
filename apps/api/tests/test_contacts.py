@@ -1,4 +1,5 @@
 """LXB-013: Tests for Contacts CRUD — create, get, list, update, search, cross-tenant."""
+
 import uuid
 from datetime import datetime
 from unittest.mock import AsyncMock, patch
@@ -33,7 +34,12 @@ def _make_contact_obj(**overrides):
         "bce_number": None,
         "email": "jean@dupont.be",
         "phone_e164": "+32470123456",
-        "address": {"street": "Rue de la Loi 1", "city": "Bruxelles", "zip": "1000", "country": "BE"},
+        "address": {
+            "street": "Rue de la Loi 1",
+            "city": "Bruxelles",
+            "zip": "1000",
+            "country": "BE",
+        },
         "language": "fr",
         "created_at": NOW,
         "updated_at": NOW,
@@ -70,9 +76,12 @@ async def test_create_contact():
         mock_svc.create_contact = AsyncMock(return_value=contact_obj)
 
         from apps.api.dependencies import get_db_session
+
         app.dependency_overrides[get_db_session] = override_db
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 "/api/v1/contacts",
                 json={
@@ -102,9 +111,12 @@ async def test_get_contact():
         mock_svc.get_contact = AsyncMock(return_value=contact_obj)
 
         from apps.api.dependencies import get_db_session
+
         app.dependency_overrides[get_db_session] = override_db
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 f"/api/v1/contacts/{CONTACT_ID}",
                 headers={"Authorization": f"Bearer {TOKEN_A}"},
@@ -124,9 +136,12 @@ async def test_get_contact_not_found():
         mock_svc.get_contact = AsyncMock(return_value=None)
 
         from apps.api.dependencies import get_db_session
+
         app.dependency_overrides[get_db_session] = override_db
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 f"/api/v1/contacts/{uuid.uuid4()}",
                 headers={"Authorization": f"Bearer {TOKEN_A}"},
@@ -140,15 +155,20 @@ async def test_get_contact_not_found():
 @pytest.mark.asyncio
 async def test_list_contacts_paginated():
     mock_session, override_db = _patch_db()
-    contacts = [_make_contact_obj(id=uuid.uuid4(), full_name=f"Contact {i}") for i in range(5)]
+    contacts = [
+        _make_contact_obj(id=uuid.uuid4(), full_name=f"Contact {i}") for i in range(5)
+    ]
 
     with patch("apps.api.routers.contacts.contact_service") as mock_svc:
         mock_svc.list_contacts = AsyncMock(return_value=(contacts, 5))
 
         from apps.api.dependencies import get_db_session
+
         app.dependency_overrides[get_db_session] = override_db
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 "/api/v1/contacts?page=1&per_page=10",
                 headers={"Authorization": f"Bearer {TOKEN_A}"},
@@ -172,9 +192,12 @@ async def test_update_contact():
         mock_svc.update_contact = AsyncMock(return_value=updated)
 
         from apps.api.dependencies import get_db_session
+
         app.dependency_overrides[get_db_session] = override_db
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.patch(
                 f"/api/v1/contacts/{CONTACT_ID}",
                 json={"email": "new@dupont.be"},
@@ -196,9 +219,12 @@ async def test_search_contacts():
         mock_svc.search_contacts = AsyncMock(return_value=(results, 1))
 
         from apps.api.dependencies import get_db_session
+
         app.dependency_overrides[get_db_session] = override_db
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 "/api/v1/contacts/search?q=Dupont",
                 headers={"Authorization": f"Bearer {TOKEN_A}"},
@@ -225,9 +251,12 @@ async def test_search_contacts_by_bce():
         mock_svc.search_contacts = AsyncMock(return_value=([company], 1))
 
         from apps.api.dependencies import get_db_session
+
         app.dependency_overrides[get_db_session] = override_db
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 "/api/v1/contacts/search?q=0123.456",
                 headers={"Authorization": f"Bearer {TOKEN_A}"},
@@ -244,9 +273,12 @@ async def test_search_requires_query():
     mock_session, override_db = _patch_db()
 
     from apps.api.dependencies import get_db_session
+
     app.dependency_overrides[get_db_session] = override_db
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         resp = await client.get(
             "/api/v1/contacts/search",
             headers={"Authorization": f"Bearer {TOKEN_A}"},
@@ -262,9 +294,12 @@ async def test_create_contact_invalid_type():
     mock_session, override_db = _patch_db()
 
     from apps.api.dependencies import get_db_session
+
     app.dependency_overrides[get_db_session] = override_db
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         resp = await client.post(
             "/api/v1/contacts",
             json={"type": "invalid", "full_name": "Test"},
@@ -290,9 +325,12 @@ async def test_cross_tenant_isolation():
         mock_svc.list_contacts = AsyncMock(return_value=([contact_b], 1))
 
         from apps.api.dependencies import get_db_session
+
         app.dependency_overrides[get_db_session] = override_db
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 "/api/v1/contacts",
                 headers={"Authorization": f"Bearer {TOKEN_B}"},

@@ -2,6 +2,7 @@
 
 All user passwords are stored as bcrypt hashes. Never store plaintext.
 """
+
 from passlib.context import CryptContext
 
 _pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

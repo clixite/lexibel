@@ -4,6 +4,7 @@ GET    /api/v1/cases/{case_id}/timeline  — paginated timeline for a case
 POST   /api/v1/cases/{case_id}/events    — create event on a case
 GET    /api/v1/events/{id}               — get event with evidence links
 """
+
 import uuid
 from datetime import datetime
 from typing import Optional
@@ -88,5 +89,5 @@ async def get_event(
     if event is None:
         raise HTTPException(status_code=404, detail="Event not found")
     resp = InteractionEventResponse.model_validate(event)
-    resp.evidence_links = [EvidenceLinkResponse.model_validate(l) for l in links]
+    resp.evidence_links = [EvidenceLinkResponse.model_validate(link) for link in links]
     return resp

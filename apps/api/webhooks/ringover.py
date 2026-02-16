@@ -7,16 +7,14 @@ matches caller E.164 to contacts, creates InboxItem with source=RINGOVER,
 auto-creates TimeEntry from call duration if confidence > threshold.
 Uses idempotency_key from call_id (Principle P6).
 """
+
 import os
-import uuid
-from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 from apps.api.services.webhook_service import (
     check_idempotency,
-    parse_e164,
     verify_hmac_signature,
 )
 
@@ -68,6 +66,7 @@ async def ringover_webhook(request: Request) -> RingoverWebhookResponse:
 
     # Parse the event
     import json
+
     try:
         data = json.loads(body)
     except json.JSONDecodeError:
@@ -87,24 +86,7 @@ async def ringover_webhook(request: Request) -> RingoverWebhookResponse:
             duplicate=True,
         )
 
-    # Parse caller phone to E.164
-    caller_e164 = parse_e164(event.caller_number)
-
-    # Build raw payload for InboxItem
-    raw_payload = {
-        "call_id": event.call_id,
-        "call_type": event.call_type,
-        "caller_number": event.caller_number,
-        "caller_e164": caller_e164,
-        "callee_number": event.callee_number,
-        "direction": event.direction,
-        "duration_seconds": event.duration_seconds,
-        "started_at": event.started_at,
-        "ended_at": event.ended_at,
-        "recording_url": event.recording_url,
-    }
-
-    # In production: create InboxItem via DB session
+    # TODO: create InboxItem via DB session using parse_e164(event.caller_number)
     # For now, return success with metadata
     inbox_created = True
     time_entry_created = False

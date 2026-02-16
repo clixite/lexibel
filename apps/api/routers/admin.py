@@ -1,8 +1,8 @@
 """Admin endpoints — health, tenants, users, stats."""
+
 import os
 import uuid
 from datetime import datetime, timezone
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -114,9 +114,19 @@ async def invite_user(
     if not email:
         raise HTTPException(status_code=400, detail="Email required")
 
-    valid_roles = {"admin", "lawyer", "paralegal", "secretary", "accountant", "junior", "super_admin"}
+    valid_roles = {
+        "admin",
+        "lawyer",
+        "paralegal",
+        "secretary",
+        "accountant",
+        "junior",
+        "super_admin",
+    }
     if role not in valid_roles:
-        raise HTTPException(status_code=400, detail=f"Invalid role. Valid: {valid_roles}")
+        raise HTTPException(
+            status_code=400, detail=f"Invalid role. Valid: {valid_roles}"
+        )
 
     tenant_id = str(user.get("tenant_id", ""))
     new_user = {
@@ -141,6 +151,7 @@ async def invite_user(
 
 # ── Service health checkers ──
 
+
 async def _check_postgres() -> dict:
     try:
         db_url = os.getenv("DATABASE_URL", "")
@@ -155,6 +166,7 @@ async def _check_redis() -> dict:
         if not redis_url:
             return {"status": "not_configured"}
         import redis as redis_lib
+
         r = redis_lib.from_url(redis_url, socket_timeout=2)
         r.ping()
         return {"status": "healthy"}
@@ -168,6 +180,7 @@ async def _check_qdrant() -> dict:
         if not qdrant_url:
             return {"status": "not_configured"}
         import httpx
+
         async with httpx.AsyncClient(timeout=3.0) as client:
             resp = await client.get(f"{qdrant_url}/collections")
             return {"status": "healthy" if resp.status_code == 200 else "unhealthy"}
@@ -189,6 +202,7 @@ async def _check_vllm() -> dict:
         if not vllm_url:
             return {"status": "not_configured"}
         import httpx
+
         async with httpx.AsyncClient(timeout=3.0) as client:
             resp = await client.get(f"{vllm_url}/models")
             return {"status": "healthy" if resp.status_code == 200 else "unhealthy"}

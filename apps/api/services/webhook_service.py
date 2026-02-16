@@ -1,9 +1,8 @@
 """Webhook service — HMAC verification, E.164 parsing, contact matching, idempotency."""
+
 import hashlib
 import hmac
 import re
-import uuid
-from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

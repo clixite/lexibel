@@ -4,6 +4,7 @@ Principle P4: Human-in-the-Loop — items start as DRAFT until a user
 validates or refuses them. Validation creates an InteractionEvent.
 Protected by RLS via tenant_id.
 """
+
 import uuid
 from datetime import datetime
 

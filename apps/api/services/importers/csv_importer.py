@@ -2,6 +2,7 @@
 
 Used for generic CSV imports and as fallback for Outlook imports.
 """
+
 import uuid
 
 from apps.api.services.migration_service import MigrationRecord
@@ -43,18 +44,24 @@ class CSVImporter:
             record_type = row.get("_type", self._detect_type(row))
 
             if record_type == "case":
-                records.append(self._parse_with_mapping(
-                    row, tenant_id, "cases", DEFAULT_CASE_MAPPING
-                ))
+                records.append(
+                    self._parse_with_mapping(
+                        row, tenant_id, "cases", DEFAULT_CASE_MAPPING
+                    )
+                )
             elif record_type == "contact":
-                records.append(self._parse_with_mapping(
-                    row, tenant_id, "contacts", DEFAULT_CONTACT_MAPPING
-                ))
+                records.append(
+                    self._parse_with_mapping(
+                        row, tenant_id, "contacts", DEFAULT_CONTACT_MAPPING
+                    )
+                )
             else:
                 # Default to case
-                records.append(self._parse_with_mapping(
-                    row, tenant_id, "cases", DEFAULT_CASE_MAPPING
-                ))
+                records.append(
+                    self._parse_with_mapping(
+                        row, tenant_id, "cases", DEFAULT_CASE_MAPPING
+                    )
+                )
 
         return records
 

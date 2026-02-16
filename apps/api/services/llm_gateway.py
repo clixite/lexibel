@@ -4,6 +4,7 @@ Supports OpenAI-compatible APIs (vLLM, OpenAI, Anthropic via proxy).
 Every generated claim must cite sources from context chunks.
 Rate limiting per tenant.
 """
+
 import os
 import re
 import time
@@ -86,9 +87,7 @@ _CLAIM_PATTERNS = [
 ]
 
 
-def validate_citations(
-    text: str, sources: list[LLMSource]
-) -> tuple[bool, list[str]]:
+def validate_citations(text: str, sources: list[LLMSource]) -> tuple[bool, list[str]]:
     """Validate that claims in text are backed by sources.
 
     Returns (is_valid, list_of_uncited_claims).

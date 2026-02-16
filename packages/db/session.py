@@ -3,6 +3,7 @@
 Every database session sets `app.current_tenant_id` via SET LOCAL,
 which scopes all RLS-enabled queries to a single tenant.
 """
+
 import uuid
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager

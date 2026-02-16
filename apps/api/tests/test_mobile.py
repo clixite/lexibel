@@ -1,4 +1,5 @@
 """Tests for mobile-optimized endpoints."""
+
 import io
 import uuid
 
@@ -30,7 +31,6 @@ def client():
 
 
 class TestMobileDashboard:
-
     def test_aggregated_dashboard(self, client):
         resp = client.get("/api/v1/mobile/dashboard", headers=_auth_headers())
         assert resp.status_code == 200
@@ -51,9 +51,10 @@ class TestMobileDashboard:
 
 
 class TestMobileCaseSummary:
-
     def test_case_summary(self, client):
-        resp = client.get("/api/v1/mobile/case/case-001/summary", headers=_auth_headers())
+        resp = client.get(
+            "/api/v1/mobile/case/case-001/summary", headers=_auth_headers()
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["case_id"] == "case-001"
@@ -66,7 +67,6 @@ class TestMobileCaseSummary:
 
 
 class TestMobileQuickTime:
-
     def test_create_quick_time_entry(self, client):
         resp = client.post(
             "/api/v1/mobile/quick-time",
@@ -108,7 +108,6 @@ class TestMobileQuickTime:
 
 
 class TestMobileVoiceNote:
-
     def test_upload_voice_note(self, client):
         audio_content = b"fake audio data for testing purposes"
         resp = client.post(

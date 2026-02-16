@@ -4,7 +4,7 @@ Task types: DRAFTING, SUMMARIZATION, ANALYSIS, TRANSLATION, CLASSIFICATION
 Each adapter is associated with task types and languages.
 Config loaded from YAML (infra/lora/adapters.yaml).
 """
-import os
+
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -12,6 +12,7 @@ from typing import Optional
 @dataclass
 class LoRAAdapter:
     """A registered LoRA adapter."""
+
     name: str
     base_model: str
     lora_path: str
@@ -98,13 +99,16 @@ class LoRARegistry:
         """Load adapters from YAML config file."""
         try:
             import yaml
+
             with open(path) as f:
                 config = yaml.safe_load(f)
 
             for entry in config.get("adapters", []):
                 adapter = LoRAAdapter(
                     name=entry["name"],
-                    base_model=entry.get("base_model", "mistralai/Mistral-7B-Instruct-v0.2"),
+                    base_model=entry.get(
+                        "base_model", "mistralai/Mistral-7B-Instruct-v0.2"
+                    ),
                     lora_path=entry.get("lora_path", ""),
                     description=entry.get("description", ""),
                     task_types=entry.get("task_types", []),
@@ -142,7 +146,9 @@ class LoRARegistry:
         if task_types:
             invalid = set(task_types) - VALID_TASK_TYPES
             if invalid:
-                raise ValueError(f"Invalid task types: {invalid}. Valid: {VALID_TASK_TYPES}")
+                raise ValueError(
+                    f"Invalid task types: {invalid}. Valid: {VALID_TASK_TYPES}"
+                )
 
         adapter = LoRAAdapter(
             name=name,
@@ -176,10 +182,7 @@ class LoRARegistry:
         Returns:
             Best matching LoRAAdapter or None
         """
-        candidates = [
-            a for a in self._adapters.values()
-            if task_type in a.task_types
-        ]
+        candidates = [a for a in self._adapters.values() if task_type in a.task_types]
 
         if not candidates:
             return None

@@ -6,6 +6,7 @@ PATCH  /api/v1/time-entries/{id}       — update (draft only)
 POST   /api/v1/time-entries/{id}/submit  — submit for approval
 POST   /api/v1/time-entries/{id}/approve — approve (partner)
 """
+
 import uuid
 from datetime import date
 from typing import Optional

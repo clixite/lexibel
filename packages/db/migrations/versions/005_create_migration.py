@@ -3,6 +3,7 @@
 Revision ID: 005
 Revises: 004
 """
+
 from alembic import op
 
 revision = "005"
@@ -50,9 +51,7 @@ def upgrade() -> None:
         op.execute(ddl)
 
         # Indexes
-        op.execute(
-            f"CREATE INDEX ix_{table_name}_tenant_id ON {table_name}(tenant_id)"
-        )
+        op.execute(f"CREATE INDEX ix_{table_name}_tenant_id ON {table_name}(tenant_id)")
 
         # RLS
         op.execute(f"ALTER TABLE {table_name} ENABLE ROW LEVEL SECURITY")
@@ -63,9 +62,7 @@ def upgrade() -> None:
         )
 
     # Extra index for job lookup
-    op.execute(
-        "CREATE INDEX ix_migration_jobs_status ON migration_jobs(status)"
-    )
+    op.execute("CREATE INDEX ix_migration_jobs_status ON migration_jobs(status)")
     op.execute(
         "CREATE INDEX ix_migration_mappings_job_id ON migration_mappings(job_id)"
     )

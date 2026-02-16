@@ -1,4 +1,5 @@
 """Case service — async CRUD with pagination and filtering."""
+
 import uuid
 from typing import Optional
 

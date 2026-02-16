@@ -1,4 +1,5 @@
 """Pydantic schemas for DPA endpoints (e-Deposit + JBox)."""
+
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -45,7 +46,9 @@ class DepositStatusResponse(BaseModel):
 
 
 class JBoxPollRequest(BaseModel):
-    since: Optional[str] = Field(None, description="ISO datetime — only return messages after this")
+    since: Optional[str] = Field(
+        None, description="ISO datetime — only return messages after this"
+    )
 
 
 class JBoxMessageResponse(BaseModel):

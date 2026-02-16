@@ -4,7 +4,7 @@ Combines knowledge graph traversal with vector search to produce
 enriched context for AI generation. Finds similar cases based on
 shared entities and legal concepts.
 """
-import math
+
 from collections import Counter
 from dataclasses import dataclass, field
 from typing import Optional
@@ -20,6 +20,7 @@ from apps.api.services.graph.ner_service import NERService
 @dataclass
 class GraphContext:
     """Context extracted from the knowledge graph for RAG."""
+
     nodes: list[dict] = field(default_factory=list)
     relationships: list[dict] = field(default_factory=list)
     paths: list[list[str]] = field(default_factory=list)
@@ -31,6 +32,7 @@ class GraphContext:
 @dataclass
 class SimilarCase:
     """A case similar to the query case based on shared graph entities."""
+
     case_id: str
     case_title: str
     similarity_score: float
@@ -76,12 +78,16 @@ class GraphRAGService:
 
         for entity in entities:
             # Exact match first
-            matching_nodes = self.graph.find_nodes_by_property("name", entity.text, tenant_id)
+            matching_nodes = self.graph.find_nodes_by_property(
+                "name", entity.text, tenant_id
+            )
             for node in matching_nodes:
                 matched_node_ids.add(node.id)
             # Substring match fallback
             if not matching_nodes:
-                fuzzy_nodes = self.graph.find_nodes_by_name_contains(entity.text, tenant_id)
+                fuzzy_nodes = self.graph.find_nodes_by_name_contains(
+                    entity.text, tenant_id
+                )
                 for node in fuzzy_nodes:
                     matched_node_ids.add(node.id)
 
@@ -119,7 +125,9 @@ class GraphRAGService:
                 "id": n.id,
                 "label": n.label,
                 "name": n.properties.get("name", n.id),
-                "properties": {k: v for k, v in n.properties.items() if k not in ("tenant_id",)},
+                "properties": {
+                    k: v for k, v in n.properties.items() if k not in ("tenant_id",)
+                },
             }
             for n in nodes
         ]
@@ -165,7 +173,9 @@ class GraphRAGService:
         for entity in entities:
             matching = self.graph.find_nodes_by_property("name", entity.text, tenant_id)
             if not matching:
-                matching = self.graph.find_nodes_by_name_contains(entity.text, tenant_id)
+                matching = self.graph.find_nodes_by_name_contains(
+                    entity.text, tenant_id
+                )
             for node in matching:
                 all_node_ids.add(node.id)
                 neighbors = self.graph.get_neighbors(node.id, tenant_id, depth=depth)
@@ -188,11 +198,21 @@ class GraphRAGService:
 
         return GraphContext(
             nodes=[
-                {"id": n.id, "label": n.label, "name": n.properties.get("name", n.id), "properties": n.properties}
+                {
+                    "id": n.id,
+                    "label": n.label,
+                    "name": n.properties.get("name", n.id),
+                    "properties": n.properties,
+                }
                 for n in nodes
             ],
             relationships=[
-                {"from": r.from_id, "to": r.to_id, "type": r.rel_type, "properties": r.properties}
+                {
+                    "from": r.from_id,
+                    "to": r.to_id,
+                    "type": r.rel_type,
+                    "properties": r.properties,
+                }
                 for r in rels
             ],
             entity_count=len(nodes),
@@ -260,27 +280,37 @@ class GraphRAGService:
             # Compute similarity (Jaccard-like)
             shared_ent = target_entities & other_entity_ids
             shared_con = target_concepts & other_concept_ids
-            all_items = target_entities | target_concepts | other_entity_ids | other_concept_ids
+            all_items = (
+                target_entities | target_concepts | other_entity_ids | other_concept_ids
+            )
 
             if not all_items:
                 continue
 
             # Weighted: legal concepts count more
-            score = (len(shared_ent) + len(shared_con) * 2) / (len(all_items) + len(target_concepts | other_concept_ids))
+            score = (len(shared_ent) + len(shared_con) * 2) / (
+                len(all_items) + len(target_concepts | other_concept_ids)
+            )
 
             if score > 0.01:
-                similar.append(SimilarCase(
-                    case_id=other_case.id,
-                    case_title=other_case.properties.get("name", other_case.id),
-                    similarity_score=min(score, 1.0),
-                    shared_entities=[entity_names.get(e, e) for e in shared_ent],
-                    shared_legal_concepts=[entity_names.get(c, c) for c in shared_con],
-                ))
+                similar.append(
+                    SimilarCase(
+                        case_id=other_case.id,
+                        case_title=other_case.properties.get("name", other_case.id),
+                        similarity_score=min(score, 1.0),
+                        shared_entities=[entity_names.get(e, e) for e in shared_ent],
+                        shared_legal_concepts=[
+                            entity_names.get(c, c) for c in shared_con
+                        ],
+                    )
+                )
 
         similar.sort(key=lambda s: s.similarity_score, reverse=True)
         return similar
 
-    def _generate_summary(self, nodes: list[GraphNode], rels: list[GraphRelationship]) -> str:
+    def _generate_summary(
+        self, nodes: list[GraphNode], rels: list[GraphRelationship]
+    ) -> str:
         """Generate a text summary of the graph context for LLM consumption."""
         if not nodes:
             return ""

@@ -9,12 +9,11 @@ Real implementation requires:
 - OAuth2 client credentials or delegated token flow
 - Tenant-scoped token storage
 """
+
 import re
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
-
-import httpx
 
 
 # ── Constants ──
@@ -24,10 +23,10 @@ GRAPH_TIMEOUT = 30.0
 
 # Case reference patterns for matching
 REF_PATTERNS = [
-    re.compile(r"\b(\d{4}/\d{2,4}(?:/[A-Z])?)\b"),    # 2026/001/A
-    re.compile(r"\b([Dd]ossier\s+\d+)\b"),               # Dossier 42
-    re.compile(r"\b(RG\s+\d+/\d+)\b"),                   # RG 2026/123
-    re.compile(r"\b(DOS[-\s]?\d{3,6})\b"),               # DOS-001
+    re.compile(r"\b(\d{4}/\d{2,4}(?:/[A-Z])?)\b"),  # 2026/001/A
+    re.compile(r"\b([Dd]ossier\s+\d+)\b"),  # Dossier 42
+    re.compile(r"\b(RG\s+\d+/\d+)\b"),  # RG 2026/123
+    re.compile(r"\b(DOS[-\s]?\d{3,6})\b"),  # DOS-001
 ]
 
 
@@ -58,7 +57,9 @@ class OutlookEmail:
 
 # ── OAuth2 token management ──
 
-_token_cache: dict[str, dict] = {}  # tenant_id -> {access_token, refresh_token, expires_at}
+_token_cache: dict[
+    str, dict
+] = {}  # tenant_id -> {access_token, refresh_token, expires_at}
 
 
 async def _get_graph_token(tenant_id: str) -> str:
@@ -313,19 +314,21 @@ async def create_inbox_items_from_emails(
     items = []
     for email in emails:
         signals = parse_email_for_case_matching(email)
-        items.append({
-            "tenant_id": str(tenant_id),
-            "source": "OUTLOOK",
-            "status": "DRAFT",
-            "raw_payload": {
-                "message_id": email.message_id,
-                "subject": email.subject,
-                "sender": email.sender,
-                "recipients": email.recipients,
-                "body_preview": email.body_preview,
-                "received_at": email.received_at.isoformat(),
-                "has_attachments": email.has_attachments,
-            },
-            "signals": signals,
-        })
+        items.append(
+            {
+                "tenant_id": str(tenant_id),
+                "source": "OUTLOOK",
+                "status": "DRAFT",
+                "raw_payload": {
+                    "message_id": email.message_id,
+                    "subject": email.subject,
+                    "sender": email.sender,
+                    "recipients": email.recipients,
+                    "body_preview": email.body_preview,
+                    "received_at": email.received_at.isoformat(),
+                    "has_attachments": email.has_attachments,
+                },
+                "signals": signals,
+            }
+        )
     return items

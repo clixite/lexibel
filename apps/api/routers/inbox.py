@@ -5,6 +5,7 @@ POST   /api/v1/inbox/{id}/validate       — validate → create InteractionEven
 POST   /api/v1/inbox/{id}/refuse         — refuse item
 POST   /api/v1/inbox/{id}/create-case    — create case from inbox item
 """
+
 import uuid
 from typing import Optional
 

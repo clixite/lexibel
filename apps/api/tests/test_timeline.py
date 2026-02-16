@@ -1,4 +1,5 @@
 """LXB-015-017: Tests for Timeline (InteractionEvents) — append-only, pagination, filters, cross-tenant."""
+
 import uuid
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
@@ -97,9 +98,12 @@ async def test_create_event_append_only():
         mock_svc.create_event = AsyncMock(return_value=event_obj)
 
         from apps.api.dependencies import get_db_session
+
         app.dependency_overrides[get_db_session] = override_db
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 f"/api/v1/cases/{CASE_ID}/events",
                 json={
@@ -126,18 +130,18 @@ async def test_create_event_append_only():
 async def test_get_timeline_paginated():
     """GET /cases/{id}/timeline returns paginated events."""
     mock_session, override_db = _patch_db()
-    events = [
-        _make_event_obj(id=uuid.uuid4(), title=f"Event {i}")
-        for i in range(5)
-    ]
+    events = [_make_event_obj(id=uuid.uuid4(), title=f"Event {i}") for i in range(5)]
 
     with patch("apps.api.routers.timeline.timeline_service") as mock_svc:
         mock_svc.list_by_case = AsyncMock(return_value=(events, 5))
 
         from apps.api.dependencies import get_db_session
+
         app.dependency_overrides[get_db_session] = override_db
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 f"/api/v1/cases/{CASE_ID}/timeline?page=1&per_page=10",
                 headers={"Authorization": f"Bearer {TOKEN_A}"},
@@ -161,9 +165,12 @@ async def test_get_timeline_with_source_filter():
         mock_svc.list_by_case = AsyncMock(return_value=([], 0))
 
         from apps.api.dependencies import get_db_session
+
         app.dependency_overrides[get_db_session] = override_db
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 f"/api/v1/cases/{CASE_ID}/timeline?source=OUTLOOK&event_type=EMAIL",
                 headers={"Authorization": f"Bearer {TOKEN_A}"},
@@ -191,9 +198,12 @@ async def test_get_event_with_evidence():
         )
 
         from apps.api.dependencies import get_db_session
+
         app.dependency_overrides[get_db_session] = override_db
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 f"/api/v1/events/{EVENT_ID}",
                 headers={"Authorization": f"Bearer {TOKEN_A}"},
@@ -217,9 +227,12 @@ async def test_get_event_not_found():
         mock_svc.get_event_with_evidence = AsyncMock(return_value=(None, []))
 
         from apps.api.dependencies import get_db_session
+
         app.dependency_overrides[get_db_session] = override_db
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 f"/api/v1/events/{uuid.uuid4()}",
                 headers={"Authorization": f"Bearer {TOKEN_A}"},
@@ -236,9 +249,12 @@ async def test_create_event_invalid_source():
     mock_session, override_db = _patch_db()
 
     from apps.api.dependencies import get_db_session
+
     app.dependency_overrides[get_db_session] = override_db
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         resp = await client.post(
             f"/api/v1/cases/{CASE_ID}/events",
             json={
@@ -269,9 +285,12 @@ async def test_cross_tenant_timeline_isolation():
         mock_svc.list_by_case = AsyncMock(return_value=([event_b], 1))
 
         from apps.api.dependencies import get_db_session
+
         app.dependency_overrides[get_db_session] = override_db
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 f"/api/v1/cases/{CASE_ID}/timeline",
                 headers={"Authorization": f"Bearer {TOKEN_B}"},
@@ -295,9 +314,12 @@ async def test_upload_document():
         mock_svc.upload_file = AsyncMock(return_value=link_obj)
 
         from apps.api.dependencies import get_db_session
+
         app.dependency_overrides[get_db_session] = override_db
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 f"/api/v1/events/{EVENT_ID}/documents",
                 files={"file": ("test.pdf", b"fake pdf content", "application/pdf")},
@@ -319,14 +341,15 @@ async def test_download_document():
     link_obj = _make_evidence_link_obj()
 
     with patch("apps.api.routers.documents.document_service") as mock_svc:
-        mock_svc.download_file = AsyncMock(
-            return_value=(link_obj, b"fake pdf content")
-        )
+        mock_svc.download_file = AsyncMock(return_value=(link_obj, b"fake pdf content"))
 
         from apps.api.dependencies import get_db_session
+
         app.dependency_overrides[get_db_session] = override_db
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 f"/api/v1/documents/{link_obj.id}/download",
                 headers={"Authorization": f"Bearer {TOKEN_A}"},
@@ -347,9 +370,12 @@ async def test_download_document_not_found():
         mock_svc.download_file = AsyncMock(return_value=(None, None))
 
         from apps.api.dependencies import get_db_session
+
         app.dependency_overrides[get_db_session] = override_db
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 f"/api/v1/documents/{uuid.uuid4()}/download",
                 headers={"Authorization": f"Bearer {TOKEN_A}"},

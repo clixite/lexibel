@@ -3,11 +3,11 @@
 Supports CSV and JSON export with date filtering, user filtering,
 action type filtering, and GDPR anonymization option.
 """
+
 import csv
 import io
 import json
 import re
-import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Optional
@@ -16,6 +16,7 @@ from typing import Optional
 @dataclass
 class AuditEntry:
     """A single audit log entry."""
+
     id: str
     tenant_id: str
     user_id: str
@@ -30,6 +31,7 @@ class AuditEntry:
 @dataclass
 class AuditExportResult:
     """Result of an audit export."""
+
     format: str  # csv, json
     record_count: int
     content: str
@@ -132,34 +134,55 @@ class AuditExportService:
     def _hash_email(email: str) -> str:
         """Hash email for anonymization."""
         import hashlib
+
         return hashlib.sha256(email.encode()).hexdigest()[:16] + "@anonymized"
 
     def _to_json(self, entries: list[AuditEntry]) -> str:
         """Convert entries to JSON string."""
         data = []
         for e in entries:
-            data.append({
-                "id": e.id,
-                "tenant_id": e.tenant_id,
-                "user_id": e.user_id,
-                "user_email": e.user_email,
-                "action": e.action,
-                "resource_type": e.resource_type,
-                "resource_id": e.resource_id,
-                "timestamp": e.timestamp,
-                "metadata": e.metadata,
-            })
+            data.append(
+                {
+                    "id": e.id,
+                    "tenant_id": e.tenant_id,
+                    "user_id": e.user_id,
+                    "user_email": e.user_email,
+                    "action": e.action,
+                    "resource_type": e.resource_type,
+                    "resource_id": e.resource_id,
+                    "timestamp": e.timestamp,
+                    "metadata": e.metadata,
+                }
+            )
         return json.dumps(data, indent=2, ensure_ascii=False)
 
     def _to_csv(self, entries: list[AuditEntry]) -> str:
         """Convert entries to CSV string."""
         output = io.StringIO()
         writer = csv.writer(output)
-        writer.writerow(["id", "tenant_id", "user_id", "user_email", "action",
-                         "resource_type", "resource_id", "timestamp"])
+        writer.writerow(
+            [
+                "id",
+                "tenant_id",
+                "user_id",
+                "user_email",
+                "action",
+                "resource_type",
+                "resource_id",
+                "timestamp",
+            ]
+        )
         for e in entries:
-            writer.writerow([
-                e.id, e.tenant_id, e.user_id, e.user_email,
-                e.action, e.resource_type, e.resource_id, e.timestamp,
-            ])
+            writer.writerow(
+                [
+                    e.id,
+                    e.tenant_id,
+                    e.user_id,
+                    e.user_email,
+                    e.action,
+                    e.resource_type,
+                    e.resource_id,
+                    e.timestamp,
+                ]
+            )
         return output.getvalue()

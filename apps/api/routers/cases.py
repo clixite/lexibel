@@ -6,6 +6,7 @@ GET    /api/v1/cases/{id}         — get case
 PATCH  /api/v1/cases/{id}         — update case
 POST   /api/v1/cases/{id}/conflict-check — conflict of interest check
 """
+
 import uuid
 from typing import Optional
 

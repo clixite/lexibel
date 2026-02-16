@@ -4,6 +4,7 @@ POST /api/v1/ai/draft — generate document draft from case context
 POST /api/v1/ai/summarize — summarize case timeline
 POST /api/v1/ai/analyze — analyze a document
 """
+
 from fastapi import APIRouter, Depends
 
 from apps.api.dependencies import get_current_user

@@ -3,6 +3,7 @@
 Supports PDF (pdfplumber), DOCX (python-docx), and plain text.
 Sliding window: max 512 tokens, 64 token overlap.
 """
+
 import io
 import uuid
 from dataclasses import dataclass, field

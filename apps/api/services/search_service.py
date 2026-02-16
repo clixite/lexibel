@@ -2,12 +2,13 @@
 
 Implements P3 (No Source No Claim): every result must have a traceable source.
 """
+
 import re
 from dataclasses import dataclass, field
 from typing import Optional
 
 from apps.api.services.chunking_service import generate_embeddings
-from apps.api.services.vector_service import VectorSearchResult, VectorService
+from apps.api.services.vector_service import VectorService
 
 
 @dataclass

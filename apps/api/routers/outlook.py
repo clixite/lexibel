@@ -4,6 +4,7 @@ POST /api/v1/outlook/sync   — trigger email sync
 GET  /api/v1/outlook/emails — list synced emails
 POST /api/v1/outlook/send   — send or draft an email
 """
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from apps.api.dependencies import get_current_user
@@ -48,7 +49,9 @@ async def sync_emails(
             for e in emails
         ],
         total_synced=len(emails),
-        message=f"Synced {len(emails)} emails" if emails else "No new emails (stub — Graph API not configured)",
+        message=f"Synced {len(emails)} emails"
+        if emails
+        else "No new emails (stub — Graph API not configured)",
     )
 
 

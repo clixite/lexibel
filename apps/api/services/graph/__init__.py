@@ -1,4 +1,5 @@
 """Knowledge Graph services — Neo4j, NER, GraphBuilder, GraphRAG."""
+
 from apps.api.services.graph.neo4j_service import Neo4jService, InMemoryGraphService
 from apps.api.services.graph.ner_service import NERService, Entity
 from apps.api.services.graph.graph_builder import GraphBuilder

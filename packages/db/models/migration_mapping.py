@@ -3,9 +3,10 @@
 Defines how source fields map to LexiBel target tables/fields.
 Protected by RLS via tenant_id.
 """
+
 import uuid
 
-from sqlalchemy import ForeignKey, String, Text, text
+from sqlalchemy import ForeignKey, String, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 

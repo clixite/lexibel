@@ -3,6 +3,7 @@
 Generates TOTP secrets, provisioning URIs for QR codes, and
 verifies 6-digit codes. Issuer is always "LexiBel".
 """
+
 import pyotp
 
 ISSUER_NAME: str = "LexiBel"

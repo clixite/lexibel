@@ -3,10 +3,11 @@
 Supports: Forlex, DPA JBox, Outlook, generic CSV.
 Batch processing (100 records), duplicate detection, rollback capability.
 """
+
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Optional
 
 
 @dataclass
@@ -55,7 +56,9 @@ def create_job(
 ) -> MigrationJob:
     """Create a new migration job."""
     if source_system not in VALID_SOURCES:
-        raise ValueError(f"Invalid source_system: {source_system}. Must be one of {VALID_SOURCES}")
+        raise ValueError(
+            f"Invalid source_system: {source_system}. Must be one of {VALID_SOURCES}"
+        )
 
     job = MigrationJob(
         tenant_id=tenant_id,
@@ -111,7 +114,11 @@ def preview_import(job_id: str, tenant_id: str, raw_data: list[dict]) -> dict:
         "duplicates": duplicates,
         "tables": list({r.target_table for r in records}),
         "sample": [
-            {"source_id": r.source_id, "target_table": r.target_table, "target_data": r.target_data}
+            {
+                "source_id": r.source_id,
+                "target_table": r.target_table,
+                "target_data": r.target_data,
+            }
             for r in records[:5]
         ],
     }
@@ -137,10 +144,12 @@ def start_import(job_id: str, tenant_id: str) -> MigrationJob:
         for record in batch:
             if record.error:
                 job.failed_records += 1
-                job.error_log.append({
-                    "source_id": record.source_id,
-                    "error": record.error,
-                })
+                job.error_log.append(
+                    {
+                        "source_id": record.source_id,
+                        "error": record.error,
+                    }
+                )
                 continue
 
             # Simulate import (in production: actual DB insert)
@@ -173,7 +182,9 @@ def rollback_job(job_id: str, tenant_id: str) -> MigrationJob:
     job.status = "pending"
     job.started_at = None
     job.completed_at = None
-    job.error_log.append({"action": "rollback", "timestamp": datetime.now(timezone.utc).isoformat()})
+    job.error_log.append(
+        {"action": "rollback", "timestamp": datetime.now(timezone.utc).isoformat()}
+    )
 
     return job
 

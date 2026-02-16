@@ -1,4 +1,5 @@
 """Pydantic schemas for Knowledge Graph endpoints."""
+
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -106,7 +107,9 @@ class SimilarCasesResponse(BaseModel):
 
 
 class BuildRequest(BaseModel):
-    documents: list[dict] = Field(default_factory=list, description="List of {id, text} dicts")
+    documents: list[dict] = Field(
+        default_factory=list, description="List of {id, text} dicts"
+    )
 
 
 class BuildResponse(BaseModel):

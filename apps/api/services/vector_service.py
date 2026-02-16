@@ -3,8 +3,8 @@
 Collection: lexibel_documents (384 dims for all-MiniLM-L6-v2).
 Tenant isolation via payload filter on tenant_id.
 """
+
 import os
-import uuid
 from dataclasses import dataclass
 from typing import Any, Optional
 
@@ -29,7 +29,9 @@ class VectorSearchResult:
 class VectorService:
     """Qdrant vector database service with tenant-isolated search."""
 
-    def __init__(self, url: Optional[str] = None, api_key: Optional[str] = None) -> None:
+    def __init__(
+        self, url: Optional[str] = None, api_key: Optional[str] = None
+    ) -> None:
         self._url = url or os.getenv("QDRANT_URL", "http://localhost:6333")
         self._api_key = api_key or os.getenv("QDRANT_API_KEY")
         self._client: Any = None

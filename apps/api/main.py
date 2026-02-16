@@ -1,4 +1,5 @@
 """LexiBel API — FastAPI Application Factory"""
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.gzip import GZipMiddleware

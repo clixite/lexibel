@@ -1,10 +1,9 @@
 """Tests for LXB-030-032: Chunking, Vector search, Hybrid search."""
+
 import uuid
 
-import pytest
 
 from apps.api.services.chunking_service import (
-    Chunk,
     chunk_text,
     count_tokens,
     generate_embeddings,
@@ -95,12 +94,14 @@ class TestVectorService:
         self.svc.upsert_chunks(
             chunk_ids=["chunk-1"],
             embeddings=embeddings,
-            payloads=[{
-                "content": "Contrat de travail à durée indéterminée",
-                "tenant_id": self.tenant_id,
-                "case_id": self.case_id,
-                "document_id": self.doc_id,
-            }],
+            payloads=[
+                {
+                    "content": "Contrat de travail à durée indéterminée",
+                    "tenant_id": self.tenant_id,
+                    "case_id": self.case_id,
+                    "document_id": self.doc_id,
+                }
+            ],
         )
 
         query_emb = generate_embeddings(["contrat de travail"])[0]
@@ -115,11 +116,13 @@ class TestVectorService:
         self.svc.upsert_chunks(
             chunk_ids=["chunk-secret"],
             embeddings=embeddings,
-            payloads=[{
-                "content": "Secret professionnel - confidentiel",
-                "tenant_id": self.tenant_id,
-                "document_id": self.doc_id,
-            }],
+            payloads=[
+                {
+                    "content": "Secret professionnel - confidentiel",
+                    "tenant_id": self.tenant_id,
+                    "document_id": self.doc_id,
+                }
+            ],
         )
 
         query_emb = generate_embeddings(["secret document"])[0]
@@ -138,8 +141,18 @@ class TestVectorService:
             chunk_ids=["c1", "c2"],
             embeddings=embeddings,
             payloads=[
-                {"content": "Doc A", "tenant_id": self.tenant_id, "case_id": self.case_id, "document_id": "d1"},
-                {"content": "Doc B", "tenant_id": self.tenant_id, "case_id": other_case, "document_id": "d2"},
+                {
+                    "content": "Doc A",
+                    "tenant_id": self.tenant_id,
+                    "case_id": self.case_id,
+                    "document_id": "d1",
+                },
+                {
+                    "content": "Doc B",
+                    "tenant_id": self.tenant_id,
+                    "case_id": other_case,
+                    "document_id": "d2",
+                },
             ],
         )
 
@@ -153,7 +166,13 @@ class TestVectorService:
         self.svc.upsert_chunks(
             chunk_ids=["d1"],
             embeddings=embeddings,
-            payloads=[{"content": "test", "tenant_id": self.tenant_id, "document_id": self.doc_id}],
+            payloads=[
+                {
+                    "content": "test",
+                    "tenant_id": self.tenant_id,
+                    "document_id": self.doc_id,
+                }
+            ],
         )
         assert len(self.svc._store) == 1
 
@@ -230,11 +249,13 @@ class TestHybridSearch:
         assert result_without.has_source is False
 
     def test_hybrid_scores_sorted(self):
-        self._index_docs([
-            "Le contrat de bail commercial est signé le 15 janvier.",
-            "Le droit pénal belge prévoit des sanctions.",
-            "Le contrat de bail résidentiel a une durée de 9 ans.",
-        ])
+        self._index_docs(
+            [
+                "Le contrat de bail commercial est signé le 15 janvier.",
+                "Le droit pénal belge prévoit des sanctions.",
+                "Le contrat de bail résidentiel a une durée de 9 ans.",
+            ]
+        )
         response = self.search_svc.search("contrat bail", self.tenant_id)
         if len(response.results) >= 2:
             scores = [r.score for r in response.results]

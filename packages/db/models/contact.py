@@ -3,9 +3,9 @@
 Protected by RLS via tenant_id. Contacts can be linked to cases
 via the case_contacts junction table.
 """
+
 import enum
 import uuid
-from datetime import datetime
 
 from sqlalchemy import String, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID

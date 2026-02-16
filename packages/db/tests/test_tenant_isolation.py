@@ -3,6 +3,7 @@
 Tenant A must NEVER see Tenant B data.
 Uses a real PostgreSQL database with RLS policies active.
 """
+
 import uuid
 
 import pytest
@@ -18,7 +19,9 @@ from packages.db.models.audit_log import AuditLog
 
 # ── Fixtures ──
 
-TEST_DATABASE_URL = "postgresql+asyncpg://lexibel:lexibel_dev_2026@localhost:5432/lexibel_test"
+TEST_DATABASE_URL = (
+    "postgresql+asyncpg://lexibel:lexibel_dev_2026@localhost:5432/lexibel_test"
+)
 
 TENANT_A_ID = uuid.uuid4()
 TENANT_B_ID = uuid.uuid4()
@@ -32,16 +35,20 @@ async def engine():
         # Enable RLS on users and audit_logs
         await conn.execute(text("ALTER TABLE users ENABLE ROW LEVEL SECURITY"))
         await conn.execute(text("ALTER TABLE users FORCE ROW LEVEL SECURITY"))
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE POLICY IF NOT EXISTS tenant_isolation_users ON users
                 USING (tenant_id = current_setting('app.current_tenant_id')::uuid)
-        """))
+        """)
+        )
         await conn.execute(text("ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY"))
         await conn.execute(text("ALTER TABLE audit_logs FORCE ROW LEVEL SECURITY"))
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE POLICY IF NOT EXISTS tenant_isolation_audit_logs ON audit_logs
                 USING (tenant_id = current_setting('app.current_tenant_id')::uuid)
-        """))
+        """)
+        )
 
     yield eng
 
@@ -100,7 +107,9 @@ async def seed_data(session_factory):
 
 
 @pytest.mark.asyncio
-async def test_tenant_a_sees_only_own_users(session_factory: async_sessionmaker) -> None:
+async def test_tenant_a_sees_only_own_users(
+    session_factory: async_sessionmaker,
+) -> None:
     """Tenant A must only see users belonging to Tenant A."""
     async with session_factory() as session:
         async with session.begin():
@@ -117,7 +126,9 @@ async def test_tenant_a_sees_only_own_users(session_factory: async_sessionmaker)
 
 
 @pytest.mark.asyncio
-async def test_tenant_b_sees_only_own_users(session_factory: async_sessionmaker) -> None:
+async def test_tenant_b_sees_only_own_users(
+    session_factory: async_sessionmaker,
+) -> None:
     """Tenant B must only see users belonging to Tenant B."""
     async with session_factory() as session:
         async with session.begin():
@@ -134,7 +145,9 @@ async def test_tenant_b_sees_only_own_users(session_factory: async_sessionmaker)
 
 
 @pytest.mark.asyncio
-async def test_tenant_a_cannot_see_tenant_b_audit_logs(session_factory: async_sessionmaker) -> None:
+async def test_tenant_a_cannot_see_tenant_b_audit_logs(
+    session_factory: async_sessionmaker,
+) -> None:
     """Tenant A must not see Tenant B's audit logs."""
     async with session_factory() as session:
         async with session.begin():
@@ -150,7 +163,9 @@ async def test_tenant_a_cannot_see_tenant_b_audit_logs(session_factory: async_se
 
 
 @pytest.mark.asyncio
-async def test_cross_tenant_isolation_symmetric(session_factory: async_sessionmaker) -> None:
+async def test_cross_tenant_isolation_symmetric(
+    session_factory: async_sessionmaker,
+) -> None:
     """Both tenants must be fully isolated — no data leakage in either direction."""
     for tenant_id, expected_email in [
         (TENANT_A_ID, "alice@alpha.be"),
@@ -165,5 +180,7 @@ async def test_cross_tenant_isolation_symmetric(session_factory: async_sessionma
                 result = await session.execute(select(User))
                 users = result.scalars().all()
 
-        assert len(users) == 1, f"Tenant {tenant_id} sees {len(users)} users instead of 1"
+        assert len(users) == 1, (
+            f"Tenant {tenant_id} sees {len(users)} users instead of 1"
+        )
         assert users[0].email == expected_email

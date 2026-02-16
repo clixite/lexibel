@@ -1,5 +1,5 @@
 """Invoice service — creation, valorisation, Peppol UBL generation."""
-import math
+
 import uuid
 from datetime import date
 from decimal import Decimal
@@ -97,7 +97,7 @@ async def create_invoice(
             all_lines.append(line)
 
     # Calculate totals
-    subtotal = sum(l.total_cents for l in all_lines)
+    subtotal = sum(line.total_cents for line in all_lines)
     vat_amount = int(subtotal * vat_rate / Decimal("100"))
     total = subtotal + vat_amount
 
@@ -115,9 +115,7 @@ async def get_invoice(
     invoice_id: uuid.UUID,
 ) -> Invoice | None:
     """Get a single invoice by ID (RLS filters by tenant)."""
-    result = await session.execute(
-        select(Invoice).where(Invoice.id == invoice_id)
-    )
+    result = await session.execute(select(Invoice).where(Invoice.id == invoice_id))
     return result.scalar_one_or_none()
 
 
@@ -179,8 +177,11 @@ def generate_peppol_ubl(
     root.set("xmlns:cbc", cbc)
 
     # Header
-    _sub(root, f"{{{cbc}}}CustomizationID",
-         "urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0")
+    _sub(
+        root,
+        f"{{{cbc}}}CustomizationID",
+        "urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0",
+    )
     _sub(root, f"{{{cbc}}}ProfileID", "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0")
     _sub(root, f"{{{cbc}}}ID", invoice.invoice_number)
     _sub(root, f"{{{cbc}}}IssueDate", str(invoice.issue_date))
@@ -206,32 +207,60 @@ def generate_peppol_ubl(
 
     # Tax total
     tax_total = SubElement(root, f"{{{cac}}}TaxTotal")
-    _sub(tax_total, f"{{{cbc}}}TaxAmount", _cents_to_eur(invoice.vat_amount_cents),
-         currencyID=invoice.currency)
+    _sub(
+        tax_total,
+        f"{{{cbc}}}TaxAmount",
+        _cents_to_eur(invoice.vat_amount_cents),
+        currencyID=invoice.currency,
+    )
 
     # Legal monetary total
     monetary = SubElement(root, f"{{{cac}}}LegalMonetaryTotal")
-    _sub(monetary, f"{{{cbc}}}LineExtensionAmount", _cents_to_eur(invoice.subtotal_cents),
-         currencyID=invoice.currency)
-    _sub(monetary, f"{{{cbc}}}TaxExclusiveAmount", _cents_to_eur(invoice.subtotal_cents),
-         currencyID=invoice.currency)
-    _sub(monetary, f"{{{cbc}}}TaxInclusiveAmount", _cents_to_eur(invoice.total_cents),
-         currencyID=invoice.currency)
-    _sub(monetary, f"{{{cbc}}}PayableAmount", _cents_to_eur(invoice.total_cents),
-         currencyID=invoice.currency)
+    _sub(
+        monetary,
+        f"{{{cbc}}}LineExtensionAmount",
+        _cents_to_eur(invoice.subtotal_cents),
+        currencyID=invoice.currency,
+    )
+    _sub(
+        monetary,
+        f"{{{cbc}}}TaxExclusiveAmount",
+        _cents_to_eur(invoice.subtotal_cents),
+        currencyID=invoice.currency,
+    )
+    _sub(
+        monetary,
+        f"{{{cbc}}}TaxInclusiveAmount",
+        _cents_to_eur(invoice.total_cents),
+        currencyID=invoice.currency,
+    )
+    _sub(
+        monetary,
+        f"{{{cbc}}}PayableAmount",
+        _cents_to_eur(invoice.total_cents),
+        currencyID=invoice.currency,
+    )
 
     # Invoice lines
     for idx, line in enumerate(lines, 1):
         inv_line = SubElement(root, f"{{{cac}}}InvoiceLine")
         _sub(inv_line, f"{{{cbc}}}ID", str(idx))
         _sub(inv_line, f"{{{cbc}}}InvoicedQuantity", str(line.quantity), unitCode="HUR")
-        _sub(inv_line, f"{{{cbc}}}LineExtensionAmount", _cents_to_eur(line.total_cents),
-             currencyID=invoice.currency)
+        _sub(
+            inv_line,
+            f"{{{cbc}}}LineExtensionAmount",
+            _cents_to_eur(line.total_cents),
+            currencyID=invoice.currency,
+        )
         item = SubElement(inv_line, f"{{{cac}}}Item")
         _sub(item, f"{{{cbc}}}Name", line.description[:100])
         price = SubElement(inv_line, f"{{{cac}}}Price")
-        _sub(price, f"{{{cbc}}}PriceAmount", _cents_to_eur(line.unit_price_cents),
-             currencyID=invoice.currency)
+        _sub(
+            price,
+            f"{{{cbc}}}PriceAmount",
+            _cents_to_eur(line.unit_price_cents),
+            currencyID=invoice.currency,
+        )
 
     return tostring(root, encoding="unicode", xml_declaration=True)
 

@@ -1,4 +1,5 @@
 """Tests for LXB-033-034: LLM Gateway, AI generation endpoints."""
+
 import uuid
 
 import pytest
@@ -14,8 +15,6 @@ from apps.api.services.llm_gateway import (
     LLMSource,
     RATE_LIMIT_MAX,
 )
-from apps.api.services.chunking_service import generate_embeddings
-from apps.api.services.vector_service import InMemoryVectorService
 from apps.api.main import app
 
 
@@ -84,8 +83,7 @@ class TestLLMGateway:
     async def test_multiple_context_chunks(self):
         gateway = StubLLMGateway(canned_response="Analyse complète.")
         chunks = [
-            ContextChunk(content=f"Chunk {i}", document_id=f"doc-{i}")
-            for i in range(5)
+            ContextChunk(content=f"Chunk {i}", document_id=f"doc-{i}") for i in range(5)
         ]
         response = await gateway.generate("Analyse", chunks)
         assert len(response.sources) == 5

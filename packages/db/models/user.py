@@ -2,9 +2,9 @@
 
 Protected by RLS via tenant_id.
 """
+
 import enum
 import uuid
-from datetime import datetime
 
 from sqlalchemy import Boolean, ForeignKey, Integer, String, text
 from sqlalchemy.dialects.postgresql import UUID

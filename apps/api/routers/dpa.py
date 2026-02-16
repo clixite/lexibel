@@ -6,6 +6,7 @@ POST /api/v1/dpa/jbox/poll            — poll JBox for new messages
 GET  /api/v1/dpa/jbox/messages        — list all JBox messages
 POST /api/v1/dpa/jbox/{id}/acknowledge — acknowledge a JBox message
 """
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from apps.api.dependencies import get_current_user

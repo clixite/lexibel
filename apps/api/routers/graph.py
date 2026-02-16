@@ -7,6 +7,7 @@ GET  /api/v1/graph/entity/{entity_id}/connections — entity neighborhood
 POST /api/v1/graph/search                      — graph-enhanced search
 POST /api/v1/graph/build/{case_id}             — trigger graph build
 """
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from apps.api.dependencies import get_current_user
@@ -72,12 +73,14 @@ async def get_case_subgraph(
             for n in nodes
         ],
         relationships=[
-            GraphRelationshipResponse(**{
-                "from": r.from_id,
-                "to": r.to_id,
-                "type": r.rel_type,
-                "properties": r.properties,
-            })
+            GraphRelationshipResponse(
+                **{
+                    "from": r.from_id,
+                    "to": r.to_id,
+                    "type": r.rel_type,
+                    "properties": r.properties,
+                }
+            )
             for r in rels
         ],
         total_nodes=len(nodes),
@@ -158,13 +161,15 @@ async def get_entity_connections(
     for n in neighbors:
         neighbor_node = n.get("node")
         if isinstance(neighbor_node, type(node)):
-            connections.append({
-                "id": neighbor_node.id,
-                "label": neighbor_node.label,
-                "name": neighbor_node.properties.get("name", neighbor_node.id),
-                "rel_type": n.get("rel_type", ""),
-                "direction": n.get("direction", ""),
-            })
+            connections.append(
+                {
+                    "id": neighbor_node.id,
+                    "label": neighbor_node.label,
+                    "name": neighbor_node.properties.get("name", neighbor_node.id),
+                    "rel_type": n.get("rel_type", ""),
+                    "direction": n.get("direction", ""),
+                }
+            )
 
     return EntityConnectionResponse(
         entity_id=entity_id,
@@ -201,12 +206,14 @@ async def graph_search(
                 for n in context.nodes
             ],
             relationships=[
-                GraphRelationshipResponse(**{
-                    "from": r["from"],
-                    "to": r["to"],
-                    "type": r["type"],
-                    "properties": r.get("properties", {}),
-                })
+                GraphRelationshipResponse(
+                    **{
+                        "from": r["from"],
+                        "to": r["to"],
+                        "type": r["type"],
+                        "properties": r.get("properties", {}),
+                    }
+                )
                 for r in context.relationships
             ],
             paths=context.paths,

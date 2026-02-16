@@ -1,4 +1,5 @@
 """Agent endpoints — due diligence, emotional radar, document assembly."""
+
 from dataclasses import asdict
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -80,9 +81,7 @@ async def assemble_document(
 async def list_templates(user: dict = Depends(get_current_user)):
     """List available document templates."""
     templates = _orchestrator.list_templates()
-    return TemplateListResponse(
-        templates=[TemplateInfo(**t) for t in templates]
-    )
+    return TemplateListResponse(templates=[TemplateInfo(**t) for t in templates])
 
 
 @router.get("/vllm/health", response_model=VLLMHealthResponse)

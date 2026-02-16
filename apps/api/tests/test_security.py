@@ -1,11 +1,12 @@
 """Tests for security: rate limiting, security headers, backup, audit export."""
+
 import uuid
 
 import pytest
 from fastapi.testclient import TestClient
 
 from apps.api.main import app
-from apps.api.middleware.rate_limit import reset_rate_store, _rate_store, ROLE_LIMITS
+from apps.api.middleware.rate_limit import reset_rate_store, ROLE_LIMITS
 from apps.api.services.backup_service import BackupService
 from apps.api.services.audit_export_service import AuditExportService, AuditEntry
 
@@ -39,7 +40,6 @@ def clean_rate_store():
 
 
 class TestSecurityHeaders:
-
     def test_x_content_type_options(self, client):
         resp = client.get("/api/v1/health")
         assert resp.headers.get("X-Content-Type-Options") == "nosniff"
@@ -78,7 +78,6 @@ class TestSecurityHeaders:
 
 
 class TestRateLimiting:
-
     def test_rate_limit_headers_present(self, client):
         resp = client.get("/api/v1/admin/health", headers=_auth_headers())
         assert "X-RateLimit-Limit" in resp.headers
@@ -109,7 +108,6 @@ class TestRateLimiting:
 
 
 class TestBackupService:
-
     def setup_method(self):
         self.service = BackupService()
 
@@ -166,21 +164,22 @@ class TestBackupService:
 
 
 class TestAuditExportService:
-
     def setup_method(self):
         self.service = AuditExportService()
         # Add sample entries
         for i in range(5):
-            self.service.add_entry(AuditEntry(
-                id=str(uuid.uuid4()),
-                tenant_id=TENANT_ID,
-                user_id=USER_ID,
-                user_email="admin@lexibel.be",
-                action="GET" if i % 2 == 0 else "POST",
-                resource_type="api_request",
-                resource_id=f"/api/v1/cases/{i}",
-                timestamp=f"2026-02-{10 + i:02d}T10:00:00+00:00",
-            ))
+            self.service.add_entry(
+                AuditEntry(
+                    id=str(uuid.uuid4()),
+                    tenant_id=TENANT_ID,
+                    user_id=USER_ID,
+                    user_email="admin@lexibel.be",
+                    action="GET" if i % 2 == 0 else "POST",
+                    resource_type="api_request",
+                    resource_id=f"/api/v1/cases/{i}",
+                    timestamp=f"2026-02-{10 + i:02d}T10:00:00+00:00",
+                )
+            )
 
     def test_export_json(self):
         result = self.service.export(TENANT_ID, format="json")
@@ -208,16 +207,18 @@ class TestAuditExportService:
 
     def test_export_filter_by_user(self):
         # Add entry for different user
-        self.service.add_entry(AuditEntry(
-            id=str(uuid.uuid4()),
-            tenant_id=TENANT_ID,
-            user_id="other-user",
-            user_email="other@test.be",
-            action="GET",
-            resource_type="api_request",
-            resource_id="/api/v1/health",
-            timestamp="2026-02-10T10:00:00+00:00",
-        ))
+        self.service.add_entry(
+            AuditEntry(
+                id=str(uuid.uuid4()),
+                tenant_id=TENANT_ID,
+                user_id="other-user",
+                user_email="other@test.be",
+                action="GET",
+                resource_type="api_request",
+                resource_id="/api/v1/health",
+                timestamp="2026-02-10T10:00:00+00:00",
+            )
+        )
         result = self.service.export(TENANT_ID, user_id=USER_ID)
         assert result.record_count == 5  # only original user
 

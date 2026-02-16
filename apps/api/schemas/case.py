@@ -1,4 +1,5 @@
 """Pydantic schemas for Cases CRUD."""
+
 import uuid
 from datetime import date, datetime
 from typing import Optional

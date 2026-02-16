@@ -2,6 +2,7 @@
 
 GET /api/v1/events/stream — Server-Sent Events endpoint (requires auth)
 """
+
 import uuid
 
 from fastapi import APIRouter, Depends

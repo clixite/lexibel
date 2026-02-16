@@ -6,6 +6,7 @@ GET /api/v1/events/stream and receive events scoped to their tenant.
 Events: new_inbox_item, case_updated, time_entry_created, invoice_created,
         document_uploaded, etc.
 """
+
 import asyncio
 import json
 import uuid
@@ -20,9 +21,7 @@ class SSEManager:
     def __init__(self) -> None:
         self._channels: dict[uuid.UUID, list[asyncio.Queue]] = defaultdict(list)
 
-    async def subscribe(
-        self, tenant_id: uuid.UUID
-    ) -> AsyncGenerator[str, None]:
+    async def subscribe(self, tenant_id: uuid.UUID) -> AsyncGenerator[str, None]:
         """Subscribe to events for a tenant.
 
         Yields SSE-formatted strings: "data: {...}\\n\\n"
@@ -32,10 +31,13 @@ class SSEManager:
 
         try:
             # Send initial connection event
-            yield _format_sse("connected", {
-                "tenant_id": str(tenant_id),
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-            })
+            yield _format_sse(
+                "connected",
+                {
+                    "tenant_id": str(tenant_id),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                },
+            )
 
             while True:
                 # Wait for events with timeout to send keepalive

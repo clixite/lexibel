@@ -3,6 +3,7 @@
 Each line can optionally reference a time entry for traceability.
 Protected by RLS via tenant_id.
 """
+
 import uuid
 from decimal import Decimal
 

@@ -3,6 +3,7 @@
 POST /api/v1/bootstrap/admin — creates the default super_admin user.
 Idempotent: returns success whether the user is newly created or already exists.
 """
+
 import uuid
 
 from fastapi import APIRouter, status

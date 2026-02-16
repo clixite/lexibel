@@ -5,6 +5,7 @@ Refresh tokens (7 days) carry only user identity for rotation.
 MFA tokens (5 min) are issued after password auth when MFA is enabled.
 Algorithm: HS256 with SECRET_KEY from environment.
 """
+
 import os
 import uuid
 from datetime import datetime, timedelta, timezone

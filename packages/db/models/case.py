@@ -3,8 +3,9 @@
 Protected by RLS via tenant_id. Each case has a unique reference
 per tenant and is assigned to a responsible user.
 """
+
 import uuid
-from datetime import date, datetime
+from datetime import date
 
 from sqlalchemy import Date, ForeignKey, String, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID

@@ -2,10 +2,10 @@
 
 No RLS on this table: access is restricted to super_admin via application logic.
 """
-import uuid
-from datetime import datetime
 
-from sqlalchemy import String, Text, text
+import uuid
+
+from sqlalchemy import String, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 

@@ -4,10 +4,11 @@ Principle P2: Event-Sourced Timeline — no UPDATE, no DELETE.
 PostgreSQL GRANT enforces INSERT-only at the database level.
 Protected by RLS via tenant_id.
 """
+
 import uuid
 from datetime import datetime
 
-from sqlalchemy import BigInteger, ForeignKey, String, Text, text
+from sqlalchemy import BigInteger, ForeignKey, String, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 

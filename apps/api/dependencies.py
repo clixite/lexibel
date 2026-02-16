@@ -6,6 +6,7 @@ tenant, user, and an RLS-scoped database session.
 User and tenant are extracted from JWT claims (set by TenantMiddleware
 on request.state). Falls back to X-Tenant-ID/X-User-ID headers for dev.
 """
+
 import uuid
 from collections.abc import AsyncGenerator
 

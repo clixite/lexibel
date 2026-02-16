@@ -4,6 +4,7 @@ Processes documents and cases: extracts entities via NER, creates/merges
 graph nodes, creates relationships. Detects conflicts (entity appearing
 on both sides of a case).
 """
+
 import uuid
 from dataclasses import dataclass, field
 from typing import Optional
@@ -13,12 +14,13 @@ from apps.api.services.graph.neo4j_service import (
     GraphNode,
     GraphRelationship,
 )
-from apps.api.services.graph.ner_service import NERService, Entity
+from apps.api.services.graph.ner_service import NERService
 
 
 @dataclass
 class BuildResult:
     """Result of a graph build operation."""
+
     nodes_created: int = 0
     nodes_merged: int = 0
     relationships_created: int = 0
@@ -29,6 +31,7 @@ class BuildResult:
 @dataclass
 class Conflict:
     """A detected conflict — entity appears on both sides of a case."""
+
     entity_id: str
     entity_name: str
     entity_type: str
@@ -238,14 +241,16 @@ class GraphBuilder:
                     for r2 in unique_roles:
                         if r1 != r2 and (r1, r2) in opposing_role_pairs:
                             info = entity_info[entity_id]
-                            conflicts.append(Conflict(
-                                entity_id=entity_id,
-                                entity_name=info["name"],
-                                entity_type=info["type"],
-                                roles=list(unique_roles),
-                                confidence=0.8,
-                                description=f"{info['name']} has conflicting roles: {', '.join(unique_roles)}",
-                            ))
+                            conflicts.append(
+                                Conflict(
+                                    entity_id=entity_id,
+                                    entity_name=info["name"],
+                                    entity_type=info["type"],
+                                    roles=list(unique_roles),
+                                    confidence=0.8,
+                                    description=f"{info['name']} has conflicting roles: {', '.join(unique_roles)}",
+                                )
+                            )
 
         return conflicts
 
@@ -281,7 +286,12 @@ class GraphBuilder:
         except Exception as e:
             result.errors.append(f"Failed to create {label} node '{name}': {e}")
             # Return a stub node so processing can continue
-            return GraphNode(id=str(uuid.uuid4()), label=label, properties=properties, tenant_id=tenant_id)
+            return GraphNode(
+                id=str(uuid.uuid4()),
+                label=label,
+                properties=properties,
+                tenant_id=tenant_id,
+            )
 
     def _ensure_relationship(
         self,
@@ -295,11 +305,17 @@ class GraphBuilder:
         """Create a relationship if it doesn't already exist."""
         # Check for existing relationship
         for rel in self.graph._relationships:
-            if rel.from_id == from_id and rel.to_id == to_id and rel.rel_type == rel_type:
+            if (
+                rel.from_id == from_id
+                and rel.to_id == to_id
+                and rel.rel_type == rel_type
+            ):
                 return rel
 
         try:
-            rel = self.graph.create_relationship(from_id, to_id, rel_type, properties, tenant_id)
+            rel = self.graph.create_relationship(
+                from_id, to_id, rel_type, properties, tenant_id
+            )
             result.relationships_created += 1
             return rel
         except Exception as e:

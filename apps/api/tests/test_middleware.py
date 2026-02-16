@@ -1,4 +1,5 @@
 """LXB-007: Tests for Tenant middleware, RBAC, and Audit logging."""
+
 import uuid
 
 import pytest
@@ -52,7 +53,9 @@ def _create_test_app() -> FastAPI:
 async def test_health_no_tenant_required():
     """Health endpoint must work without X-Tenant-ID."""
     app = _create_test_app()
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         resp = await client.get("/api/v1/health")
     assert resp.status_code == 200
     assert resp.json()["status"] == "ok"
@@ -62,7 +65,9 @@ async def test_health_no_tenant_required():
 async def test_missing_tenant_header_returns_401():
     """Protected routes must return 401 without X-Tenant-ID."""
     app = _create_test_app()
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         resp = await client.get("/api/v1/protected")
     assert resp.status_code == 401
     assert "Missing X-Tenant-ID" in resp.json()["detail"]
@@ -72,7 +77,9 @@ async def test_missing_tenant_header_returns_401():
 async def test_invalid_tenant_header_returns_400():
     """Invalid UUID in X-Tenant-ID must return 400."""
     app = _create_test_app()
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         resp = await client.get(
             "/api/v1/protected",
             headers={"X-Tenant-ID": "not-a-uuid"},
@@ -85,7 +92,9 @@ async def test_invalid_tenant_header_returns_400():
 async def test_valid_tenant_header_passes():
     """Valid UUID in X-Tenant-ID must reach the route handler."""
     app = _create_test_app()
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         resp = await client.get(
             "/api/v1/protected",
             headers={"X-Tenant-ID": TENANT_ID},
@@ -103,7 +112,15 @@ class TestRoleHierarchy:
     def test_all_seven_roles_present(self):
         """All 7 roles from the spec must be in the hierarchy."""
         assert len(ROLE_HIERARCHY) == 7
-        expected = {"partner", "associate", "junior", "secretary", "accountant", "admin", "super_admin"}
+        expected = {
+            "partner",
+            "associate",
+            "junior",
+            "secretary",
+            "accountant",
+            "admin",
+            "super_admin",
+        }
         assert set(ROLE_HIERARCHY) == expected
 
     def test_super_admin_has_highest_privilege(self):
@@ -132,7 +149,9 @@ class TestRoleHierarchy:
 async def test_rbac_decorator_allows_matching_role():
     """Route with @require_role should allow matching roles."""
     app = _create_test_app()
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         resp = await client.get(
             "/api/v1/admin-only",
             headers={
@@ -163,7 +182,9 @@ async def test_rbac_decorator_rejects_insufficient_role():
 
     app.add_middleware(MockUserMiddleware)
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         resp = await client.get(
             "/api/v1/admin-only",
             headers={"X-Tenant-ID": TENANT_ID},
@@ -187,7 +208,9 @@ async def test_rbac_decorator_allows_super_admin():
 
     app.add_middleware(MockSuperAdminMiddleware)
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         resp = await client.get(
             "/api/v1/admin-only",
             headers={"X-Tenant-ID": TENANT_ID},
@@ -212,7 +235,9 @@ async def test_audit_middleware_does_not_block_response():
     async def test_route(request: Request):
         return {"audited": True}
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         resp = await client.get(
             "/api/v1/test-audit",
             headers={"X-Tenant-ID": TENANT_ID},

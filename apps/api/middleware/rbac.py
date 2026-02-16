@@ -7,6 +7,7 @@ middleware) and returns 403 if the role is insufficient.
 Role hierarchy (highest → lowest):
     super_admin > admin > partner > associate > junior > secretary > accountant
 """
+
 import functools
 from collections.abc import Callable, Sequence
 from typing import Any

@@ -4,6 +4,7 @@ Default: 100 req/min. Configurable per role.
 Uses in-memory store (production: Redis via REDIS_URL).
 Returns 429 with Retry-After header when exceeded.
 """
+
 import os
 import time
 from collections import defaultdict
@@ -28,11 +29,13 @@ DEFAULT_LIMIT = int(os.getenv("RATE_LIMIT_PER_MINUTE", "100"))
 WINDOW_SECONDS = 60
 
 # Paths excluded from rate limiting
-_EXEMPT_PATHS = frozenset({
-    "/api/v1/health",
-    "/api/v1/docs",
-    "/api/v1/openapi.json",
-})
+_EXEMPT_PATHS = frozenset(
+    {
+        "/api/v1/health",
+        "/api/v1/docs",
+        "/api/v1/openapi.json",
+    }
+)
 
 # In-memory rate limit store: {user_key: [timestamp, ...]}
 _rate_store: dict[str, list[float]] = defaultdict(list)

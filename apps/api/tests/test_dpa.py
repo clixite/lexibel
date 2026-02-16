@@ -1,4 +1,5 @@
 """Tests for LXB-044-045: DPA e-Deposit + JBox integration."""
+
 import uuid
 
 import pytest
@@ -48,7 +49,9 @@ class TestDPAService:
         result = await submit_deposit(
             tenant_id=TENANT_ID,
             case_id="case-1",
-            documents=[{"file_name": "conclusions.pdf", "content_type": "application/pdf"}],
+            documents=[
+                {"file_name": "conclusions.pdf", "content_type": "application/pdf"}
+            ],
             court_code="BXL",
             case_reference="2026/001/A",
         )

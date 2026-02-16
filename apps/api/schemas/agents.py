@@ -1,6 +1,6 @@
 """Pydantic schemas for AI agents endpoints."""
+
 from pydantic import BaseModel, Field
-from typing import Optional
 
 
 # ── Due Diligence ──

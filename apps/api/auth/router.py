@@ -4,6 +4,7 @@ POST /api/v1/auth/login   — email + password → JWT pair (or MFA challenge)
 POST /api/v1/auth/refresh — refresh token → new access token
 GET  /api/v1/auth/me      — current user profile from JWT
 """
+
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status

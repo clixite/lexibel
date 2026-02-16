@@ -3,6 +3,7 @@
 POST   /api/v1/events/{event_id}/documents  — upload document to event
 GET    /api/v1/documents/{id}/download       — download document by evidence link ID
 """
+
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status

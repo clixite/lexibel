@@ -1,8 +1,8 @@
 """Tests for LXB-047-049: ML Pipeline — linkage, triage, deadlines."""
+
 import uuid
 from datetime import date
 
-import pytest
 from fastapi.testclient import TestClient
 
 from apps.api.services.ml.linkage_ranker import LinkageRanker
@@ -34,7 +34,12 @@ class TestLinkageRanker:
 
     def test_rank_by_reference(self):
         cases = [
-            {"id": "1", "reference": "2026/001/A", "title": "Dupont c/ Martin", "contacts": []},
+            {
+                "id": "1",
+                "reference": "2026/001/A",
+                "title": "Dupont c/ Martin",
+                "contacts": [],
+            },
             {"id": "2", "reference": "2025/002", "title": "Other Case", "contacts": []},
         ]
         suggestions = self.ranker.rank(
@@ -48,8 +53,18 @@ class TestLinkageRanker:
 
     def test_rank_by_contact(self):
         cases = [
-            {"id": "1", "reference": "X", "title": "Case A", "contacts": ["jean@test.be"]},
-            {"id": "2", "reference": "Y", "title": "Case B", "contacts": ["paul@test.be"]},
+            {
+                "id": "1",
+                "reference": "X",
+                "title": "Case A",
+                "contacts": ["jean@test.be"],
+            },
+            {
+                "id": "2",
+                "reference": "Y",
+                "title": "Case B",
+                "contacts": ["paul@test.be"],
+            },
         ]
         suggestions = self.ranker.rank(
             text="Bonjour, voici les documents",
@@ -63,8 +78,20 @@ class TestLinkageRanker:
 
     def test_rank_by_text_similarity(self):
         cases = [
-            {"id": "1", "reference": "", "title": "Accident de la route Bruxelles", "contacts": [], "description": "Accident grave autoroute E40"},
-            {"id": "2", "reference": "", "title": "Contrat de bail", "contacts": [], "description": "Litige bail commercial"},
+            {
+                "id": "1",
+                "reference": "",
+                "title": "Accident de la route Bruxelles",
+                "contacts": [],
+                "description": "Accident grave autoroute E40",
+            },
+            {
+                "id": "2",
+                "reference": "",
+                "title": "Contrat de bail",
+                "contacts": [],
+                "description": "Litige bail commercial",
+            },
         ]
         suggestions = self.ranker.rank(
             text="Accident autoroute E40 entre Bruxelles et Liège",
@@ -85,7 +112,12 @@ class TestLinkageRanker:
     def test_rank_top_k(self):
         ranker = LinkageRanker(top_k=2)
         cases = [
-            {"id": str(i), "reference": f"REF-{i}", "title": f"Case {i}", "contacts": []}
+            {
+                "id": str(i),
+                "reference": f"REF-{i}",
+                "title": f"Case {i}",
+                "contacts": [],
+            }
             for i in range(10)
         ]
         suggestions = ranker.rank(
@@ -268,7 +300,12 @@ class TestMLPipeline:
             "body": "Concerne le dossier 2026/001/A. Délai d'appel de 30 jours.",
             "sender": "greffe@just.fgov.be",
             "existing_cases": [
-                {"id": "1", "reference": "2026/001/A", "title": "Dupont", "contacts": []},
+                {
+                    "id": "1",
+                    "reference": "2026/001/A",
+                    "title": "Dupont",
+                    "contacts": [],
+                },
             ],
         }
         result = self.pipeline.process_event(event)

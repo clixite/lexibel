@@ -4,6 +4,7 @@ Records method, path, user_id, tenant_id, status code, and latency.
 Runs AFTER the response so it captures the final status code.
 Skips health/docs endpoints to avoid noise.
 """
+
 import time
 import uuid
 import logging
@@ -16,11 +17,13 @@ from packages.db.session import get_tenant_session, get_superadmin_session
 
 logger = logging.getLogger("lexibel.audit")
 
-_SKIP_PATHS = frozenset({
-    "/api/v1/health",
-    "/api/v1/docs",
-    "/api/v1/openapi.json",
-})
+_SKIP_PATHS = frozenset(
+    {
+        "/api/v1/health",
+        "/api/v1/docs",
+        "/api/v1/openapi.json",
+    }
+)
 
 
 class AuditMiddleware(BaseHTTPMiddleware):

@@ -1,10 +1,10 @@
 """LXB-025-027: Tests for Webhooks — HMAC, Ringover, Plaud, idempotency, contact matching."""
+
 import hashlib
 import hmac
 import json
 import uuid
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -120,7 +120,9 @@ async def test_ringover_webhook_valid():
     payload = json.dumps(event).encode()
     sig = _sign_payload(payload, RINGOVER_SECRET)
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         resp = await client.post(
             "/api/v1/webhooks/ringover",
             content=payload,
@@ -144,7 +146,9 @@ async def test_ringover_webhook_missed_call():
     payload = json.dumps(event).encode()
     sig = _sign_payload(payload, RINGOVER_SECRET)
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         resp = await client.post(
             "/api/v1/webhooks/ringover",
             content=payload,
@@ -164,7 +168,9 @@ async def test_ringover_missing_signature():
     event = _ringover_call_event()
     payload = json.dumps(event).encode()
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         resp = await client.post(
             "/api/v1/webhooks/ringover",
             content=payload,
@@ -180,7 +186,9 @@ async def test_ringover_invalid_signature():
     event = _ringover_call_event()
     payload = json.dumps(event).encode()
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         resp = await client.post(
             "/api/v1/webhooks/ringover",
             content=payload,
@@ -202,7 +210,9 @@ async def test_ringover_idempotency():
     payload = json.dumps(event).encode()
     sig = _sign_payload(payload, RINGOVER_SECRET)
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         # First call — accepted
         resp1 = await client.post(
             "/api/v1/webhooks/ringover",
@@ -237,7 +247,9 @@ async def test_plaud_webhook_valid():
     payload = json.dumps(event).encode()
     sig = _sign_payload(payload, PLAUD_SECRET)
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         resp = await client.post(
             "/api/v1/webhooks/plaud",
             content=payload,
@@ -261,7 +273,9 @@ async def test_plaud_webhook_failed_transcription():
     payload = json.dumps(event).encode()
     sig = _sign_payload(payload, PLAUD_SECRET)
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         resp = await client.post(
             "/api/v1/webhooks/plaud",
             content=payload,
@@ -280,7 +294,9 @@ async def test_plaud_missing_signature():
     event = _plaud_event()
     payload = json.dumps(event).encode()
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         resp = await client.post(
             "/api/v1/webhooks/plaud",
             content=payload,
@@ -298,7 +314,9 @@ async def test_plaud_idempotency():
     payload = json.dumps(event).encode()
     sig = _sign_payload(payload, PLAUD_SECRET)
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         resp1 = await client.post(
             "/api/v1/webhooks/plaud",
             content=payload,
@@ -326,9 +344,12 @@ async def test_plaud_idempotency():
 @pytest.mark.asyncio
 async def test_integration_status():
     from apps.api.auth.jwt import create_access_token
+
     token = create_access_token(uuid.uuid4(), TENANT_A, "partner", "test@test.be")
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         resp = await client.get(
             "/api/v1/integrations/status",
             headers={"Authorization": f"Bearer {token}"},
@@ -358,9 +379,12 @@ async def test_outlook_sync_stub():
     token = create_access_token(uuid.uuid4(), TENANT_A, "partner", "test@test.be")
 
     from apps.api.dependencies import get_db_session
+
     app.dependency_overrides[get_db_session] = override_db
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         resp = await client.post(
             "/api/v1/integrations/outlook/sync",
             json={"mailbox": "cabinet@lexibel.be"},

@@ -1,4 +1,5 @@
 """LXB-020-024: Tests for Billing — time entries, invoices, Peppol, third-party account."""
+
 import uuid
 from datetime import date, datetime, timezone
 from decimal import Decimal
@@ -186,9 +187,12 @@ async def test_create_time_entry():
         mock_svc.create_time_entry = AsyncMock(return_value=entry_obj)
 
         from apps.api.dependencies import get_db_session
+
         app.dependency_overrides[get_db_session] = override_db
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 "/api/v1/time-entries",
                 json={
@@ -218,9 +222,12 @@ async def test_list_time_entries_with_filters():
         mock_svc.list_time_entries = AsyncMock(return_value=([], 0))
 
         from apps.api.dependencies import get_db_session
+
         app.dependency_overrides[get_db_session] = override_db
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 f"/api/v1/time-entries?case_id={CASE_ID}&status=draft",
                 headers={"Authorization": f"Bearer {TOKEN_A}"},
@@ -243,9 +250,12 @@ async def test_submit_time_entry():
         mock_svc.submit_time_entry = AsyncMock(return_value=submitted)
 
         from apps.api.dependencies import get_db_session
+
         app.dependency_overrides[get_db_session] = override_db
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 f"/api/v1/time-entries/{ENTRY_ID}/submit",
                 headers={"Authorization": f"Bearer {TOKEN_A}"},
@@ -266,9 +276,12 @@ async def test_approve_time_entry():
         mock_svc.approve_time_entry = AsyncMock(return_value=approved)
 
         from apps.api.dependencies import get_db_session
+
         app.dependency_overrides[get_db_session] = override_db
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 f"/api/v1/time-entries/{ENTRY_ID}/approve",
                 headers={"Authorization": f"Bearer {TOKEN_A}"},
@@ -291,9 +304,12 @@ async def test_update_draft_only():
         mock_svc.update_time_entry = AsyncMock(return_value=submitted_entry)
 
         from apps.api.dependencies import get_db_session
+
         app.dependency_overrides[get_db_session] = override_db
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.patch(
                 f"/api/v1/time-entries/{ENTRY_ID}",
                 json={"description": "Updated"},
@@ -319,9 +335,12 @@ async def test_create_invoice():
         mock_svc.get_invoice_lines = AsyncMock(return_value=[line_obj])
 
         from apps.api.dependencies import get_db_session
+
         app.dependency_overrides[get_db_session] = override_db
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 "/api/v1/invoices",
                 json={
@@ -360,9 +379,12 @@ async def test_get_invoice_with_lines():
         mock_svc.get_invoice_lines = AsyncMock(return_value=[line_obj])
 
         from apps.api.dependencies import get_db_session
+
         app.dependency_overrides[get_db_session] = override_db
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 f"/api/v1/invoices/{INVOICE_ID}",
                 headers={"Authorization": f"Bearer {TOKEN_A}"},
@@ -388,9 +410,12 @@ async def test_generate_peppol_ubl():
         mock_svc.generate_peppol_for_invoice = AsyncMock(return_value=inv_with_ubl)
 
         from apps.api.dependencies import get_db_session
+
         app.dependency_overrides[get_db_session] = override_db
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 f"/api/v1/invoices/{INVOICE_ID}/generate-peppol",
                 headers={"Authorization": f"Bearer {TOKEN_A}"},
@@ -411,9 +436,12 @@ async def test_mark_paid():
         mock_svc.mark_paid = AsyncMock(return_value=paid_inv)
 
         from apps.api.dependencies import get_db_session
+
         app.dependency_overrides[get_db_session] = override_db
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 f"/api/v1/invoices/{INVOICE_ID}/mark-paid",
                 headers={"Authorization": f"Bearer {TOKEN_A}"},
@@ -458,9 +486,12 @@ async def test_create_third_party_entry():
         mock_svc.create_entry = AsyncMock(return_value=entry_obj)
 
         from apps.api.dependencies import get_db_session
+
         app.dependency_overrides[get_db_session] = override_db
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 f"/api/v1/cases/{CASE_ID}/third-party",
                 json={
@@ -490,9 +521,12 @@ async def test_list_third_party_entries():
         mock_svc.list_by_case = AsyncMock(return_value=(entries, 3))
 
         from apps.api.dependencies import get_db_session
+
         app.dependency_overrides[get_db_session] = override_db
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 f"/api/v1/cases/{CASE_ID}/third-party",
                 headers={"Authorization": f"Bearer {TOKEN_A}"},
@@ -519,9 +553,12 @@ async def test_third_party_balance():
         mock_svc.calculate_balance = AsyncMock(return_value=balance)
 
         from apps.api.dependencies import get_db_session
+
         app.dependency_overrides[get_db_session] = override_db
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 f"/api/v1/cases/{CASE_ID}/third-party/balance",
                 headers={"Authorization": f"Bearer {TOKEN_A}"},
@@ -543,9 +580,12 @@ async def test_third_party_invalid_type():
     mock_session, override_db = _patch_db()
 
     from apps.api.dependencies import get_db_session
+
     app.dependency_overrides[get_db_session] = override_db
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         resp = await client.post(
             f"/api/v1/cases/{CASE_ID}/third-party",
             json={
@@ -580,9 +620,12 @@ async def test_cross_tenant_time_entries():
         mock_svc.list_time_entries = AsyncMock(return_value=([entry_b], 1))
 
         from apps.api.dependencies import get_db_session
+
         app.dependency_overrides[get_db_session] = override_db
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 "/api/v1/time-entries",
                 headers={"Authorization": f"Bearer {TOKEN_B}"},

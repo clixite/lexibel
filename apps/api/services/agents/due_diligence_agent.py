@@ -8,11 +8,10 @@ Steps:
 5. Cross-reference with Belgian BCE/KBO (stub)
 6. Generate risk report
 """
+
 import re
-import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Optional
 
 from apps.api.services.graph.ner_service import NERService
 
@@ -20,6 +19,7 @@ from apps.api.services.graph.ner_service import NERService
 @dataclass
 class EntityRisk:
     """Risk assessment for a single entity."""
+
     entity_name: str
     entity_type: str  # PERSON, ORGANIZATION
     risk_level: str  # LOW, MEDIUM, HIGH, CRITICAL
@@ -33,6 +33,7 @@ class EntityRisk:
 @dataclass
 class DueDiligenceReport:
     """Full due diligence report for a case."""
+
     case_id: str
     generated_at: str = ""
     entities: list[EntityRisk] = field(default_factory=list)
@@ -55,7 +56,11 @@ _SANCTIONS_LIST = {
 
 _BCE_REGISTRY = {
     "acme sa": {"status": "active", "bce_number": "0123.456.789", "sector": "Services"},
-    "defunct sprl": {"status": "dissolved", "bce_number": "0987.654.321", "sector": "Unknown"},
+    "defunct sprl": {
+        "status": "dissolved",
+        "bce_number": "0987.654.321",
+        "sector": "Unknown",
+    },
 }
 
 # ── Risk keywords ──
@@ -106,8 +111,13 @@ class DueDiligenceAgent:
 
         # 1. Gather text from events
         all_text = documents_text
-        for event in (events or []):
-            text = event.get("content") or event.get("description") or event.get("body") or ""
+        for event in events or []:
+            text = (
+                event.get("content")
+                or event.get("description")
+                or event.get("body")
+                or ""
+            )
             all_text += " " + text
 
         # 2. Extract entities via NER
@@ -147,7 +157,10 @@ class DueDiligenceAgent:
             report.overall_risk = "CRITICAL"
         elif any(e.risk_level == "HIGH" for e in unique_entities):
             report.overall_risk = "HIGH"
-        elif any(e.risk_level == "MEDIUM" for e in unique_entities) or len(report.risk_flags) >= 2:
+        elif (
+            any(e.risk_level == "MEDIUM" for e in unique_entities)
+            or len(report.risk_flags) >= 2
+        ):
             report.overall_risk = "MEDIUM"
         else:
             report.overall_risk = "LOW"
@@ -232,18 +245,28 @@ class DueDiligenceAgent:
         recs = []
 
         if report.sanctions_hits > 0:
-            recs.append("URGENT: Sanctions match detected. Verify identity and consider declining representation.")
-            recs.append("Report to CTIF-CFI (Belgian Financial Intelligence Unit) if required.")
+            recs.append(
+                "URGENT: Sanctions match detected. Verify identity and consider declining representation."
+            )
+            recs.append(
+                "Report to CTIF-CFI (Belgian Financial Intelligence Unit) if required."
+            )
 
         high_risk = [e for e in report.entities if e.risk_level in ("HIGH", "CRITICAL")]
         if high_risk:
-            recs.append(f"Enhanced due diligence required for {len(high_risk)} high-risk entities.")
+            recs.append(
+                f"Enhanced due diligence required for {len(high_risk)} high-risk entities."
+            )
 
         dissolved = [e for e in report.entities if e.bce_status == "dissolved"]
         if dissolved:
-            recs.append(f"Verify legal standing: {len(dissolved)} entity(ies) marked as dissolved in BCE.")
+            recs.append(
+                f"Verify legal standing: {len(dissolved)} entity(ies) marked as dissolved in BCE."
+            )
 
         if not recs:
-            recs.append("Standard due diligence completed. No significant risks identified.")
+            recs.append(
+                "Standard due diligence completed. No significant risks identified."
+            )
 
         return recs

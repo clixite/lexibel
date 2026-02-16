@@ -1,4 +1,5 @@
 """Pydantic schemas for Contacts CRUD."""
+
 import uuid
 from datetime import datetime
 from typing import Optional

@@ -1,9 +1,9 @@
 """GZip compression middleware with ETag support for mobile optimization."""
+
 import hashlib
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from starlette.middleware.gzip import GZipMiddleware as StarletteGZip
 
 
 class CompressionMiddleware(BaseHTTPMiddleware):

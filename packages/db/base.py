@@ -1,4 +1,5 @@
 """SQLAlchemy 2.0 async base with tenant_id mixin for RLS."""
+
 import uuid
 from datetime import datetime
 

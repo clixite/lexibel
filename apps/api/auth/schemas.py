@@ -1,4 +1,5 @@
 """Pydantic schemas for auth endpoints."""
+
 import uuid
 from typing import Optional
 
@@ -23,6 +24,7 @@ class MfaRequiredResponse(BaseModel):
 
 class LoginResponse(BaseModel):
     """Union-style response: either full tokens or MFA challenge."""
+
     access_token: Optional[str] = None
     refresh_token: Optional[str] = None
     token_type: str = "bearer"

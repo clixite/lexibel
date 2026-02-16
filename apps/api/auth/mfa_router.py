@@ -4,6 +4,7 @@ POST /api/v1/auth/mfa/setup     — generate secret + provisioning URI (requires
 POST /api/v1/auth/mfa/verify    — verify TOTP code and activate MFA on user
 POST /api/v1/auth/mfa/challenge — verify TOTP during login when MFA is enabled
 """
+
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status

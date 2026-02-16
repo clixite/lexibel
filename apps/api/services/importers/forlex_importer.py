@@ -2,8 +2,8 @@
 
 Maps Forlex fields to LexiBel cases, contacts, time_entries, invoices.
 """
+
 import uuid
-from typing import Optional
 
 from apps.api.services.migration_service import MigrationRecord
 

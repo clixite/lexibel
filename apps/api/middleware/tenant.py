@@ -3,6 +3,7 @@
 Priority: JWT 'tid' claim → X-Tenant-ID header (dev fallback).
 Health, docs, and auth endpoints are excluded from tenant requirement.
 """
+
 import uuid
 
 from fastapi import Request, Response
@@ -12,17 +13,19 @@ from starlette.responses import JSONResponse
 from apps.api.auth.jwt import TokenError, verify_token
 
 # Paths that do not require a tenant context.
-_PUBLIC_PATHS = frozenset({
-    "/api/v1/health",
-    "/api/v1/docs",
-    "/api/v1/openapi.json",
-    "/api/v1/auth/login",
-    "/api/v1/auth/refresh",
-    "/api/v1/auth/mfa/challenge",
-    "/api/v1/webhooks/ringover",
-    "/api/v1/webhooks/plaud",
-    "/api/v1/bootstrap/admin",
-})
+_PUBLIC_PATHS = frozenset(
+    {
+        "/api/v1/health",
+        "/api/v1/docs",
+        "/api/v1/openapi.json",
+        "/api/v1/auth/login",
+        "/api/v1/auth/refresh",
+        "/api/v1/auth/mfa/challenge",
+        "/api/v1/webhooks/ringover",
+        "/api/v1/webhooks/plaud",
+        "/api/v1/bootstrap/admin",
+    }
+)
 
 
 def _is_public(path: str) -> bool:

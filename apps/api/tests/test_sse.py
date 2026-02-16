@@ -1,4 +1,5 @@
 """LXB-029: Tests for SSE — connection, event delivery, tenant isolation."""
+
 import asyncio
 import uuid
 
@@ -46,10 +47,14 @@ async def test_sse_manager_subscribe_and_publish():
     await asyncio.sleep(0.05)
 
     # Publish an event
-    count = await manager.publish(tenant_id, "new_inbox_item", {
-        "id": str(uuid.uuid4()),
-        "source": "RINGOVER",
-    })
+    count = await manager.publish(
+        tenant_id,
+        "new_inbox_item",
+        {
+            "id": str(uuid.uuid4()),
+            "source": "RINGOVER",
+        },
+    )
 
     # Wait for collector to finish
     await asyncio.wait_for(task, timeout=2.0)

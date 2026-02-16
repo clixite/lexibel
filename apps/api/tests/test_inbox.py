@@ -1,4 +1,5 @@
 """LXB-018-019: Tests for Inbox — validate/refuse flow, status transitions, create-case."""
+
 import uuid
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
@@ -95,9 +96,12 @@ async def test_list_inbox():
         mock_svc.list_inbox = AsyncMock(return_value=(items, 3))
 
         from apps.api.dependencies import get_db_session
+
         app.dependency_overrides[get_db_session] = override_db
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 "/api/v1/inbox?page=1&per_page=10",
                 headers={"Authorization": f"Bearer {TOKEN_A}"},
@@ -120,9 +124,12 @@ async def test_list_inbox_with_status_filter():
         mock_svc.list_inbox = AsyncMock(return_value=([], 0))
 
         from apps.api.dependencies import get_db_session
+
         app.dependency_overrides[get_db_session] = override_db
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.get(
                 "/api/v1/inbox?status=DRAFT",
                 headers={"Authorization": f"Bearer {TOKEN_A}"},
@@ -139,7 +146,9 @@ async def test_list_inbox_with_status_filter():
 async def test_validate_inbox_item():
     """POST /inbox/{id}/validate creates event and marks as VALIDATED."""
     mock_session, override_db = _patch_db()
-    validated_item = _make_inbox_obj(status="VALIDATED", validated_by=USER_A, validated_at=NOW)
+    validated_item = _make_inbox_obj(
+        status="VALIDATED", validated_by=USER_A, validated_at=NOW
+    )
     event_obj = _make_event_obj()
 
     with patch("apps.api.routers.inbox.inbox_service") as mock_svc:
@@ -148,9 +157,12 @@ async def test_validate_inbox_item():
         )
 
         from apps.api.dependencies import get_db_session
+
         app.dependency_overrides[get_db_session] = override_db
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 f"/api/v1/inbox/{INBOX_ID}/validate",
                 json={
@@ -176,14 +188,15 @@ async def test_validate_already_validated():
     already_validated = _make_inbox_obj(status="VALIDATED")
 
     with patch("apps.api.routers.inbox.inbox_service") as mock_svc:
-        mock_svc.validate_inbox_item = AsyncMock(
-            return_value=(already_validated, None)
-        )
+        mock_svc.validate_inbox_item = AsyncMock(return_value=(already_validated, None))
 
         from apps.api.dependencies import get_db_session
+
         app.dependency_overrides[get_db_session] = override_db
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 f"/api/v1/inbox/{INBOX_ID}/validate",
                 json={
@@ -208,9 +221,12 @@ async def test_validate_not_found():
         mock_svc.validate_inbox_item = AsyncMock(return_value=(None, None))
 
         from apps.api.dependencies import get_db_session
+
         app.dependency_overrides[get_db_session] = override_db
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 f"/api/v1/inbox/{uuid.uuid4()}/validate",
                 json={
@@ -230,15 +246,20 @@ async def test_validate_not_found():
 async def test_refuse_inbox_item():
     """POST /inbox/{id}/refuse marks item as REFUSED."""
     mock_session, override_db = _patch_db()
-    refused_item = _make_inbox_obj(status="REFUSED", validated_by=USER_A, validated_at=NOW)
+    refused_item = _make_inbox_obj(
+        status="REFUSED", validated_by=USER_A, validated_at=NOW
+    )
 
     with patch("apps.api.routers.inbox.inbox_service") as mock_svc:
         mock_svc.refuse_inbox_item = AsyncMock(return_value=refused_item)
 
         from apps.api.dependencies import get_db_session
+
         app.dependency_overrides[get_db_session] = override_db
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 f"/api/v1/inbox/{INBOX_ID}/refuse",
                 headers={"Authorization": f"Bearer {TOKEN_A}"},
@@ -259,9 +280,12 @@ async def test_refuse_not_found():
         mock_svc.refuse_inbox_item = AsyncMock(return_value=None)
 
         from apps.api.dependencies import get_db_session
+
         app.dependency_overrides[get_db_session] = override_db
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 f"/api/v1/inbox/{uuid.uuid4()}/refuse",
                 headers={"Authorization": f"Bearer {TOKEN_A}"},
@@ -276,7 +300,9 @@ async def test_refuse_not_found():
 async def test_create_case_from_inbox():
     """POST /inbox/{id}/create-case creates case + event, marks VALIDATED."""
     mock_session, override_db = _patch_db()
-    validated_item = _make_inbox_obj(status="VALIDATED", validated_by=USER_A, validated_at=NOW)
+    validated_item = _make_inbox_obj(
+        status="VALIDATED", validated_by=USER_A, validated_at=NOW
+    )
 
     class MockCase:
         pass
@@ -291,9 +317,12 @@ async def test_create_case_from_inbox():
         )
 
         from apps.api.dependencies import get_db_session
+
         app.dependency_overrides[get_db_session] = override_db
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 f"/api/v1/inbox/{INBOX_ID}/create-case",
                 json={
@@ -324,9 +353,12 @@ async def test_create_case_from_inbox_already_validated():
         )
 
         from apps.api.dependencies import get_db_session
+
         app.dependency_overrides[get_db_session] = override_db
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             resp = await client.post(
                 f"/api/v1/inbox/{INBOX_ID}/create-case",
                 json={

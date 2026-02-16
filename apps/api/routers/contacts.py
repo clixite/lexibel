@@ -6,8 +6,8 @@ GET    /api/v1/contacts/search    — search by name/bce/phone/email
 GET    /api/v1/contacts/{id}      — get contact
 PATCH  /api/v1/contacts/{id}      — update contact
 """
+
 import uuid
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession

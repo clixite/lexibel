@@ -1,4 +1,5 @@
 """Pydantic schemas for Inbox items (human-in-the-loop queue)."""
+
 import uuid
 from datetime import datetime
 from typing import Optional

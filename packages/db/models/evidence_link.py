@@ -3,8 +3,8 @@
 Each evidence link points to a file in MinIO/S3, identified by SHA-256 hash.
 Protected by RLS via tenant_id.
 """
+
 import uuid
-from datetime import datetime
 
 from sqlalchemy import BigInteger, ForeignKey, String, text
 from sqlalchemy.dialects.postgresql import UUID

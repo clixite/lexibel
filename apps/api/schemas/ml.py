@@ -1,4 +1,5 @@
 """Pydantic schemas for ML endpoints."""
+
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -55,7 +56,9 @@ class LinkResponse(BaseModel):
 
 class DeadlineRequest(BaseModel):
     text: str = Field(..., min_length=1)
-    reference_date: Optional[str] = Field(None, description="ISO date for relative deadline computation")
+    reference_date: Optional[str] = Field(
+        None, description="ISO date for relative deadline computation"
+    )
 
 
 class DeadlineResponse(BaseModel):

@@ -1,4 +1,5 @@
 """Tests for LXB-041-043: Migration pipeline."""
+
 import uuid
 
 import pytest
@@ -12,7 +13,6 @@ from apps.api.services.migration_service import (
     start_import,
     rollback_job,
     reset_store,
-    VALID_SOURCES,
 )
 from apps.api.services.importers.forlex_importer import ForlexImporter
 from apps.api.services.importers.dpa_importer import DPAImporter
@@ -131,7 +131,14 @@ class TestForlexImporter:
     def test_parse_case(self):
         importer = ForlexImporter()
         records = importer.parse(
-            [{"numero_dossier": "FL-001", "titre": "Test", "type_matiere": "civil", "_type": "case"}],
+            [
+                {
+                    "numero_dossier": "FL-001",
+                    "titre": "Test",
+                    "type_matiere": "civil",
+                    "_type": "case",
+                }
+            ],
             TENANT_ID,
         )
         assert len(records) == 1
@@ -142,7 +149,14 @@ class TestForlexImporter:
     def test_parse_contact(self):
         importer = ForlexImporter()
         records = importer.parse(
-            [{"nom_complet": "Jean Dupont", "type_personne": "PP", "email": "j@test.be", "_type": "contact"}],
+            [
+                {
+                    "nom_complet": "Jean Dupont",
+                    "type_personne": "PP",
+                    "email": "j@test.be",
+                    "_type": "contact",
+                }
+            ],
             TENANT_ID,
         )
         assert len(records) == 1
@@ -152,7 +166,14 @@ class TestForlexImporter:
     def test_parse_time_entry(self):
         importer = ForlexImporter()
         records = importer.parse(
-            [{"date_prestation": "2026-01-15", "description": "Rdv client", "duree_minutes": 60, "_type": "time_entry"}],
+            [
+                {
+                    "date_prestation": "2026-01-15",
+                    "description": "Rdv client",
+                    "duree_minutes": 60,
+                    "_type": "time_entry",
+                }
+            ],
             TENANT_ID,
         )
         assert len(records) == 1
@@ -222,14 +243,22 @@ class TestMigrationEndpoints:
 
     def test_list_jobs_endpoint(self):
         client = TestClient(app)
-        client.post("/api/v1/migration/jobs", json={"source_system": "csv"}, headers=_auth_headers())
+        client.post(
+            "/api/v1/migration/jobs",
+            json={"source_system": "csv"},
+            headers=_auth_headers(),
+        )
         r = client.get("/api/v1/migration/jobs", headers=_auth_headers())
         assert r.status_code == 200
         assert r.json()["total"] >= 1
 
     def test_preview_endpoint(self):
         client = TestClient(app)
-        create_r = client.post("/api/v1/migration/jobs", json={"source_system": "csv"}, headers=_auth_headers())
+        create_r = client.post(
+            "/api/v1/migration/jobs",
+            json={"source_system": "csv"},
+            headers=_auth_headers(),
+        )
         job_id = create_r.json()["id"]
 
         r = client.post(
@@ -243,34 +272,46 @@ class TestMigrationEndpoints:
     def test_full_flow(self):
         client = TestClient(app)
         # Create
-        cr = client.post("/api/v1/migration/jobs", json={"source_system": "forlex"}, headers=_auth_headers())
+        cr = client.post(
+            "/api/v1/migration/jobs",
+            json={"source_system": "forlex"},
+            headers=_auth_headers(),
+        )
         job_id = cr.json()["id"]
 
         # Preview
         pr = client.post(
             f"/api/v1/migration/jobs/{job_id}/preview",
-            json={"data": [
-                {"numero_dossier": "FL-001", "titre": "Test", "_type": "case"},
-                {"numero_dossier": "FL-002", "titre": "Test2", "_type": "case"},
-            ]},
+            json={
+                "data": [
+                    {"numero_dossier": "FL-001", "titre": "Test", "_type": "case"},
+                    {"numero_dossier": "FL-002", "titre": "Test2", "_type": "case"},
+                ]
+            },
             headers=_auth_headers(),
         )
         assert pr.status_code == 200
 
         # Start
-        sr = client.post(f"/api/v1/migration/jobs/{job_id}/start", headers=_auth_headers())
+        sr = client.post(
+            f"/api/v1/migration/jobs/{job_id}/start", headers=_auth_headers()
+        )
         assert sr.status_code == 200
         assert sr.json()["status"] == "completed"
         assert sr.json()["imported_records"] == 2
 
         # Rollback
-        rr = client.post(f"/api/v1/migration/jobs/{job_id}/rollback", headers=_auth_headers())
+        rr = client.post(
+            f"/api/v1/migration/jobs/{job_id}/rollback", headers=_auth_headers()
+        )
         assert rr.status_code == 200
         assert rr.json()["status"] == "pending"
 
     def test_job_not_found(self):
         client = TestClient(app)
-        r = client.get(f"/api/v1/migration/jobs/{uuid.uuid4()}", headers=_auth_headers())
+        r = client.get(
+            f"/api/v1/migration/jobs/{uuid.uuid4()}", headers=_auth_headers()
+        )
         assert r.status_code == 404
 
     def test_requires_auth(self):

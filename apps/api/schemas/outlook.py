@@ -1,4 +1,5 @@
 """Pydantic schemas for Outlook endpoints."""
+
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -6,7 +7,9 @@ from pydantic import BaseModel, Field
 
 class OutlookSyncRequest(BaseModel):
     user_id: str = Field(..., description="Outlook user mailbox or ID to sync")
-    since: Optional[str] = Field(None, description="ISO datetime — only sync emails after this")
+    since: Optional[str] = Field(
+        None, description="ISO datetime — only sync emails after this"
+    )
 
 
 class OutlookEmailResponse(BaseModel):

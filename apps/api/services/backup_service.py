@@ -3,9 +3,10 @@
 Retention: daily for 30 days, weekly for 12 weeks.
 Production: uses subprocess pg_dump. Test: in-memory stub.
 """
+
 import os
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
@@ -13,6 +14,7 @@ from typing import Optional
 @dataclass
 class BackupRecord:
     """A backup record."""
+
     id: str
     filename: str
     size_bytes: int = 0

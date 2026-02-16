@@ -3,7 +3,8 @@
 POST /api/v1/search — hybrid search (vector + keyword)
 POST /api/v1/ai/generate — AI generation with citations
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+
+from fastapi import APIRouter, Depends
 
 from apps.api.dependencies import get_current_user
 from apps.api.schemas.search import (

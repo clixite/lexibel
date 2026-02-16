@@ -1,4 +1,5 @@
 """Time entry service — CRUD with rounding logic and approval workflow."""
+
 import math
 import uuid
 from datetime import date
@@ -66,9 +67,7 @@ async def get_time_entry(
     entry_id: uuid.UUID,
 ) -> TimeEntry | None:
     """Get a single time entry by ID (RLS filters by tenant)."""
-    result = await session.execute(
-        select(TimeEntry).where(TimeEntry.id == entry_id)
-    )
+    result = await session.execute(select(TimeEntry).where(TimeEntry.id == entry_id))
     return result.scalar_one_or_none()
 
 

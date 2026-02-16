@@ -7,6 +7,7 @@ speakers + metadata), creates InboxItem with source=PLAUD (DRAFT, human
 validation required), links audio file as EvidenceLink.
 Uses idempotency_key from recording_id (Principle P6).
 """
+
 import os
 
 from fastapi import APIRouter, HTTPException, Request, status
@@ -72,6 +73,7 @@ async def plaud_webhook(request: Request) -> PlaudWebhookResponse:
 
     # Parse the event
     import json
+
     try:
         data = json.loads(body)
     except json.JSONDecodeError:

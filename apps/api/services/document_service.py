@@ -1,7 +1,7 @@
 """Document service — file upload/download via MinIO/S3 with SHA-256 hashing."""
+
 import hashlib
 import uuid
-from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

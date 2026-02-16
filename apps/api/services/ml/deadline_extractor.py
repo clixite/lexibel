@@ -12,35 +12,37 @@ Belgian judicial calendar awareness:
 - Procedural deadlines exclude weekends and Belgian public holidays
 - If deadline falls on weekend/holiday, extends to next business day
 """
+
 import re
-from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
+from dataclasses import dataclass
+from datetime import date, timedelta
 from typing import Optional
 
 
 @dataclass
 class Deadline:
     """An extracted deadline from text."""
-    text: str               # The matched text fragment
-    date: Optional[str]     # ISO date string if computable
-    deadline_type: str      # citation, appel, cassation, explicit_date, etc.
-    confidence: float       # 0.0 to 1.0
-    source_text: str = ""   # Surrounding context
+
+    text: str  # The matched text fragment
+    date: Optional[str]  # ISO date string if computable
+    deadline_type: str  # citation, appel, cassation, explicit_date, etc.
+    confidence: float  # 0.0 to 1.0
+    source_text: str = ""  # Surrounding context
     days: Optional[int] = None  # Number of days if a legal deadline
 
 
 # ── Belgian public holidays (2026) ──
 
 BELGIAN_HOLIDAYS_2026 = {
-    date(2026, 1, 1),    # Nouvel An
-    date(2026, 4, 5),    # Pâques (Easter Sunday)
-    date(2026, 4, 6),    # Lundi de Pâques
-    date(2026, 5, 1),    # Fête du travail
-    date(2026, 5, 14),   # Ascension
-    date(2026, 5, 25),   # Lundi de Pentecôte
-    date(2026, 7, 21),   # Fête nationale
-    date(2026, 8, 15),   # Assomption
-    date(2026, 11, 1),   # Toussaint
+    date(2026, 1, 1),  # Nouvel An
+    date(2026, 4, 5),  # Pâques (Easter Sunday)
+    date(2026, 4, 6),  # Lundi de Pâques
+    date(2026, 5, 1),  # Fête du travail
+    date(2026, 5, 14),  # Ascension
+    date(2026, 5, 25),  # Lundi de Pentecôte
+    date(2026, 7, 21),  # Fête nationale
+    date(2026, 8, 15),  # Assomption
+    date(2026, 11, 1),  # Toussaint
     date(2026, 11, 11),  # Armistice
     date(2026, 12, 25),  # Noël
 }
@@ -74,7 +76,9 @@ LEGAL_DEADLINES = {
     "citation": {
         "days": 8,
         "patterns": [
-            re.compile(r"\b(délai\s+de\s+citation|citation\s+à\s+\d+\s+jours?)\b", re.I),
+            re.compile(
+                r"\b(délai\s+de\s+citation|citation\s+à\s+\d+\s+jours?)\b", re.I
+            ),
             re.compile(r"\bArt\.?\s*707\s*C\.?\s*J\.?\b", re.I),
         ],
         "label": "Délai de citation (8 jours — Art. 707 C.J.)",
@@ -82,7 +86,9 @@ LEGAL_DEADLINES = {
     "appel": {
         "days": 30,
         "patterns": [
-            re.compile(r"\b(délai\s+d.appel|appel\s+dans\s+(?:les\s+)?\d+\s+jours?)\b", re.I),
+            re.compile(
+                r"\b(délai\s+d.appel|appel\s+dans\s+(?:les\s+)?\d+\s+jours?)\b", re.I
+            ),
             re.compile(r"\bArt\.?\s*1051\s*C\.?\s*J\.?\b", re.I),
             re.compile(r"\b(interjeter\s+appel|faire\s+appel)\b", re.I),
         ],
@@ -100,7 +106,10 @@ LEGAL_DEADLINES = {
     "opposition": {
         "days": 30,
         "patterns": [
-            re.compile(r"\b(délai\s+d.opposition|opposition\s+dans\s+(?:les\s+)?\d+\s+jours?)\b", re.I),
+            re.compile(
+                r"\b(délai\s+d.opposition|opposition\s+dans\s+(?:les\s+)?\d+\s+jours?)\b",
+                re.I,
+            ),
             re.compile(r"\bArt\.?\s*1048\s*C\.?\s*J\.?\b", re.I),
             re.compile(r"\b(former\s+opposition)\b", re.I),
         ],
@@ -125,7 +134,10 @@ LEGAL_DEADLINES = {
     "conclusions": {
         "days": None,  # Variable, extracted from text
         "patterns": [
-            re.compile(r"\b(conclusions?\s+(?:dans|avant|pour)\s+le\s+\d{1,2}[./]\d{1,2}[./]\d{2,4})\b", re.I),
+            re.compile(
+                r"\b(conclusions?\s+(?:dans|avant|pour)\s+le\s+\d{1,2}[./]\d{1,2}[./]\d{2,4})\b",
+                re.I,
+            ),
             re.compile(r"\b(calendrier\s+de\s+mise\s+en\s+état)\b", re.I),
         ],
         "label": "Délai de conclusions",
@@ -140,16 +152,28 @@ DATE_PATTERNS = [
     # YYYY-MM-DD (ISO)
     (re.compile(r"\b(\d{4})-(\d{2})-(\d{2})\b"), "ymd"),
     # "15 mars 2026", "3 janvier 2026"
-    (re.compile(
-        r"\b(\d{1,2})\s+(janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\s+(\d{4})\b",
-        re.I,
-    ), "fr_long"),
+    (
+        re.compile(
+            r"\b(\d{1,2})\s+(janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\s+(\d{4})\b",
+            re.I,
+        ),
+        "fr_long",
+    ),
 ]
 
 MONTH_FR = {
-    "janvier": 1, "février": 2, "mars": 3, "avril": 4,
-    "mai": 5, "juin": 6, "juillet": 7, "août": 8,
-    "septembre": 9, "octobre": 10, "novembre": 11, "décembre": 12,
+    "janvier": 1,
+    "février": 2,
+    "mars": 3,
+    "avril": 4,
+    "mai": 5,
+    "juin": 6,
+    "juillet": 7,
+    "août": 8,
+    "septembre": 9,
+    "octobre": 10,
+    "novembre": 11,
+    "décembre": 12,
 }
 
 # ── N jours/mois patterns ──
@@ -162,7 +186,9 @@ RELATIVE_DEADLINE_PATTERN = re.compile(
 class DeadlineExtractor:
     """Extract dates and deadlines from Belgian legal text."""
 
-    def extract(self, text: str, reference_date: Optional[date] = None) -> list[Deadline]:
+    def extract(
+        self, text: str, reference_date: Optional[date] = None
+    ) -> list[Deadline]:
         """Extract deadlines from text.
 
         Args:
@@ -195,14 +221,16 @@ class DeadlineExtractor:
                     end = min(len(text), match.end() + 50)
                     context = text[start:end].strip()
 
-                    deadlines.append(Deadline(
-                        text=match.group(0),
-                        date=dl_date,
-                        deadline_type=dl_type,
-                        confidence=0.85,
-                        source_text=context,
-                        days=days,
-                    ))
+                    deadlines.append(
+                        Deadline(
+                            text=match.group(0),
+                            date=dl_date,
+                            deadline_type=dl_type,
+                            confidence=0.85,
+                            source_text=context,
+                            days=days,
+                        )
+                    )
 
         # 2. Extract explicit dates
         for pattern, fmt in DATE_PATTERNS:
@@ -233,19 +261,25 @@ class DeadlineExtractor:
                     end = min(len(text), match.end() + 30)
                     context = text[start:end].strip()
 
-                    is_deadline = bool(re.search(
-                        r"(avant|pour|au\s+plus\s+tard|deadline|échéance|date\s+limite|audience|fixation)",
-                        context,
-                        re.I,
-                    ))
+                    is_deadline = bool(
+                        re.search(
+                            r"(avant|pour|au\s+plus\s+tard|deadline|échéance|date\s+limite|audience|fixation)",
+                            context,
+                            re.I,
+                        )
+                    )
 
-                    deadlines.append(Deadline(
-                        text=match.group(0),
-                        date=parsed_date.isoformat(),
-                        deadline_type="explicit_date" if not is_deadline else "explicit_deadline",
-                        confidence=0.9 if is_deadline else 0.6,
-                        source_text=context,
-                    ))
+                    deadlines.append(
+                        Deadline(
+                            text=match.group(0),
+                            date=parsed_date.isoformat(),
+                            deadline_type="explicit_date"
+                            if not is_deadline
+                            else "explicit_deadline",
+                            confidence=0.9 if is_deadline else 0.6,
+                            source_text=context,
+                        )
+                    )
                 except (ValueError, IndexError):
                     continue
 
@@ -269,14 +303,16 @@ class DeadlineExtractor:
             end = min(len(text), match.end() + 50)
             context = text[start:end].strip()
 
-            deadlines.append(Deadline(
-                text=match.group(0),
-                date=computed.isoformat(),
-                deadline_type="relative",
-                confidence=0.75,
-                source_text=context,
-                days=days,
-            ))
+            deadlines.append(
+                Deadline(
+                    text=match.group(0),
+                    date=computed.isoformat(),
+                    deadline_type="relative",
+                    confidence=0.75,
+                    source_text=context,
+                    days=days,
+                )
+            )
 
         # Deduplicate by (date, type) and sort by confidence
         seen: set[tuple] = set()

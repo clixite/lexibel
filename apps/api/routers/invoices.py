@@ -7,6 +7,7 @@ POST   /api/v1/invoices/{id}/generate-peppol — generate UBL 2.1 XML
 POST   /api/v1/invoices/{id}/send            — send via Peppol (stub)
 POST   /api/v1/invoices/{id}/mark-paid       — mark as paid
 """
+
 import uuid
 from typing import Optional
 
@@ -54,7 +55,7 @@ async def create_invoice(
     tenant_id: uuid.UUID = Depends(get_current_tenant),
     session: AsyncSession = Depends(get_db_session),
 ) -> InvoiceResponse:
-    lines_data = [l.model_dump() for l in body.lines] if body.lines else None
+    lines_data = [line.model_dump() for line in body.lines] if body.lines else None
     inv = await invoice_service.create_invoice(
         session,
         tenant_id,
@@ -71,7 +72,7 @@ async def create_invoice(
     )
     inv_lines = await invoice_service.get_invoice_lines(session, inv.id)
     resp = InvoiceResponse.model_validate(inv)
-    resp.lines = [InvoiceLineResponse.model_validate(l) for l in inv_lines]
+    resp.lines = [InvoiceLineResponse.model_validate(line) for line in inv_lines]
     return resp
 
 
@@ -85,7 +86,7 @@ async def get_invoice(
         raise HTTPException(status_code=404, detail="Invoice not found")
     inv_lines = await invoice_service.get_invoice_lines(session, invoice_id)
     resp = InvoiceResponse.model_validate(inv)
-    resp.lines = [InvoiceLineResponse.model_validate(l) for l in inv_lines]
+    resp.lines = [InvoiceLineResponse.model_validate(line) for line in inv_lines]
     return resp
 
 

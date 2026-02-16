@@ -3,6 +3,7 @@
 GET    /api/v1/integrations/status       — list enabled integrations per tenant
 POST   /api/v1/integrations/outlook/sync — trigger email sync
 """
+
 import uuid
 from typing import Optional
 

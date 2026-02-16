@@ -8,7 +8,7 @@ Certificate-based auth stub — real implementation requires:
 - DPA API endpoint (production: https://dpa.just.fgov.be)
 - OAuth2 token exchange with certificate
 """
-import re
+
 import uuid
 from datetime import datetime, timezone
 from dataclasses import dataclass, field
@@ -47,6 +47,7 @@ VALID_COURT_CODES = {
 @dataclass
 class DepositDocument:
     """A document to upload via e-Deposit."""
+
     file_name: str
     content_type: str = "application/pdf"
     file_size: int = 0
@@ -57,6 +58,7 @@ class DepositDocument:
 @dataclass
 class DepositResult:
     """Result of an e-Deposit submission."""
+
     deposit_id: str
     status: str  # submitted, accepted, rejected, processing
     court_code: str
@@ -69,6 +71,7 @@ class DepositResult:
 @dataclass
 class DepositStatus:
     """Status of an e-Deposit."""
+
     deposit_id: str
     status: str
     court_code: str
@@ -80,6 +83,7 @@ class DepositStatus:
 @dataclass
 class JBoxMessage:
     """A judicial communication from JBox."""
+
     message_id: str
     sender: str  # court name
     subject: str
@@ -132,7 +136,11 @@ class DPAClient:
         2. POST to DPA token endpoint with certificate
         3. Cache token until expiry
         """
-        if self._token and self._token_expires and datetime.now(timezone.utc) < self._token_expires:
+        if (
+            self._token
+            and self._token_expires
+            and datetime.now(timezone.utc) < self._token_expires
+        ):
             return self._token
 
         # Stub: in production, exchange certificate for token
@@ -206,7 +214,9 @@ async def submit_deposit(
         DepositResult with deposit_id and status
     """
     if court_code not in VALID_COURT_CODES:
-        raise ValueError(f"Invalid court_code: {court_code}. Valid: {list(VALID_COURT_CODES.keys())}")
+        raise ValueError(
+            f"Invalid court_code: {court_code}. Valid: {list(VALID_COURT_CODES.keys())}"
+        )
 
     if not documents:
         raise ValueError("At least one document is required")
@@ -214,13 +224,15 @@ async def submit_deposit(
     # Validate documents
     parsed_docs = []
     for doc in documents:
-        parsed_docs.append(DepositDocument(
-            file_name=doc.get("file_name", "document.pdf"),
-            content_type=doc.get("content_type", "application/pdf"),
-            file_size=doc.get("file_size", 0),
-            sha256_hash=doc.get("sha256_hash", ""),
-            document_type=doc.get("document_type", "conclusions"),
-        ))
+        parsed_docs.append(
+            DepositDocument(
+                file_name=doc.get("file_name", "document.pdf"),
+                content_type=doc.get("content_type", "application/pdf"),
+                file_size=doc.get("file_size", 0),
+                sha256_hash=doc.get("sha256_hash", ""),
+                document_type=doc.get("document_type", "conclusions"),
+            )
+        )
 
     deposit_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
@@ -232,7 +244,8 @@ async def submit_deposit(
         deposit_id=deposit_id,
         status="submitted",
         court_code=court_code,
-        case_reference=case_reference or f"{court_code}/{datetime.now().year}/{uuid.uuid4().hex[:6]}",
+        case_reference=case_reference
+        or f"{court_code}/{datetime.now().year}/{uuid.uuid4().hex[:6]}",
         submitted_at=now,
         documents_count=len(parsed_docs),
         message=f"Deposit submitted to {VALID_COURT_CODES[court_code]}",
@@ -265,7 +278,9 @@ async def check_deposit_status(deposit_id: str) -> DepositStatus:
         court_code=deposit.court_code,
         updated_at=datetime.now(timezone.utc).isoformat(),
         message=f"Deposit {deposit.status}",
-        receipt_url=f"https://dpa.just.fgov.be/receipts/{deposit_id}" if deposit.status == "accepted" else None,
+        receipt_url=f"https://dpa.just.fgov.be/receipts/{deposit_id}"
+        if deposit.status == "accepted"
+        else None,
     )
 
 
@@ -330,8 +345,10 @@ async def poll_jbox(
         try:
             since_dt = datetime.fromisoformat(since.replace("Z", "+00:00"))
             messages = [
-                m for m in messages
-                if datetime.fromisoformat(m.received_at.replace("Z", "+00:00")) > since_dt
+                m
+                for m in messages
+                if datetime.fromisoformat(m.received_at.replace("Z", "+00:00"))
+                > since_dt
             ]
         except (ValueError, TypeError):
             pass

@@ -9,17 +9,18 @@ Features:
 - Recency bias (more recent cases ranked higher)
 - Reference pattern detection (dossier numbers, court references)
 """
+
 import math
 import re
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Optional
 
 
 @dataclass
 class CaseSuggestion:
     """A suggested case match with confidence score."""
+
     case_id: str
     case_reference: str
     case_title: str
@@ -30,11 +31,11 @@ class CaseSuggestion:
 # ── Reference patterns for Belgian legal practice ──
 
 REFERENCE_PATTERNS = [
-    re.compile(r"\b(\d{4}/\d{2,4}(?:/[A-Z])?)\b"),           # 2026/001/A
-    re.compile(r"\b([Dd]ossier\s+\d+)\b"),                     # Dossier 42
-    re.compile(r"\b(RG\s+\d+/\d+(?:/[A-Z])?)\b"),             # RG 2026/123
-    re.compile(r"\b(DOS[-\s]?\d{3,6})\b"),                     # DOS-001, DOS 001
-    re.compile(r"\b(\d{2}\.\d{2}\.\d{2}\.\d{4})\b"),          # BE court format
+    re.compile(r"\b(\d{4}/\d{2,4}(?:/[A-Z])?)\b"),  # 2026/001/A
+    re.compile(r"\b([Dd]ossier\s+\d+)\b"),  # Dossier 42
+    re.compile(r"\b(RG\s+\d+/\d+(?:/[A-Z])?)\b"),  # RG 2026/123
+    re.compile(r"\b(DOS[-\s]?\d{3,6})\b"),  # DOS-001, DOS 001
+    re.compile(r"\b(\d{2}\.\d{2}\.\d{2}\.\d{4})\b"),  # BE court format
 ]
 
 
@@ -71,8 +72,7 @@ def _compute_idf(documents: list[list[str]]) -> dict[str, float]:
             doc_freq[term] += 1
 
     return {
-        term: math.log((n_docs + 1) / (freq + 1)) + 1
-        for term, freq in doc_freq.items()
+        term: math.log((n_docs + 1) / (freq + 1)) + 1 for term, freq in doc_freq.items()
     }
 
 
@@ -88,8 +88,8 @@ def _cosine_similarity(vec_a: dict[str, float], vec_b: dict[str, float]) -> floa
         return 0.0
 
     dot = sum(vec_a[t] * vec_b[t] for t in common_terms)
-    norm_a = math.sqrt(sum(v ** 2 for v in vec_a.values()))
-    norm_b = math.sqrt(sum(v ** 2 for v in vec_b.values()))
+    norm_a = math.sqrt(sum(v**2 for v in vec_a.values()))
+    norm_b = math.sqrt(sum(v**2 for v in vec_b.values()))
 
     if norm_a == 0 or norm_b == 0:
         return 0.0
@@ -168,7 +168,10 @@ class LinkageRanker:
             case_ref = case.get("reference", "")
             if event_refs and case_ref:
                 for ref in event_refs:
-                    if ref.lower() in case_ref.lower() or case_ref.lower() in ref.lower():
+                    if (
+                        ref.lower() in case_ref.lower()
+                        or case_ref.lower() in ref.lower()
+                    ):
                         score += 0.25
                         reasons.append(f"reference_match={ref}")
                         break
@@ -178,7 +181,9 @@ class LinkageRanker:
             if updated_at:
                 try:
                     if isinstance(updated_at, str):
-                        updated = datetime.fromisoformat(updated_at.replace("Z", "+00:00"))
+                        updated = datetime.fromisoformat(
+                            updated_at.replace("Z", "+00:00")
+                        )
                     else:
                         updated = updated_at
                     days_old = (datetime.now(timezone.utc) - updated).days
@@ -190,14 +195,16 @@ class LinkageRanker:
                     pass
 
             if score > 0.01:
-                suggestions.append(CaseSuggestion(
-                    case_id=str(case.get("id", "")),
-                    case_reference=case_ref,
-                    case_title=case.get("title", ""),
-                    confidence=min(score, 1.0),
-                    match_reasons=reasons,
-                ))
+                suggestions.append(
+                    CaseSuggestion(
+                        case_id=str(case.get("id", "")),
+                        case_reference=case_ref,
+                        case_title=case.get("title", ""),
+                        confidence=min(score, 1.0),
+                        match_reasons=reasons,
+                    )
+                )
 
         # Sort by confidence descending, take top K
         suggestions.sort(key=lambda s: s.confidence, reverse=True)
-        return suggestions[:self.top_k]
+        return suggestions[: self.top_k]

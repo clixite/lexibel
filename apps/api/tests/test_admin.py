@@ -1,4 +1,5 @@
 """Tests for admin endpoints: health, tenants, users, stats, role-based access."""
+
 import uuid
 
 import pytest
@@ -48,7 +49,6 @@ def clean_stores():
 
 
 class TestAdminHealth:
-
     def test_health_as_super_admin(self, client):
         resp = client.get("/api/v1/admin/health", headers=_admin_headers())
         assert resp.status_code == 200
@@ -64,7 +64,15 @@ class TestAdminHealth:
     def test_health_services_structure(self, client):
         resp = client.get("/api/v1/admin/health", headers=_admin_headers())
         data = resp.json()
-        expected_services = {"api", "database", "redis", "qdrant", "minio", "vllm", "neo4j"}
+        expected_services = {
+            "api",
+            "database",
+            "redis",
+            "qdrant",
+            "minio",
+            "vllm",
+            "neo4j",
+        }
         assert expected_services == set(data["services"].keys())
 
 
@@ -72,7 +80,6 @@ class TestAdminHealth:
 
 
 class TestAdminTenants:
-
     def test_list_tenants_empty(self, client):
         resp = client.get("/api/v1/admin/tenants", headers=_admin_headers())
         assert resp.status_code == 200
@@ -81,7 +88,11 @@ class TestAdminTenants:
     def test_create_tenant(self, client):
         resp = client.post(
             "/api/v1/admin/tenants",
-            json={"name": "Cabinet Dupont", "domain": "dupont.be", "plan": "professional"},
+            json={
+                "name": "Cabinet Dupont",
+                "domain": "dupont.be",
+                "plan": "professional",
+            },
             headers=_admin_headers(),
         )
         assert resp.status_code == 200
@@ -121,7 +132,6 @@ class TestAdminTenants:
 
 
 class TestAdminUsers:
-
     def test_list_users_empty(self, client):
         resp = client.get("/api/v1/admin/users", headers=_admin_headers())
         assert resp.status_code == 200
@@ -171,7 +181,6 @@ class TestAdminUsers:
 
 
 class TestAdminStats:
-
     def test_global_stats(self, client):
         resp = client.get("/api/v1/admin/stats", headers=_admin_headers())
         assert resp.status_code == 200

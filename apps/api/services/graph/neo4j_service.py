@@ -8,10 +8,10 @@ Node types: Person, Organization, Case, Document, Event, LegalConcept
 Relationship types: PARTY_TO, REPRESENTED_BY, RELATED_TO, REFERENCES,
                     OCCURRED_IN, FILED_AT, OPPOSED_TO
 """
+
 import os
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from typing import Any, Optional
 
 
@@ -22,14 +22,29 @@ NEO4J_USER = os.getenv("NEO4J_USER", "neo4j")
 NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "lexibel2026")
 
 VALID_NODE_LABELS = {
-    "Person", "Organization", "Case", "Document",
-    "Event", "LegalConcept", "Court", "Location",
+    "Person",
+    "Organization",
+    "Case",
+    "Document",
+    "Event",
+    "LegalConcept",
+    "Court",
+    "Location",
 }
 
 VALID_RELATIONSHIP_TYPES = {
-    "PARTY_TO", "REPRESENTED_BY", "RELATED_TO", "REFERENCES",
-    "OCCURRED_IN", "FILED_AT", "OPPOSED_TO", "AUTHORED_BY",
-    "MENTIONS", "CITES", "ATTACHED_TO", "BELONGS_TO",
+    "PARTY_TO",
+    "REPRESENTED_BY",
+    "RELATED_TO",
+    "REFERENCES",
+    "OCCURRED_IN",
+    "FILED_AT",
+    "OPPOSED_TO",
+    "AUTHORED_BY",
+    "MENTIONS",
+    "CITES",
+    "ATTACHED_TO",
+    "BELONGS_TO",
 }
 
 
@@ -39,6 +54,7 @@ VALID_RELATIONSHIP_TYPES = {
 @dataclass
 class GraphNode:
     """A node in the knowledge graph."""
+
     id: str
     label: str
     properties: dict = field(default_factory=dict)
@@ -48,6 +64,7 @@ class GraphNode:
 @dataclass
 class GraphRelationship:
     """A relationship between two nodes."""
+
     id: str
     from_id: str
     to_id: str
@@ -58,6 +75,7 @@ class GraphRelationship:
 @dataclass
 class GraphPath:
     """A path through the graph (sequence of nodes and relationships)."""
+
     nodes: list[GraphNode]
     relationships: list[GraphRelationship]
     length: int = 0
@@ -73,7 +91,12 @@ class Neo4jService:
     Falls back to InMemoryGraphService for testing.
     """
 
-    def __init__(self, uri: str = NEO4J_URI, user: str = NEO4J_USER, password: str = NEO4J_PASSWORD):
+    def __init__(
+        self,
+        uri: str = NEO4J_URI,
+        user: str = NEO4J_USER,
+        password: str = NEO4J_PASSWORD,
+    ):
         self.uri = uri
         self.user = user
         self.password = password
@@ -84,11 +107,14 @@ class Neo4jService:
         if self._driver is None:
             try:
                 import neo4j
+
                 self._driver = neo4j.GraphDatabase.driver(
                     self.uri, auth=(self.user, self.password)
                 )
             except ImportError:
-                raise RuntimeError("neo4j driver not installed. Use InMemoryGraphService for testing.")
+                raise RuntimeError(
+                    "neo4j driver not installed. Use InMemoryGraphService for testing."
+                )
         return self._driver
 
     def close(self) -> None:
@@ -147,7 +173,9 @@ class Neo4jService:
             Created GraphRelationship
         """
         if rel_type not in VALID_RELATIONSHIP_TYPES:
-            raise ValueError(f"Invalid rel_type: {rel_type}. Valid: {VALID_RELATIONSHIP_TYPES}")
+            raise ValueError(
+                f"Invalid rel_type: {rel_type}. Valid: {VALID_RELATIONSHIP_TYPES}"
+            )
 
         rel_id = str(uuid.uuid4())
         props = {**(properties or {}), "id": rel_id}
@@ -159,9 +187,13 @@ class Neo4jService:
                 "(b {id: $to_id, tenant_id: $tenant_id}) "
                 f"CREATE (a)-[r:{rel_type} $props]->(b) RETURN r"
             )
-            session.run(query, from_id=from_id, to_id=to_id, tenant_id=tenant_id, props=props)
+            session.run(
+                query, from_id=from_id, to_id=to_id, tenant_id=tenant_id, props=props
+            )
 
-        return GraphRelationship(id=rel_id, from_id=from_id, to_id=to_id, rel_type=rel_type, properties=props)
+        return GraphRelationship(
+            id=rel_id, from_id=from_id, to_id=to_id, rel_type=rel_type, properties=props
+        )
 
     def query(
         self,
@@ -191,7 +223,8 @@ class Neo4jService:
         with driver.session() as session:
             result = session.run(
                 "MATCH (n {id: $id, tenant_id: $tid}) RETURN n, labels(n) as labels",
-                id=node_id, tid=tenant_id,
+                id=node_id,
+                tid=tenant_id,
             )
             record = result.single()
             if not record:
@@ -212,7 +245,8 @@ class Neo4jService:
             result = session.run(
                 f"MATCH (n {{id: $id, tenant_id: $tid}})-[r*1..{depth}]-(m {{tenant_id: $tid}}) "
                 "RETURN DISTINCT m, labels(m) as labels, type(r[0]) as rel_type",
-                id=node_id, tid=tenant_id,
+                id=node_id,
+                tid=tenant_id,
             )
             return [dict(record) for record in result]
 
@@ -222,7 +256,8 @@ class Neo4jService:
         with driver.session() as session:
             result = session.run(
                 "MATCH (n {id: $id, tenant_id: $tid}) DETACH DELETE n RETURN count(n) as deleted",
-                id=node_id, tid=tenant_id,
+                id=node_id,
+                tid=tenant_id,
             )
             record = result.single()
             return record and record["deleted"] > 0
@@ -271,7 +306,9 @@ class InMemoryGraphService:
         tenant_id: str = "",
     ) -> GraphRelationship:
         if rel_type not in VALID_RELATIONSHIP_TYPES:
-            raise ValueError(f"Invalid rel_type: {rel_type}. Valid: {VALID_RELATIONSHIP_TYPES}")
+            raise ValueError(
+                f"Invalid rel_type: {rel_type}. Valid: {VALID_RELATIONSHIP_TYPES}"
+            )
 
         if from_id not in self._nodes:
             raise ValueError(f"Node {from_id} not found")
@@ -287,7 +324,9 @@ class InMemoryGraphService:
 
         rel_id = str(uuid.uuid4())
         props = {**(properties or {}), "id": rel_id}
-        rel = GraphRelationship(id=rel_id, from_id=from_id, to_id=to_id, rel_type=rel_type, properties=props)
+        rel = GraphRelationship(
+            id=rel_id, from_id=from_id, to_id=to_id, rel_type=rel_type, properties=props
+        )
         self._relationships.append(rel)
         return rel
 
@@ -321,22 +360,38 @@ class InMemoryGraphService:
                         if neighbor.tenant_id == tenant_id:
                             visited.add(neighbor_id)
                             next_frontier.add(neighbor_id)
-                            results.append({
-                                "node": neighbor,
-                                "rel_type": rel.rel_type,
-                                "direction": "outgoing" if rel.from_id == nid else "incoming",
-                            })
+                            results.append(
+                                {
+                                    "node": neighbor,
+                                    "rel_type": rel.rel_type,
+                                    "direction": "outgoing"
+                                    if rel.from_id == nid
+                                    else "incoming",
+                                }
+                            )
             frontier = next_frontier
 
         return results
 
-    def get_subgraph(self, node_ids: set[str], tenant_id: str) -> tuple[list[GraphNode], list[GraphRelationship]]:
+    def get_subgraph(
+        self, node_ids: set[str], tenant_id: str
+    ) -> tuple[list[GraphNode], list[GraphRelationship]]:
         """Get subgraph containing specified nodes and their relationships."""
-        nodes = [n for n in self._nodes.values() if n.id in node_ids and n.tenant_id == tenant_id]
-        rels = [r for r in self._relationships if r.from_id in node_ids and r.to_id in node_ids]
+        nodes = [
+            n
+            for n in self._nodes.values()
+            if n.id in node_ids and n.tenant_id == tenant_id
+        ]
+        rels = [
+            r
+            for r in self._relationships
+            if r.from_id in node_ids and r.to_id in node_ids
+        ]
         return nodes, rels
 
-    def get_case_subgraph(self, case_id: str, tenant_id: str) -> tuple[list[GraphNode], list[GraphRelationship]]:
+    def get_case_subgraph(
+        self, case_id: str, tenant_id: str
+    ) -> tuple[list[GraphNode], list[GraphRelationship]]:
         """Get the full subgraph for a case."""
         # Find case node
         case_node = None
@@ -372,12 +427,19 @@ class InMemoryGraphService:
 
     def find_nodes_by_label(self, label: str, tenant_id: str) -> list[GraphNode]:
         """Find all nodes with a given label for a tenant."""
-        return [n for n in self._nodes.values() if n.label == label and n.tenant_id == tenant_id]
+        return [
+            n
+            for n in self._nodes.values()
+            if n.label == label and n.tenant_id == tenant_id
+        ]
 
-    def find_nodes_by_property(self, key: str, value: Any, tenant_id: str) -> list[GraphNode]:
+    def find_nodes_by_property(
+        self, key: str, value: Any, tenant_id: str
+    ) -> list[GraphNode]:
         """Find nodes by a property value."""
         return [
-            n for n in self._nodes.values()
+            n
+            for n in self._nodes.values()
             if n.tenant_id == tenant_id and n.properties.get(key) == value
         ]
 
@@ -385,8 +447,10 @@ class InMemoryGraphService:
         """Find nodes whose name contains the text (case-insensitive), or vice versa."""
         text_lower = text.lower()
         return [
-            n for n in self._nodes.values()
-            if n.tenant_id == tenant_id and (
+            n
+            for n in self._nodes.values()
+            if n.tenant_id == tenant_id
+            and (
                 text_lower in n.properties.get("name", "").lower()
                 or n.properties.get("name", "").lower() in text_lower
             )
@@ -407,7 +471,8 @@ class InMemoryGraphService:
             return False
         del self._nodes[node_id]
         self._relationships = [
-            r for r in self._relationships
+            r
+            for r in self._relationships
             if r.from_id != node_id and r.to_id != node_id
         ]
         return True

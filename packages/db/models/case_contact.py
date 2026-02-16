@@ -3,10 +3,11 @@
 Links contacts to cases with a role (client, adverse, witness, third_party).
 Protected by RLS via tenant_id. Composite primary key on (case_id, contact_id).
 """
+
 import enum
 import uuid
 
-from sqlalchemy import ForeignKey, String, text
+from sqlalchemy import ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 

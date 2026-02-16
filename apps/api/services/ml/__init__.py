@@ -4,6 +4,7 @@ Usage:
     pipeline = MLPipeline()
     result = pipeline.process_event(event)
 """
+
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -15,6 +16,7 @@ from apps.api.services.ml.deadline_extractor import DeadlineExtractor, Deadline
 @dataclass
 class MLResult:
     """Combined result from all ML services."""
+
     case_suggestions: list[CaseSuggestion] = field(default_factory=list)
     classification: Optional[Classification] = None
     deadlines: list[Deadline] = field(default_factory=list)

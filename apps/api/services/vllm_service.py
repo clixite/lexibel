@@ -4,10 +4,10 @@ Provides generation (standard + streaming), model listing, and LoRA adapter
 management. Falls back to OpenAI API when vLLM is unavailable.
 Health check with auto-reconnect.
 """
-import asyncio
+
 import os
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import AsyncGenerator, Optional
 
 import httpx
@@ -26,6 +26,7 @@ HEALTH_CHECK_INTERVAL = 30  # seconds
 @dataclass
 class VLLMResponse:
     """Response from vLLM generation."""
+
     text: str
     model: str = ""
     lora_adapter: str = ""
@@ -37,6 +38,7 @@ class VLLMResponse:
 @dataclass
 class ModelInfo:
     """Information about an available model."""
+
     id: str
     object: str = "model"
     owned_by: str = "local"
@@ -112,7 +114,9 @@ class VLLMService:
         vllm_ok = await self._check_health()
 
         if vllm_ok:
-            return await self._generate_vllm(messages, use_model, lora_adapter, max_tokens, temperature)
+            return await self._generate_vllm(
+                messages, use_model, lora_adapter, max_tokens, temperature
+            )
 
         # Fallback to OpenAI
         return await self._generate_openai(messages, max_tokens, temperature)
@@ -155,7 +159,7 @@ class VLLMService:
                 finish_reason=choice.get("finish_reason", ""),
                 backend="vllm",
             )
-        except Exception as e:
+        except Exception:
             # Fallback to OpenAI on vLLM error
             self._vllm_available = False
             return await self._generate_openai(messages, max_tokens, temperature)
@@ -257,6 +261,7 @@ class VLLMService:
                                 break
                             try:
                                 import json
+
                                 data = json.loads(chunk)
                                 delta = data["choices"][0].get("delta", {})
                                 content = delta.get("content", "")
@@ -280,7 +285,11 @@ class VLLMService:
                 data = resp.json()
 
             return [
-                ModelInfo(id=m["id"], object=m.get("object", "model"), owned_by=m.get("owned_by", "local"))
+                ModelInfo(
+                    id=m["id"],
+                    object=m.get("object", "model"),
+                    owned_by=m.get("owned_by", "local"),
+                )
                 for m in data.get("data", [])
             ]
         except Exception:

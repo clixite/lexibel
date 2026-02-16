@@ -1,4 +1,5 @@
 """Inbox service — human-in-the-loop queue for unvalidated items."""
+
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
@@ -43,9 +44,7 @@ async def get_inbox_item(
     item_id: uuid.UUID,
 ) -> InboxItem | None:
     """Get a single inbox item by ID (RLS filters by tenant)."""
-    result = await session.execute(
-        select(InboxItem).where(InboxItem.id == item_id)
-    )
+    result = await session.execute(select(InboxItem).where(InboxItem.id == item_id))
     return result.scalar_one_or_none()
 
 

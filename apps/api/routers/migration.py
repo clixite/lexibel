@@ -7,6 +7,7 @@ POST /api/v1/migration/jobs/:id/preview — preview import data
 POST /api/v1/migration/jobs/:id/start — start import
 POST /api/v1/migration/jobs/:id/rollback — rollback import
 """
+
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from apps.api.dependencies import get_current_user
@@ -39,7 +40,9 @@ def _job_to_response(job: migration_service.MigrationJob) -> MigrationJobRespons
     )
 
 
-@router.post("/jobs", response_model=MigrationJobResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/jobs", response_model=MigrationJobResponse, status_code=status.HTTP_201_CREATED
+)
 async def create_job(
     body: MigrationJobCreate,
     current_user: dict = Depends(get_current_user),
@@ -101,9 +104,7 @@ async def start_import(
 ) -> MigrationJobResponse:
     """Start the import process."""
     try:
-        job = migration_service.start_import(
-            job_id, str(current_user["tenant_id"])
-        )
+        job = migration_service.start_import(job_id, str(current_user["tenant_id"]))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -117,9 +118,7 @@ async def rollback_import(
 ) -> MigrationJobResponse:
     """Rollback an import job."""
     try:
-        job = migration_service.rollback_job(
-            job_id, str(current_user["tenant_id"])
-        )
+        job = migration_service.rollback_job(job_id, str(current_user["tenant_id"]))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

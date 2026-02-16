@@ -1,4 +1,5 @@
 """Tests for LXB-050-053: Knowledge Graph, NER, GraphBuilder."""
+
 import uuid
 
 import pytest
@@ -12,7 +13,7 @@ from apps.api.services.graph.neo4j_service import (
 from apps.api.services.graph.ner_service import NERService
 from apps.api.services.graph.graph_builder import GraphBuilder
 from apps.api.main import app
-from apps.api.routers.graph import _graph, _builder
+from apps.api.routers.graph import _graph
 
 
 TENANT_ID = str(uuid.uuid4())
@@ -49,7 +50,9 @@ class TestInMemoryGraph:
     def test_create_relationship(self):
         n1 = self.graph.create_node("Person", {"name": "Jean"}, TENANT_ID)
         n2 = self.graph.create_node("Case", {"name": "Dossier X"}, TENANT_ID)
-        rel = self.graph.create_relationship(n1.id, n2.id, "PARTY_TO", tenant_id=TENANT_ID)
+        rel = self.graph.create_relationship(
+            n1.id, n2.id, "PARTY_TO", tenant_id=TENANT_ID
+        )
         assert rel.rel_type == "PARTY_TO"
         assert rel.from_id == n1.id
         assert rel.to_id == n2.id
@@ -58,12 +61,16 @@ class TestInMemoryGraph:
         n1 = self.graph.create_node("Person", {"name": "A"}, TENANT_ID)
         n2 = self.graph.create_node("Case", {"name": "B"}, TENANT_ID)
         with pytest.raises(ValueError, match="Invalid rel_type"):
-            self.graph.create_relationship(n1.id, n2.id, "INVALID_REL", tenant_id=TENANT_ID)
+            self.graph.create_relationship(
+                n1.id, n2.id, "INVALID_REL", tenant_id=TENANT_ID
+            )
 
     def test_create_relationship_node_not_found(self):
         n1 = self.graph.create_node("Person", {"name": "A"}, TENANT_ID)
         with pytest.raises(ValueError, match="not found"):
-            self.graph.create_relationship(n1.id, "nonexistent", "PARTY_TO", tenant_id=TENANT_ID)
+            self.graph.create_relationship(
+                n1.id, "nonexistent", "PARTY_TO", tenant_id=TENANT_ID
+            )
 
     def test_tenant_isolation(self):
         node = self.graph.create_node("Person", {"name": "Isolated"}, TENANT_ID)
@@ -74,7 +81,9 @@ class TestInMemoryGraph:
         n1 = self.graph.create_node("Person", {"name": "A"}, TENANT_ID)
         n2 = self.graph.create_node("Case", {"name": "B"}, OTHER_TENANT)
         with pytest.raises(ValueError, match="different tenant"):
-            self.graph.create_relationship(n1.id, n2.id, "PARTY_TO", tenant_id=TENANT_ID)
+            self.graph.create_relationship(
+                n1.id, n2.id, "PARTY_TO", tenant_id=TENANT_ID
+            )
 
     def test_get_neighbors(self):
         n1 = self.graph.create_node("Person", {"name": "Jean"}, TENANT_ID)
@@ -91,11 +100,17 @@ class TestInMemoryGraph:
         assert len(neighbors_d2) == 2  # n2 and n3
 
     def test_case_subgraph(self):
-        case = self.graph.create_node("Case", {"name": "Test Case", "id": "case-1"}, TENANT_ID)
+        case = self.graph.create_node(
+            "Case", {"name": "Test Case", "id": "case-1"}, TENANT_ID
+        )
         person = self.graph.create_node("Person", {"name": "Jean"}, TENANT_ID)
         doc = self.graph.create_node("Document", {"name": "conclusions.pdf"}, TENANT_ID)
-        self.graph.create_relationship(person.id, case.id, "PARTY_TO", tenant_id=TENANT_ID)
-        self.graph.create_relationship(doc.id, case.id, "ATTACHED_TO", tenant_id=TENANT_ID)
+        self.graph.create_relationship(
+            person.id, case.id, "PARTY_TO", tenant_id=TENANT_ID
+        )
+        self.graph.create_relationship(
+            doc.id, case.id, "ATTACHED_TO", tenant_id=TENANT_ID
+        )
 
         nodes, rels = self.graph.get_case_subgraph(case.id, TENANT_ID)
         assert len(nodes) == 3
@@ -145,7 +160,9 @@ class TestNERService:
         self.ner = NERService()
 
     def test_extract_court(self):
-        entities = self.ner.extract("Le Tribunal de première instance de Bruxelles a statué")
+        entities = self.ner.extract(
+            "Le Tribunal de première instance de Bruxelles a statué"
+        )
         courts = [e for e in entities if e.entity_type == "COURT"]
         assert len(courts) >= 1
         assert "Bruxelles" in courts[0].text
@@ -242,7 +259,10 @@ class TestGraphBuilder:
 
     def test_process_case_multiple_docs(self):
         docs = [
-            {"id": "doc-1", "text": "Art. 1382 C.C. — Maître Dupont plaide pour M. Martin"},
+            {
+                "id": "doc-1",
+                "text": "Art. 1382 C.C. — Maître Dupont plaide pour M. Martin",
+            },
             {"id": "doc-2", "text": "La Cour d'appel de Liège confirme le jugement"},
         ]
         result = self.builder.process_case("case-1", docs, TENANT_ID)
@@ -263,17 +283,25 @@ class TestGraphBuilder:
         # Build a simple graph without conflicts
         self.graph.create_node("Case", {"name": "Case A", "id": "case-a"}, TENANT_ID)
         person = self.graph.create_node("Person", {"name": "Jean"}, TENANT_ID)
-        self.graph.create_relationship(person.id, "case-a", "PARTY_TO", tenant_id=TENANT_ID)
+        self.graph.create_relationship(
+            person.id, "case-a", "PARTY_TO", tenant_id=TENANT_ID
+        )
 
         conflicts = self.builder.detect_conflicts("case-a", TENANT_ID)
         assert len(conflicts) == 0
 
     def test_conflict_detection(self):
         # Build graph with conflicting roles
-        case = self.graph.create_node("Case", {"name": "Conflict Case", "id": "case-c"}, TENANT_ID)
+        case = self.graph.create_node(
+            "Case", {"name": "Conflict Case", "id": "case-c"}, TENANT_ID
+        )
         person = self.graph.create_node("Person", {"name": "Suspect"}, TENANT_ID)
-        self.graph.create_relationship(person.id, case.id, "PARTY_TO", {"role": "PARTY_TO"}, TENANT_ID)
-        self.graph.create_relationship(person.id, case.id, "OPPOSED_TO", {"role": "OPPOSED_TO"}, TENANT_ID)
+        self.graph.create_relationship(
+            person.id, case.id, "PARTY_TO", {"role": "PARTY_TO"}, TENANT_ID
+        )
+        self.graph.create_relationship(
+            person.id, case.id, "OPPOSED_TO", {"role": "OPPOSED_TO"}, TENANT_ID
+        )
 
         conflicts = self.builder.detect_conflicts(case.id, TENANT_ID)
         assert len(conflicts) >= 1
@@ -291,9 +319,14 @@ class TestGraphEndpoints:
         client = TestClient(app)
         r = client.post(
             "/api/v1/graph/build/case-1",
-            json={"documents": [
-                {"id": "doc-1", "text": "Maître Dupont représente M. Martin devant le Tribunal de première instance de Bruxelles"},
-            ]},
+            json={
+                "documents": [
+                    {
+                        "id": "doc-1",
+                        "text": "Maître Dupont représente M. Martin devant le Tribunal de première instance de Bruxelles",
+                    },
+                ]
+            },
             headers=_auth_headers(),
         )
         assert r.status_code == 200
@@ -307,9 +340,14 @@ class TestGraphEndpoints:
         # Build first
         client.post(
             "/api/v1/graph/build/case-2",
-            json={"documents": [
-                {"id": "doc-2", "text": "Art. 1382 C.C. appliqué par la Cour de cassation"},
-            ]},
+            json={
+                "documents": [
+                    {
+                        "id": "doc-2",
+                        "text": "Art. 1382 C.C. appliqué par la Cour de cassation",
+                    },
+                ]
+            },
             headers=_auth_headers(),
         )
 
@@ -323,9 +361,11 @@ class TestGraphEndpoints:
         # Build some data
         client.post(
             "/api/v1/graph/build/case-3",
-            json={"documents": [
-                {"id": "d1", "text": "Maître Dupont à Bruxelles"},
-            ]},
+            json={
+                "documents": [
+                    {"id": "d1", "text": "Maître Dupont à Bruxelles"},
+                ]
+            },
             headers=_auth_headers(),
         )
 
@@ -338,7 +378,9 @@ class TestGraphEndpoints:
 
     def test_conflicts_endpoint(self):
         client = TestClient(app)
-        r = client.get("/api/v1/graph/case/nonexistent/conflicts", headers=_auth_headers())
+        r = client.get(
+            "/api/v1/graph/case/nonexistent/conflicts", headers=_auth_headers()
+        )
         assert r.status_code == 200
         assert r.json()["total"] == 0
 
@@ -352,7 +394,9 @@ class TestGraphEndpoints:
         )
         client.post(
             "/api/v1/graph/build/case-b",
-            json={"documents": [{"id": "d2", "text": "Art. 1382 C.C. à Bruxelles aussi"}]},
+            json={
+                "documents": [{"id": "d2", "text": "Art. 1382 C.C. à Bruxelles aussi"}]
+            },
             headers=_auth_headers(),
         )
 

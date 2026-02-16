@@ -2,6 +2,7 @@
 
 OBFG/OVB compliance: entries are INSERT-only. Corrections are reversal entries.
 """
+
 import uuid
 from datetime import date
 
@@ -52,7 +53,9 @@ async def list_by_case(
     count_query = select(func.count()).select_from(query.subquery())
     total = (await session.execute(count_query)).scalar_one()
 
-    query = query.order_by(ThirdPartyEntry.entry_date.desc(), ThirdPartyEntry.created_at.desc())
+    query = query.order_by(
+        ThirdPartyEntry.entry_date.desc(), ThirdPartyEntry.created_at.desc()
+    )
     query = query.offset((page - 1) * per_page).limit(per_page)
 
     result = await session.execute(query)
@@ -68,13 +71,13 @@ async def calculate_balance(
 
     Returns deposits, withdrawals, interest, and net balance.
     """
-    query = select(
-        ThirdPartyEntry.entry_type,
-        func.sum(ThirdPartyEntry.amount_cents).label("total"),
-    ).where(
-        ThirdPartyEntry.case_id == case_id
-    ).group_by(
-        ThirdPartyEntry.entry_type
+    query = (
+        select(
+            ThirdPartyEntry.entry_type,
+            func.sum(ThirdPartyEntry.amount_cents).label("total"),
+        )
+        .where(ThirdPartyEntry.case_id == case_id)
+        .group_by(ThirdPartyEntry.entry_type)
     )
 
     result = await session.execute(query)

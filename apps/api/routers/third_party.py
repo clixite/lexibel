@@ -4,6 +4,7 @@ GET    /api/v1/cases/{case_id}/third-party          — list entries
 POST   /api/v1/cases/{case_id}/third-party          — create entry
 GET    /api/v1/cases/{case_id}/third-party/balance   — get balance
 """
+
 import uuid
 
 from fastapi import APIRouter, Depends, Query, status

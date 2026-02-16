@@ -4,8 +4,9 @@ Invoices follow Belgian VAT rules (21% standard) and can be exported
 as UBL 2.1 / BIS Billing 3.0 for Peppol e-invoicing.
 Protected by RLS via tenant_id.
 """
+
 import uuid
-from datetime import date, datetime
+from datetime import date
 from decimal import Decimal
 
 from sqlalchemy import BigInteger, Date, ForeignKey, Numeric, String, Text, text

@@ -4,6 +4,7 @@ Revision ID: 001
 Revises: None
 Create Date: 2026-02-15
 """
+
 from typing import Sequence, Union
 
 from alembic import op
@@ -18,38 +19,81 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     # ── Extensions ──
-    op.execute("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"")
-    op.execute("CREATE EXTENSION IF NOT EXISTS \"pgcrypto\"")
+    op.execute('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"')
+    op.execute('CREATE EXTENSION IF NOT EXISTS "pgcrypto"')
 
     # ── tenants ──
     op.create_table(
         "tenants",
-        sa.Column("id", UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), primary_key=True),
+        sa.Column(
+            "id",
+            UUID(as_uuid=True),
+            server_default=sa.text("gen_random_uuid()"),
+            primary_key=True,
+        ),
         sa.Column("name", sa.String(255), nullable=False),
         sa.Column("slug", sa.String(63), nullable=False, unique=True, index=True),
-        sa.Column("plan", sa.String(20), nullable=False, server_default=sa.text("'solo'")),
-        sa.Column("locale", sa.String(5), nullable=False, server_default=sa.text("'fr-BE'")),
-        sa.Column("config", JSONB, nullable=False, server_default=sa.text("'{}'::jsonb")),
-        sa.Column("status", sa.String(20), nullable=False, server_default=sa.text("'active'")),
-        sa.Column("created_at", sa.DateTime, nullable=False, server_default=sa.text("now()")),
-        sa.Column("updated_at", sa.DateTime, nullable=False, server_default=sa.text("now()")),
+        sa.Column(
+            "plan", sa.String(20), nullable=False, server_default=sa.text("'solo'")
+        ),
+        sa.Column(
+            "locale", sa.String(5), nullable=False, server_default=sa.text("'fr-BE'")
+        ),
+        sa.Column(
+            "config", JSONB, nullable=False, server_default=sa.text("'{}'::jsonb")
+        ),
+        sa.Column(
+            "status", sa.String(20), nullable=False, server_default=sa.text("'active'")
+        ),
+        sa.Column(
+            "created_at", sa.DateTime, nullable=False, server_default=sa.text("now()")
+        ),
+        sa.Column(
+            "updated_at", sa.DateTime, nullable=False, server_default=sa.text("now()")
+        ),
     )
     # No RLS on tenants — super-admin only access enforced at application layer.
 
     # ── users ──
     op.create_table(
         "users",
-        sa.Column("id", UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), primary_key=True),
-        sa.Column("tenant_id", UUID(as_uuid=True), sa.ForeignKey("tenants.id", ondelete="RESTRICT"), nullable=False, index=True),
+        sa.Column(
+            "id",
+            UUID(as_uuid=True),
+            server_default=sa.text("gen_random_uuid()"),
+            primary_key=True,
+        ),
+        sa.Column(
+            "tenant_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("tenants.id", ondelete="RESTRICT"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("email", sa.String(255), nullable=False),
         sa.Column("full_name", sa.String(255), nullable=False),
-        sa.Column("role", sa.String(20), nullable=False, server_default=sa.text("'junior'")),
-        sa.Column("auth_provider", sa.String(20), nullable=False, server_default=sa.text("'local'")),
-        sa.Column("mfa_enabled", sa.Boolean, nullable=False, server_default=sa.text("false")),
+        sa.Column(
+            "role", sa.String(20), nullable=False, server_default=sa.text("'junior'")
+        ),
+        sa.Column(
+            "auth_provider",
+            sa.String(20),
+            nullable=False,
+            server_default=sa.text("'local'"),
+        ),
+        sa.Column(
+            "mfa_enabled", sa.Boolean, nullable=False, server_default=sa.text("false")
+        ),
         sa.Column("hourly_rate_cents", sa.Integer, nullable=True),
-        sa.Column("is_active", sa.Boolean, nullable=False, server_default=sa.text("true")),
-        sa.Column("created_at", sa.DateTime, nullable=False, server_default=sa.text("now()")),
-        sa.Column("updated_at", sa.DateTime, nullable=False, server_default=sa.text("now()")),
+        sa.Column(
+            "is_active", sa.Boolean, nullable=False, server_default=sa.text("true")
+        ),
+        sa.Column(
+            "created_at", sa.DateTime, nullable=False, server_default=sa.text("now()")
+        ),
+        sa.Column(
+            "updated_at", sa.DateTime, nullable=False, server_default=sa.text("now()")
+        ),
         sa.UniqueConstraint("tenant_id", "email", name="uq_users_tenant_email"),
     )
 
@@ -57,13 +101,29 @@ def upgrade() -> None:
     op.create_table(
         "audit_logs",
         sa.Column("id", sa.BigInteger, primary_key=True, autoincrement=True),
-        sa.Column("tenant_id", UUID(as_uuid=True), sa.ForeignKey("tenants.id", ondelete="RESTRICT"), nullable=False, index=True),
-        sa.Column("user_id", UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True),
+        sa.Column(
+            "tenant_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("tenants.id", ondelete="RESTRICT"),
+            nullable=False,
+            index=True,
+        ),
+        sa.Column(
+            "user_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
+            index=True,
+        ),
         sa.Column("action", sa.String(50), nullable=False, index=True),
         sa.Column("resource_type", sa.String(50), nullable=False, index=True),
         sa.Column("resource_id", sa.String(255), nullable=True),
-        sa.Column("metadata", JSONB, nullable=False, server_default=sa.text("'{}'::jsonb")),
-        sa.Column("created_at", sa.DateTime, nullable=False, server_default=sa.text("now()")),
+        sa.Column(
+            "metadata", JSONB, nullable=False, server_default=sa.text("'{}'::jsonb")
+        ),
+        sa.Column(
+            "created_at", sa.DateTime, nullable=False, server_default=sa.text("now()")
+        ),
     )
 
     # ── Row-Level Security ──

@@ -4,8 +4,9 @@ Time entries go through a lifecycle: draft → submitted → approved → invoic
 Rounding rules are configurable per entry (6/10/15 min or none).
 Protected by RLS via tenant_id.
 """
+
 import uuid
-from datetime import date, datetime
+from datetime import date
 
 from sqlalchemy import Boolean, Date, ForeignKey, Integer, String, Text, text
 from sqlalchemy.dialects.postgresql import UUID

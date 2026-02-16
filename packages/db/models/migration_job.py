@@ -3,6 +3,7 @@
 Each migration job represents a batch import from an external source.
 Protected by RLS via tenant_id.
 """
+
 import uuid
 from datetime import datetime
 

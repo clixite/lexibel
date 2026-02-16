@@ -1,11 +1,12 @@
 """LXB-011: Tests for MFA TOTP — setup, verify, login challenge."""
+
 import uuid
 
 import pyotp
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from apps.api.auth.jwt import create_access_token, create_mfa_token, verify_token
+from apps.api.auth.jwt import create_access_token, verify_token
 from apps.api.auth.mfa import generate_provisioning_uri, generate_secret, verify_totp
 from apps.api.auth.passwords import hash_password
 from apps.api.auth.router import register_stub_user

@@ -1,4 +1,5 @@
 """LXB-009: Tests for JWT authentication — login, refresh, /me, token validation."""
+
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -121,7 +122,9 @@ class TestJWT:
 @pytest.mark.asyncio
 async def test_login_success():
     """POST /auth/login with valid credentials returns JWT pair."""
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         resp = await client.post(
             "/api/v1/auth/login",
             json={"email": TEST_EMAIL, "password": TEST_PASSWORD},
@@ -142,7 +145,9 @@ async def test_login_success():
 @pytest.mark.asyncio
 async def test_login_wrong_password():
     """POST /auth/login with wrong password returns 401."""
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         resp = await client.post(
             "/api/v1/auth/login",
             json={"email": TEST_EMAIL, "password": "wrongpassword"},
@@ -154,7 +159,9 @@ async def test_login_wrong_password():
 @pytest.mark.asyncio
 async def test_login_unknown_email():
     """POST /auth/login with unknown email returns 401."""
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         resp = await client.post(
             "/api/v1/auth/login",
             json={"email": "unknown@nowhere.be", "password": "anything"},
@@ -165,7 +172,9 @@ async def test_login_unknown_email():
 @pytest.mark.asyncio
 async def test_refresh_success():
     """POST /auth/refresh with valid refresh token returns new access token."""
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         # Login first
         login_resp = await client.post(
             "/api/v1/auth/login",
@@ -187,7 +196,9 @@ async def test_refresh_success():
 @pytest.mark.asyncio
 async def test_refresh_with_access_token_fails():
     """POST /auth/refresh with an access token (wrong type) returns 401."""
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         login_resp = await client.post(
             "/api/v1/auth/login",
             json={"email": TEST_EMAIL, "password": TEST_PASSWORD},
@@ -204,7 +215,9 @@ async def test_refresh_with_access_token_fails():
 @pytest.mark.asyncio
 async def test_me_with_valid_jwt():
     """GET /auth/me with valid Bearer token returns user profile."""
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         login_resp = await client.post(
             "/api/v1/auth/login",
             json={"email": TEST_EMAIL, "password": TEST_PASSWORD},
@@ -226,7 +239,9 @@ async def test_me_with_valid_jwt():
 @pytest.mark.asyncio
 async def test_me_without_token():
     """GET /auth/me without Authorization header returns 401."""
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         resp = await client.get("/api/v1/auth/me")
     assert resp.status_code == 401
 
@@ -234,8 +249,12 @@ async def test_me_without_token():
 @pytest.mark.asyncio
 async def test_protected_route_with_jwt():
     """A protected route should accept JWT and extract tenant_id."""
-    access_token = create_access_token(TEST_USER_ID, TEST_TENANT_ID, TEST_ROLE, TEST_EMAIL)
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    access_token = create_access_token(
+        TEST_USER_ID, TEST_TENANT_ID, TEST_ROLE, TEST_EMAIL
+    )
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         resp = await client.get(
             "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {access_token}"},
@@ -256,7 +275,9 @@ async def test_expired_jwt_rejected():
         "exp": datetime.now(timezone.utc) - timedelta(hours=1),
     }
     expired_token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         resp = await client.get(
             "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {expired_token}"},

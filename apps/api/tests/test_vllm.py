@@ -1,15 +1,15 @@
 """Tests for vLLM service and LoRA registry."""
+
 import pytest
 
-from apps.api.services.vllm_service import VLLMService, StubVLLMService, VLLMResponse, ModelInfo
-from apps.api.services.lora_registry import LoRARegistry, LoRAAdapter
+from apps.api.services.vllm_service import StubVLLMService, VLLMResponse, ModelInfo
+from apps.api.services.lora_registry import LoRARegistry
 
 
 # ── StubVLLMService ──
 
 
 class TestStubVLLMService:
-
     def setup_method(self):
         self.service = StubVLLMService()
 
@@ -28,7 +28,9 @@ class TestStubVLLMService:
 
     @pytest.mark.asyncio
     async def test_generate_with_lora(self):
-        result = await self.service.generate("Résume.", model="mistral", lora_adapter="legal-fr")
+        result = await self.service.generate(
+            "Résume.", model="mistral", lora_adapter="legal-fr"
+        )
         assert isinstance(result, VLLMResponse)
         assert len(result.text) > 0
 
@@ -56,7 +58,6 @@ class TestStubVLLMService:
 
 
 class TestLoRARegistry:
-
     def setup_method(self):
         self.registry = LoRARegistry()
 
@@ -145,7 +146,9 @@ class TestLoRARegistry:
         assert adapter is None
 
     def test_reset(self):
-        self.registry.register_adapter(name="extra", lora_path="/x", task_types=["ANALYSIS"])
+        self.registry.register_adapter(
+            name="extra", lora_path="/x", task_types=["ANALYSIS"]
+        )
         assert len(self.registry.list_adapters()) == 6
         self.registry.reset()
         assert len(self.registry.list_adapters()) == 5
@@ -155,21 +158,23 @@ class TestLoRARegistry:
 
 
 class TestLLMGatewayVLLMBackend:
-
     def test_gateway_default_no_vllm(self):
         from apps.api.services.llm_gateway import LLMGateway
+
         gw = LLMGateway()
         assert gw._vllm_base_url == ""
         assert gw._vllm_available is None
 
     def test_gateway_with_vllm_url(self):
         from apps.api.services.llm_gateway import LLMGateway
+
         gw = LLMGateway(vllm_base_url="http://localhost:8001/v1")
         assert gw._vllm_base_url == "http://localhost:8001/v1"
 
     @pytest.mark.asyncio
     async def test_resolve_backend_fallback(self):
         from apps.api.services.llm_gateway import LLMGateway
+
         gw = LLMGateway(
             base_url="https://api.openai.com/v1",
             vllm_base_url="http://nonexistent:8001/v1",
@@ -181,6 +186,7 @@ class TestLLMGatewayVLLMBackend:
     @pytest.mark.asyncio
     async def test_resolve_backend_no_vllm_configured(self):
         from apps.api.services.llm_gateway import LLMGateway
+
         gw = LLMGateway(base_url="https://api.openai.com/v1")
         backend = await gw._resolve_backend()
         assert backend == "https://api.openai.com/v1"

@@ -1,7 +1,7 @@
 """Mobile-optimized endpoints — aggregated responses for mobile clients."""
+
 import uuid
 from datetime import datetime, timezone
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 

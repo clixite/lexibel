@@ -1,4 +1,5 @@
 """Alembic environment — async migration runner for LexiBel."""
+
 import asyncio
 import os
 from logging.config import fileConfig

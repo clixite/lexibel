@@ -1,4 +1,5 @@
 """Timeline service — append-only event store with pagination and filtering."""
+
 import uuid
 from datetime import datetime
 from typing import Optional

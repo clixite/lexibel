@@ -4,6 +4,7 @@ Templates: mise_en_demeure, conclusions, requete_unilaterale, citation.
 Merge case contacts, facts, legal references. Variable replacement with Jinja2.
 Output as text (DOCX generation via python-docx in production).
 """
+
 import os
 import re
 from dataclasses import dataclass, field
@@ -14,6 +15,7 @@ from typing import Optional
 @dataclass
 class AssembledDocument:
     """Result of document assembly."""
+
     template_name: str
     content: str  # Assembled text content
     format: str = "text"  # text, docx, pdf
@@ -24,35 +26,70 @@ class AssembledDocument:
 
 # ── Template definitions ──
 
-TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "infra", "templates")
+TEMPLATES_DIR = os.path.join(
+    os.path.dirname(__file__), "..", "..", "..", "..", "infra", "templates"
+)
 
 AVAILABLE_TEMPLATES = {
     "mise_en_demeure": {
         "name": "Mise en demeure",
         "description": "Lettre de mise en demeure formelle",
         "category": "correspondence",
-        "required_variables": ["sender_name", "sender_address", "recipient_name", "recipient_address", "facts", "demand", "deadline_days"],
+        "required_variables": [
+            "sender_name",
+            "sender_address",
+            "recipient_name",
+            "recipient_address",
+            "facts",
+            "demand",
+            "deadline_days",
+        ],
         "optional_variables": ["case_reference", "legal_basis", "city"],
     },
     "conclusions": {
         "name": "Conclusions",
         "description": "Conclusions judiciaires (premières conclusions ou conclusions additionnelles)",
         "category": "judicial",
-        "required_variables": ["court_name", "case_number", "plaintiff_name", "defendant_name", "facts", "legal_arguments", "demands"],
+        "required_variables": [
+            "court_name",
+            "case_number",
+            "plaintiff_name",
+            "defendant_name",
+            "facts",
+            "legal_arguments",
+            "demands",
+        ],
         "optional_variables": ["case_reference", "lawyer_name", "lawyer_bar"],
     },
     "requete_unilaterale": {
         "name": "Requête unilatérale",
         "description": "Requête unilatérale adressée au juge",
         "category": "judicial",
-        "required_variables": ["court_name", "requester_name", "requester_address", "object", "facts", "legal_basis", "demand"],
+        "required_variables": [
+            "court_name",
+            "requester_name",
+            "requester_address",
+            "object",
+            "facts",
+            "legal_basis",
+            "demand",
+        ],
         "optional_variables": ["case_reference", "urgency_reason"],
     },
     "citation": {
         "name": "Citation à comparaître",
         "description": "Citation à comparaître devant le tribunal",
         "category": "judicial",
-        "required_variables": ["court_name", "plaintiff_name", "defendant_name", "defendant_address", "hearing_date", "object", "facts", "demands"],
+        "required_variables": [
+            "court_name",
+            "plaintiff_name",
+            "defendant_name",
+            "defendant_address",
+            "hearing_date",
+            "object",
+            "facts",
+            "demands",
+        ],
         "optional_variables": ["case_reference", "bailiff_name"],
     },
 }
@@ -93,7 +130,6 @@ En conséquence, je vous mets formellement en demeure de donner suite à la pré
 Veuillez agréer, Madame, Monsieur, l'expression de mes salutations distinguées.
 
 {{ sender_name }}""",
-
     "conclusions": """CONCLUSIONS
 
 Devant le {{ court_name }}
@@ -123,7 +159,6 @@ Plaise au Tribunal de :
 {{ lawyer_name }}
 {% if lawyer_bar %}Avocat au Barreau de {{ lawyer_bar }}{% endif %}
 {% endif %}""",
-
     "requete_unilaterale": """REQUÊTE UNILATÉRALE
 
 À Monsieur/Madame le Président du {{ court_name }}
@@ -153,7 +188,6 @@ PAR CES MOTIFS,
 Le requérant demande respectueusement à Monsieur/Madame le Président de bien vouloir :
 
 {{ demand }}""",
-
     "citation": """CITATION À COMPARAÎTRE
 
 L'AN DEUX MILLE VINGT-SIX, le {{ date }}
@@ -210,7 +244,9 @@ class DocumentAssembler:
             AssembledDocument with rendered content
         """
         if template_name not in self._templates:
-            raise ValueError(f"Unknown template: {template_name}. Available: {list(self._templates.keys())}")
+            raise ValueError(
+                f"Unknown template: {template_name}. Available: {list(self._templates.keys())}"
+            )
 
         template_text = self._templates[template_name]
         template_info = AVAILABLE_TEMPLATES.get(template_name, {})

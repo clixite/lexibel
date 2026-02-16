@@ -1,4 +1,5 @@
 """Pydantic schemas for Search and AI endpoints."""
+
 import uuid
 from typing import Optional
 

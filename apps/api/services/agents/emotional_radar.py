@@ -4,15 +4,15 @@ Scores each event: COOPERATIVE, NEUTRAL, TENSE, HOSTILE, THREATENING.
 Detects escalation patterns over time. Flags conversations approaching
 legal thresholds (harassment, threats).
 """
+
 import re
 from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Optional
 
 
 @dataclass
 class EventTone:
     """Tone analysis for a single event."""
+
     event_id: str
     event_type: str  # email, call, note
     date: str
@@ -26,6 +26,7 @@ class EventTone:
 @dataclass
 class EmotionalProfile:
     """Emotional profile for a case's communications."""
+
     case_id: str
     overall_tone: str  # COOPERATIVE, NEUTRAL, TENSE, HOSTILE, THREATENING
     overall_score: float
@@ -42,7 +43,10 @@ class EmotionalProfile:
 COOPERATIVE_PATTERNS = [
     (re.compile(r"\b(merci|dank|thank|cordialement|bien\s+à\s+vous)\b", re.I), 0.3),
     (re.compile(r"\b(accord|akkoord|agree|d.accord|accepte)\b", re.I), 0.4),
-    (re.compile(r"\b(proposition|voorstel|propose|collaborer|samenwerken)\b", re.I), 0.3),
+    (
+        re.compile(r"\b(proposition|voorstel|propose|collaborer|samenwerken)\b", re.I),
+        0.3,
+    ),
     (re.compile(r"\b(résoudre|oplossen|solution|compromis)\b", re.I), 0.4),
     (re.compile(r"\b(volontiers|graag|heureux|enchanté)\b", re.I), 0.2),
 ]
@@ -73,10 +77,22 @@ THREATENING_PATTERNS = [
 
 # Legal threshold patterns
 LEGAL_THRESHOLD_PATTERNS = [
-    (re.compile(r"\b(menace|dreig|threaten)\b", re.I), "Potential threat detected (Art. 327-331 Code pénal)"),
-    (re.compile(r"\b(harcèlement|pesterij|stalking)\b", re.I), "Potential harassment (Art. 442bis Code pénal)"),
-    (re.compile(r"\b(calomnie|laster|defamation|diffamation)\b", re.I), "Potential defamation (Art. 443 Code pénal)"),
-    (re.compile(r"\b(violence|geweld|agress)\b", re.I), "Violence/aggression indicator"),
+    (
+        re.compile(r"\b(menace|dreig|threaten)\b", re.I),
+        "Potential threat detected (Art. 327-331 Code pénal)",
+    ),
+    (
+        re.compile(r"\b(harcèlement|pesterij|stalking)\b", re.I),
+        "Potential harassment (Art. 442bis Code pénal)",
+    ),
+    (
+        re.compile(r"\b(calomnie|laster|defamation|diffamation)\b", re.I),
+        "Potential defamation (Art. 443 Code pénal)",
+    ),
+    (
+        re.compile(r"\b(violence|geweld|agress)\b", re.I),
+        "Violence/aggression indicator",
+    ),
 ]
 
 
@@ -102,7 +118,12 @@ class EmotionalRadar:
         analyzed: list[EventTone] = []
 
         for event in events:
-            text = event.get("content") or event.get("body") or event.get("description") or ""
+            text = (
+                event.get("content")
+                or event.get("body")
+                or event.get("description")
+                or ""
+            )
             if not text.strip():
                 continue
 
@@ -139,7 +160,9 @@ class EmotionalRadar:
             events_analyzed=len(analyzed),
             flagged_events=flagged,
             all_events=analyzed,
-            recommendations=self._generate_recommendations(overall_tone, trend, escalation_risk, flagged),
+            recommendations=self._generate_recommendations(
+                overall_tone, trend, escalation_risk, flagged
+            ),
         )
 
         return profile
@@ -240,7 +263,9 @@ class EmotionalRadar:
         return "STABLE"
 
     @staticmethod
-    def _compute_escalation_risk(events: list[EventTone], flagged: list[EventTone]) -> str:
+    def _compute_escalation_risk(
+        events: list[EventTone], flagged: list[EventTone]
+    ) -> str:
         """Compute escalation risk level."""
         if len(flagged) >= 3:
             return "CRITICAL"
@@ -255,25 +280,37 @@ class EmotionalRadar:
         return "LOW"
 
     @staticmethod
-    def _generate_recommendations(tone: str, trend: str, risk: str, flagged: list[EventTone]) -> list[str]:
+    def _generate_recommendations(
+        tone: str, trend: str, risk: str, flagged: list[EventTone]
+    ) -> list[str]:
         """Generate recommendations based on emotional analysis."""
         recs = []
 
         if risk in ("HIGH", "CRITICAL"):
-            recs.append("Escalation detected. Consider involving a mediator or senior partner.")
+            recs.append(
+                "Escalation detected. Consider involving a mediator or senior partner."
+            )
 
         if flagged:
-            recs.append(f"{len(flagged)} communication(s) flagged for potential legal threshold violations.")
+            recs.append(
+                f"{len(flagged)} communication(s) flagged for potential legal threshold violations."
+            )
             for f in flagged[:3]:
                 recs.append(f"  - {f.flag_reason} (event: {f.event_id})")
 
         if trend == "DETERIORATING":
-            recs.append("Tone is deteriorating over time. Proactive outreach recommended.")
+            recs.append(
+                "Tone is deteriorating over time. Proactive outreach recommended."
+            )
 
         if tone == "THREATENING":
-            recs.append("URGENT: Threatening communications detected. Consider protective measures and document all interactions.")
+            recs.append(
+                "URGENT: Threatening communications detected. Consider protective measures and document all interactions."
+            )
 
         if not recs:
-            recs.append("Communication tone within normal parameters. No action required.")
+            recs.append(
+                "Communication tone within normal parameters. No action required."
+            )
 
         return recs

@@ -4,6 +4,7 @@ APPEND-ONLY for OBFG/OVB compliance. Corrections are reversal entries.
 Principle P2: No UPDATE, no DELETE at database level.
 Protected by RLS via tenant_id.
 """
+
 import uuid
 from datetime import date, datetime
 

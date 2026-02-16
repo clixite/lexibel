@@ -9,6 +9,7 @@ Categories:
 Rule-based + keyword scoring with confidence.
 Upgrade path to fine-tuned classifier model.
 """
+
 import re
 from dataclasses import dataclass, field
 
@@ -16,6 +17,7 @@ from dataclasses import dataclass, field
 @dataclass
 class Classification:
     """Email classification result."""
+
     category: str  # URGENT, NORMAL, INFO_ONLY, SPAM
     confidence: float  # 0.0 to 1.0
     reasons: list[str] = field(default_factory=list)
@@ -26,33 +28,60 @@ class Classification:
 
 URGENT_PATTERNS = [
     # Deadlines
-    (re.compile(r"\b(délai|deadline|échéance|date\s*limite)\b", re.I), "deadline_keyword"),
+    (
+        re.compile(r"\b(délai|deadline|échéance|date\s*limite)\b", re.I),
+        "deadline_keyword",
+    ),
     (re.compile(r"\b(urgent|urgence|immédiat|impératif)\b", re.I), "urgency_keyword"),
     # Court/tribunal
-    (re.compile(r"\b(tribunal|cour|audience|plaidoirie|comparution)\b", re.I), "court_keyword"),
-    (re.compile(r"\b(citation|assignation|signification|exploit)\b", re.I), "legal_process"),
-    (re.compile(r"\b(mise\s+en\s+demeure|sommation|injonction)\b", re.I), "formal_notice"),
+    (
+        re.compile(r"\b(tribunal|cour|audience|plaidoirie|comparution)\b", re.I),
+        "court_keyword",
+    ),
+    (
+        re.compile(r"\b(citation|assignation|signification|exploit)\b", re.I),
+        "legal_process",
+    ),
+    (
+        re.compile(r"\b(mise\s+en\s+demeure|sommation|injonction)\b", re.I),
+        "formal_notice",
+    ),
     # Appeals and deadlines
     (re.compile(r"\b(appel|opposition|cassation|pourvoi)\b", re.I), "appeal_keyword"),
-    (re.compile(r"\b(dernier\s+jour|expire|péremption|forclusion)\b", re.I), "expiry_keyword"),
+    (
+        re.compile(r"\b(dernier\s+jour|expire|péremption|forclusion)\b", re.I),
+        "expiry_keyword",
+    ),
     # Orders/judgments
     (re.compile(r"\b(jugement|arrêt|ordonnance|décision)\b", re.I), "judgment_keyword"),
     (re.compile(r"\b(notifi|signifi)\w*\b", re.I), "notification_keyword"),
 ]
 
 SPAM_PATTERNS = [
-    (re.compile(r"\b(unsubscribe|se\s+désabonner|uitschrijven)\b", re.I), "unsubscribe_link"),
+    (
+        re.compile(r"\b(unsubscribe|se\s+désabonner|uitschrijven)\b", re.I),
+        "unsubscribe_link",
+    ),
     (re.compile(r"\b(newsletter|bulletin|infolettre)\b", re.I), "newsletter"),
     (re.compile(r"\b(promo|discount|offre\s+spéciale|soldes)\b", re.I), "promotion"),
-    (re.compile(r"\b(win|gagner|congratulations|félicitations)\b", re.I), "lottery_scam"),
+    (
+        re.compile(r"\b(win|gagner|congratulations|félicitations)\b", re.I),
+        "lottery_scam",
+    ),
     (re.compile(r"\b(click\s+here|cliquez\s+ici)\b", re.I), "click_bait"),
     (re.compile(r"\b(viagra|crypto|bitcoin|invest)\b", re.I), "spam_keyword"),
     (re.compile(r"\bnoreply@\b", re.I), "noreply_sender"),
 ]
 
 INFO_PATTERNS = [
-    (re.compile(r"\b(FYI|pour\s+info|ter\s+info|à\s+titre\s+d.information)\b", re.I), "fyi_keyword"),
-    (re.compile(r"\b(veuillez\s+noter|please\s+note|nota\s+bene)\b", re.I), "note_keyword"),
+    (
+        re.compile(r"\b(FYI|pour\s+info|ter\s+info|à\s+titre\s+d.information)\b", re.I),
+        "fyi_keyword",
+    ),
+    (
+        re.compile(r"\b(veuillez\s+noter|please\s+note|nota\s+bene)\b", re.I),
+        "note_keyword",
+    ),
     (re.compile(r"\b(rappel|reminder|herinnering)\b", re.I), "reminder"),
     (re.compile(r"\b(mise\s+à\s+jour|update|actualisering)\b", re.I), "update"),
     (re.compile(r"\b(compte.rendu|rapport|verslag)\b", re.I), "report"),
@@ -60,13 +89,13 @@ INFO_PATTERNS = [
 
 # Known professional senders (Belgian legal ecosystem)
 PROFESSIONAL_SENDERS = [
-    re.compile(r"@just\.fgov\.be$", re.I),          # Belgian justice
-    re.compile(r"@juridat\.be$", re.I),              # Juridat
-    re.compile(r"@avocats\.be$", re.I),              # OBFG
-    re.compile(r"@balieantwerpen\.be$", re.I),       # OVB
-    re.compile(r"@dpa\.fgov\.be$", re.I),            # DPA
-    re.compile(r"@notaire\.be$", re.I),              # Notaries
-    re.compile(r"@huissier\.be$", re.I),             # Bailiffs
+    re.compile(r"@just\.fgov\.be$", re.I),  # Belgian justice
+    re.compile(r"@juridat\.be$", re.I),  # Juridat
+    re.compile(r"@avocats\.be$", re.I),  # OBFG
+    re.compile(r"@balieantwerpen\.be$", re.I),  # OVB
+    re.compile(r"@dpa\.fgov\.be$", re.I),  # DPA
+    re.compile(r"@notaire\.be$", re.I),  # Notaries
+    re.compile(r"@huissier\.be$", re.I),  # Bailiffs
 ]
 
 
