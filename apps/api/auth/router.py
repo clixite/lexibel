@@ -8,6 +8,7 @@ GET  /api/v1/auth/me      — current user profile from JWT
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
 
 from apps.api.auth.jwt import (
     TokenError,
@@ -25,34 +26,28 @@ from apps.api.auth.schemas import (
     UserProfile,
 )
 from apps.api.dependencies import get_current_user
+from packages.db.models.user import User
+from packages.db.session import async_session_factory
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 
-# ── Stub user store (replaced by DB queries in LXB-006+) ──
-# This allows login to work before the full user CRUD is built.
-_STUB_USERS: dict[str, dict] = {}
+async def _get_user_by_email(email: str) -> User | None:
+    """Look up an active user by email (bypasses RLS for login)."""
+    async with async_session_factory() as session:
+        result = await session.execute(
+            select(User).where(User.email == email, User.is_active.is_(True))
+        )
+        return result.scalar_one_or_none()
 
 
-def register_stub_user(
-    email: str,
-    hashed_password: str,
-    user_id: uuid.UUID,
-    tenant_id: uuid.UUID,
-    role: str = "junior",
-    mfa_enabled: bool = False,
-    mfa_secret: str | None = None,
-) -> None:
-    """Register a user in the stub store (for testing / bootstrap)."""
-    _STUB_USERS[email] = {
-        "user_id": user_id,
-        "tenant_id": tenant_id,
-        "email": email,
-        "hashed_password": hashed_password,
-        "role": role,
-        "mfa_enabled": mfa_enabled,
-        "mfa_secret": mfa_secret,
-    }
+async def _get_user_by_id(user_id: uuid.UUID) -> User | None:
+    """Look up an active user by ID (bypasses RLS for refresh)."""
+    async with async_session_factory() as session:
+        result = await session.execute(
+            select(User).where(User.id == user_id, User.is_active.is_(True))
+        )
+        return result.scalar_one_or_none()
 
 
 # ── Endpoints ──
@@ -66,8 +61,15 @@ async def login(body: LoginRequest) -> LoginResponse:
     short-lived mfa_token. The client must then call /mfa/challenge
     with the TOTP code to complete authentication.
     """
-    user = _STUB_USERS.get(body.email)
-    if user is None or not verify_password(body.password, user["hashed_password"]):
+    user = await _get_user_by_email(body.email)
+    if user is None or not user.hashed_password:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if not verify_password(body.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
@@ -75,24 +77,24 @@ async def login(body: LoginRequest) -> LoginResponse:
         )
 
     # If MFA is enabled, return MFA challenge instead of full tokens
-    if user.get("mfa_enabled") and user.get("mfa_secret"):
+    if user.mfa_enabled and user.mfa_secret:
         mfa_token = create_mfa_token(
-            user_id=user["user_id"],
-            tenant_id=user["tenant_id"],
-            email=user["email"],
+            user_id=user.id,
+            tenant_id=user.tenant_id,
+            email=user.email,
         )
         return LoginResponse(mfa_required=True, mfa_token=mfa_token)
 
     # No MFA — issue full JWT pair
     access_token = create_access_token(
-        user_id=user["user_id"],
-        tenant_id=user["tenant_id"],
-        role=user["role"],
-        email=user["email"],
+        user_id=user.id,
+        tenant_id=user.tenant_id,
+        role=user.role,
+        email=user.email,
     )
     refresh_token = create_refresh_token(
-        user_id=user["user_id"],
-        tenant_id=user["tenant_id"],
+        user_id=user.id,
+        tenant_id=user.tenant_id,
     )
 
     return LoginResponse(access_token=access_token, refresh_token=refresh_token)
@@ -111,21 +113,14 @@ async def refresh(body: RefreshRequest) -> AccessTokenResponse:
         )
 
     user_id = uuid.UUID(claims["sub"])
-    tenant_id = uuid.UUID(claims["tid"])
+    user = await _get_user_by_id(user_id)
 
-    # Look up user to get current role and email
-    user = None
-    for u in _STUB_USERS.values():
-        if u["user_id"] == user_id:
-            user = u
-            break
-
-    role = user["role"] if user else "junior"
-    email = user["email"] if user else ""
+    role = user.role if user else "junior"
+    email = user.email if user else ""
 
     access_token = create_access_token(
         user_id=user_id,
-        tenant_id=tenant_id,
+        tenant_id=uuid.UUID(claims["tid"]),
         role=role,
         email=email,
     )

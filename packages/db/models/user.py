@@ -60,10 +60,20 @@ class User(TenantMixin, TimestampMixin, Base):
         server_default=text("'local'"),
         comment="local | oidc | azure_ad",
     )
+    hashed_password: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+        comment="bcrypt hash — NULL for OIDC/Azure AD users",
+    )
     mfa_enabled: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,
         server_default=text("false"),
+    )
+    mfa_secret: Mapped[str | None] = mapped_column(
+        String(32),
+        nullable=True,
+        comment="TOTP secret for MFA (base32-encoded)",
     )
     hourly_rate_cents: Mapped[int | None] = mapped_column(
         Integer,

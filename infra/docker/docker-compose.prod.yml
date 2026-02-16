@@ -7,6 +7,9 @@ services:
       - "443:443"
     volumes:
       - ../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../nginx/lexibel.conf:/etc/nginx/conf.d/default.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/www/certbot:/var/www/certbot:ro
       - nginx_logs:/var/log/nginx
     depends_on:
       api:
@@ -167,6 +170,7 @@ services:
       VLLM_BASE_URL: ${VLLM_BASE_URL:-}
       SECRET_KEY: ${SECRET_KEY}
       LLM_API_KEY: ${LLM_API_KEY:-}
+      CORS_ORIGINS: https://lexibel.clixite.cloud
       ENVIRONMENT: production
     depends_on:
       postgres:
@@ -232,6 +236,10 @@ services:
       target: runner
     environment:
       NEXT_PUBLIC_API_URL: ${API_PUBLIC_URL:-https://lexibel.clixite.cloud/api/v1}
+      API_URL_INTERNAL: http://api:8000/api/v1
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-https://lexibel.clixite.cloud}
+      AUTH_TRUST_HOST: "true"
     deploy:
       resources:
         limits:

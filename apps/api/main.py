@@ -1,5 +1,9 @@
 """LexiBel API — FastAPI Application Factory"""
 
+import logging
+import os
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.gzip import GZipMiddleware
@@ -35,6 +39,40 @@ from apps.api.routers.agents import router as agents_router
 from apps.api.routers.admin import router as admin_router
 from apps.api.routers.mobile import router as mobile_router
 
+logger = logging.getLogger(__name__)
+
+
+def _get_cors_origins() -> list[str]:
+    """Build CORS origins from CORS_ORIGINS env var + defaults."""
+    defaults = ["http://localhost:3000", "https://lexibel.clixite.cloud"]
+    extra = os.getenv("CORS_ORIGINS", "")
+    if extra:
+        defaults.extend(o.strip() for o in extra.split(",") if o.strip())
+    return list(set(defaults))
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup and shutdown lifecycle."""
+    # Run Alembic migrations on startup
+    try:
+        from alembic.config import Config
+        from alembic import command
+
+        alembic_cfg = Config("alembic.ini")
+        command.upgrade(alembic_cfg, "head")
+        logger.info("Alembic migrations applied successfully")
+    except Exception as e:
+        logger.warning("Alembic migration skipped: %s", e)
+
+    # Bootstrap admin user
+    try:
+        await ensure_admin_user()
+    except Exception as e:
+        logger.warning("Admin bootstrap skipped: %s", e)
+
+    yield
+
 
 def create_app() -> FastAPI:
     app = FastAPI(
@@ -43,6 +81,7 @@ def create_app() -> FastAPI:
         version="0.1.0",
         docs_url="/api/v1/docs",
         openapi_url="/api/v1/openapi.json",
+        lifespan=lifespan,
     )
 
     # ── Middleware stack (outermost → innermost) ──
@@ -69,10 +108,7 @@ def create_app() -> FastAPI:
     # 1. CORS (outermost)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            "http://localhost:3000",
-            "https://lexibel.clixite.cloud",
-        ],
+        allow_origins=_get_cors_origins(),
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -104,11 +140,6 @@ def create_app() -> FastAPI:
     app.include_router(agents_router)
     app.include_router(admin_router)
     app.include_router(mobile_router)
-
-    # ── Startup ──
-    @app.on_event("startup")
-    async def startup():
-        ensure_admin_user()
 
     # ── Health check ──
     @app.get("/api/v1/health")

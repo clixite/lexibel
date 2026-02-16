@@ -116,6 +116,7 @@ services:
       NEO4J_PASSWORD: ${NEO4J_PASSWORD:-lexibel2026}
       VLLM_BASE_URL: ${VLLM_BASE_URL:-http://vllm:8000/v1}
       SECRET_KEY: ${SECRET_KEY:-dev-secret-change-me-in-production}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:3200}
       ENVIRONMENT: development
     depends_on:
       postgres:
@@ -163,6 +164,10 @@ services:
       - "3000:3000"
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
+      API_URL_INTERNAL: http://api:8000/api/v1
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-lexibel-nextauth-secret-change-me}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      AUTH_TRUST_HOST: "true"
     volumes:
       - ./apps/web/app:/app/apps/web/app
       - ./apps/web/lib:/app/apps/web/lib

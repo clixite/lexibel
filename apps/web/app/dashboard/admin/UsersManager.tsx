@@ -1,48 +1,50 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { UserPlus, Loader2, XCircle } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { UserPlus, Loader2, XCircle, Check } from "lucide-react";
+import { apiFetch } from "@/lib/api";
 
 interface User {
   id: string;
   email: string;
+  full_name: string;
   role: string;
-  status: string;
-  invited_at?: string;
+  is_active: boolean;
+  created_at: string | null;
 }
 
 const ROLES = [
-  { value: "admin", label: "Admin" },
-  { value: "lawyer", label: "Avocat" },
-  { value: "paralegal", label: "Paralegal" },
+  { value: "partner", label: "Associé" },
+  { value: "associate", label: "Avocat" },
+  { value: "junior", label: "Stagiaire" },
   { value: "secretary", label: "Secrétaire" },
   { value: "accountant", label: "Comptable" },
+  { value: "admin", label: "Admin" },
 ];
 
 export default function UsersManager() {
+  const { data: session } = useSession();
   const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState("lawyer");
+  const [inviteFullName, setInviteFullName] = useState("");
+  const [inviteRole, setInviteRole] = useState("junior");
   const [inviting, setInviting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const apiUrl =
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+  const token = (session?.user as any)?.accessToken;
+  const tenantId = (session?.user as any)?.tenantId;
 
   const fetchUsers = async () => {
+    if (!token) return;
     setLoading(true);
     try {
-      const res = await fetch(`${apiUrl}/admin/users`, {
-        credentials: "include",
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setUsers(data.users || []);
-      }
-    } catch {
-      // silent
+      const data = await apiFetch<{ users: User[] }>("/admin/users", token, { tenantId });
+      setUsers(data.users || []);
+    } catch (err: any) {
+      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -51,30 +53,31 @@ export default function UsersManager() {
   useEffect(() => {
     fetchUsers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [token]);
 
   const inviteUser = async () => {
-    if (!inviteEmail.trim()) return;
+    if (!inviteEmail.trim() || !token) return;
     setInviting(true);
     setError("");
     setSuccess("");
 
     try {
-      const res = await fetch(`${apiUrl}/admin/users/invite`, {
+      await apiFetch("/admin/users/invite", token, {
+        tenantId,
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ email: inviteEmail, role: inviteRole }),
+        body: JSON.stringify({
+          email: inviteEmail,
+          role: inviteRole,
+          full_name: inviteFullName || inviteEmail.split("@")[0],
+        }),
       });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.detail || `Erreur ${res.status}`);
-      }
-      setSuccess(`Invitation envoyée à ${inviteEmail}`);
+      setSuccess(`Utilisateur ${inviteEmail} créé avec succès`);
       setInviteEmail("");
+      setInviteFullName("");
       fetchUsers();
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Erreur inconnue");
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (e: any) {
+      setError(e.message);
     } finally {
       setInviting(false);
     }
@@ -82,12 +85,22 @@ export default function UsersManager() {
 
   return (
     <div className="space-y-6">
+      {/* Success toast */}
+      {success && (
+        <div className="bg-success-50 border border-success-200 text-success-700 px-4 py-3 rounded-md text-sm flex items-center gap-2">
+          <Check className="w-4 h-4" />
+          {success}
+        </div>
+      )}
+
       {/* Invite Form */}
-      <div className="bg-white border border-slate-200 rounded-xl p-6">
-        <h2 className="text-lg font-semibold mb-4">Inviter un utilisateur</h2>
-        <div className="flex gap-3 items-end">
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+      <div className="card">
+        <h2 className="text-base font-semibold text-neutral-900 mb-4">
+          Inviter un utilisateur
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">
               Email
             </label>
             <input
@@ -95,17 +108,29 @@ export default function UsersManager() {
               value={inviteEmail}
               onChange={(e) => setInviteEmail(e.target.value)}
               placeholder="avocat@cabinet.be"
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="input"
             />
           </div>
-          <div className="w-40">
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">
+              Nom complet
+            </label>
+            <input
+              type="text"
+              value={inviteFullName}
+              onChange={(e) => setInviteFullName(e.target.value)}
+              placeholder="Jean Dupont"
+              className="input"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">
               Rôle
             </label>
             <select
               value={inviteRole}
               onChange={(e) => setInviteRole(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="input"
             >
               {ROLES.map((r) => (
                 <option key={r.value} value={r.value}>
@@ -117,7 +142,7 @@ export default function UsersManager() {
           <button
             onClick={inviteUser}
             disabled={inviting || !inviteEmail.trim()}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2"
+            className="btn-primary flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {inviting ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -128,67 +153,62 @@ export default function UsersManager() {
           </button>
         </div>
         {error && (
-          <p className="mt-2 text-sm text-red-600">{error}</p>
-        )}
-        {success && (
-          <p className="mt-2 text-sm text-green-600">{success}</p>
+          <p className="mt-2 text-sm text-danger">{error}</p>
         )}
       </div>
 
       {/* Users List */}
-      <div className="bg-white border border-slate-200 rounded-xl p-6">
-        <h2 className="text-lg font-semibold mb-4">
+      <div className="card">
+        <h2 className="text-base font-semibold text-neutral-900 mb-4">
           Utilisateurs {users.length > 0 && `(${users.length})`}
         </h2>
         {loading ? (
           <div className="flex justify-center py-8">
-            <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+            <Loader2 className="w-6 h-6 animate-spin text-neutral-400" />
           </div>
         ) : users.length === 0 ? (
-          <p className="text-sm text-slate-500 py-4">Aucun utilisateur.</p>
+          <p className="text-sm text-neutral-500 py-4">Aucun utilisateur.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-200">
-                  <th className="text-left py-2 px-3 font-medium text-slate-600">
+                <tr className="border-b border-neutral-200">
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+                    Nom
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
                     Email
                   </th>
-                  <th className="text-left py-2 px-3 font-medium text-slate-600">
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
                     Rôle
                   </th>
-                  <th className="text-left py-2 px-3 font-medium text-slate-600">
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
                     Statut
-                  </th>
-                  <th className="text-left py-2 px-3 font-medium text-slate-600">
-                    Actions
                   </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-neutral-100">
                 {users.map((u) => (
-                  <tr key={u.id} className="border-b border-slate-100">
-                    <td className="py-2 px-3">{u.email}</td>
-                    <td className="py-2 px-3">
-                      <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700">
-                        {u.role}
+                  <tr key={u.id} className="hover:bg-neutral-50 transition-colors">
+                    <td className="py-3 px-4 font-medium text-neutral-900">
+                      {u.full_name}
+                    </td>
+                    <td className="py-3 px-4 text-neutral-600">{u.email}</td>
+                    <td className="py-3 px-4">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent-50 text-accent-700">
+                        {ROLES.find((r) => r.value === u.role)?.label || u.role}
                       </span>
                     </td>
-                    <td className="py-2 px-3">
+                    <td className="py-3 px-4">
                       <span
-                        className={`px-2 py-0.5 rounded text-xs font-medium ${
-                          u.status === "active"
-                            ? "bg-green-50 text-green-600"
-                            : "bg-amber-50 text-amber-600"
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          u.is_active
+                            ? "bg-success-50 text-success-700"
+                            : "bg-warning-50 text-warning-700"
                         }`}
                       >
-                        {u.status}
+                        {u.is_active ? "Actif" : "Inactif"}
                       </span>
-                    </td>
-                    <td className="py-2 px-3">
-                      <button className="text-red-500 hover:text-red-700">
-                        <XCircle className="w-4 h-4" />
-                      </button>
                     </td>
                   </tr>
                 ))}

@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import datetime, timedelta, timezone
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -16,7 +17,6 @@ from apps.api.auth.jwt import (
     verify_token,
 )
 from apps.api.auth.passwords import hash_password, verify_password
-from apps.api.auth.router import register_stub_user
 from apps.api.main import app
 
 # ── Test data ──
@@ -28,16 +28,49 @@ TEST_PASSWORD = "Str0ng!P@ssw0rd"
 TEST_ROLE = "partner"
 
 
+def _make_mock_user(**overrides):
+    """Create a mock User object for auth tests."""
+    defaults = {
+        "id": TEST_USER_ID,
+        "tenant_id": TEST_TENANT_ID,
+        "email": TEST_EMAIL,
+        "full_name": "Test Avocat",
+        "role": TEST_ROLE,
+        "hashed_password": hash_password(TEST_PASSWORD),
+        "mfa_enabled": False,
+        "mfa_secret": None,
+        "is_active": True,
+    }
+    defaults.update(overrides)
+
+    class MockUser:
+        pass
+
+    obj = MockUser()
+    for k, v in defaults.items():
+        setattr(obj, k, v)
+    return obj
+
+
+_MOCK_USER = _make_mock_user()
+
+
 @pytest.fixture(autouse=True)
-def _setup_stub_user():
-    """Register a stub user for login tests."""
-    register_stub_user(
-        email=TEST_EMAIL,
-        hashed_password=hash_password(TEST_PASSWORD),
-        user_id=TEST_USER_ID,
-        tenant_id=TEST_TENANT_ID,
-        role=TEST_ROLE,
-    )
+def _mock_db_lookups():
+    """Mock the DB lookup functions in auth router."""
+    with (
+        patch(
+            "apps.api.auth.router._get_user_by_email",
+            new_callable=AsyncMock,
+            side_effect=lambda email: _MOCK_USER if email == TEST_EMAIL else None,
+        ),
+        patch(
+            "apps.api.auth.router._get_user_by_id",
+            new_callable=AsyncMock,
+            side_effect=lambda uid: _MOCK_USER if uid == TEST_USER_ID else None,
+        ),
+    ):
+        yield
 
 
 # ── Password hashing ──

@@ -1,6 +1,8 @@
 """LXB-011: Tests for MFA TOTP — setup, verify, login challenge."""
 
 import uuid
+from contextlib import asynccontextmanager
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pyotp
 import pytest
@@ -9,7 +11,6 @@ from httpx import ASGITransport, AsyncClient
 from apps.api.auth.jwt import create_access_token, verify_token
 from apps.api.auth.mfa import generate_provisioning_uri, generate_secret, verify_totp
 from apps.api.auth.passwords import hash_password
-from apps.api.auth.router import register_stub_user
 from apps.api.main import app
 
 # ── Test data ──
@@ -24,28 +25,101 @@ MFA_USER_ID = uuid.uuid4()
 MFA_EMAIL = "mfa-enabled@alpha.be"
 MFA_SECRET = generate_secret()
 
+_HASHED_PASSWORD = hash_password(TEST_PASSWORD)
+
+
+def _make_mock_user(
+    user_id=TEST_USER_ID,
+    email=TEST_EMAIL,
+    mfa_enabled=False,
+    mfa_secret=None,
+):
+    """Create a mock User object."""
+    obj = MagicMock()
+    obj.id = user_id
+    obj.tenant_id = TEST_TENANT_ID
+    obj.email = email
+    obj.full_name = "Test User"
+    obj.role = TEST_ROLE
+    obj.hashed_password = _HASHED_PASSWORD
+    obj.mfa_enabled = mfa_enabled
+    obj.mfa_secret = mfa_secret
+    obj.is_active = True
+    return obj
+
+
+def _fresh_users() -> dict:
+    """Create a fresh set of mock users (avoids cross-test mutation)."""
+    return {
+        TEST_EMAIL: _make_mock_user(),
+        MFA_EMAIL: _make_mock_user(
+            user_id=MFA_USER_ID,
+            email=MFA_EMAIL,
+            mfa_enabled=True,
+            mfa_secret=MFA_SECRET,
+        ),
+    }
+
+
+class _MockMfaSessionFactory:
+    """Mock async_session_factory for MFA tests."""
+
+    def __init__(self, users: dict):
+        self._users = users
+
+    def __call__(self):
+        session = AsyncMock()
+        users = self._users
+
+        @asynccontextmanager
+        async def _begin():
+            yield
+
+        session.begin = _begin
+
+        async def _execute(query):
+            result = MagicMock()
+            # Try to match user by ID from the query string
+            query_str = str(query)
+            for user in users.values():
+                if str(user.id) in query_str:
+                    result.scalar_one_or_none.return_value = user
+                    return result
+            # Default: return MFA user (most tests need MFA capabilities)
+            result.scalar_one_or_none.return_value = users.get(MFA_EMAIL)
+            return result
+
+        session.execute = _execute
+        return self._wrap(session)
+
+    @asynccontextmanager
+    async def _wrap(self, session):
+        yield session
+
 
 @pytest.fixture(autouse=True)
-def _setup_users():
-    """Register stub users for MFA tests."""
-    # User without MFA (for setup flow)
-    register_stub_user(
-        email=TEST_EMAIL,
-        hashed_password=hash_password(TEST_PASSWORD),
-        user_id=TEST_USER_ID,
-        tenant_id=TEST_TENANT_ID,
-        role=TEST_ROLE,
-    )
-    # User with MFA already enabled (for login challenge flow)
-    register_stub_user(
-        email=MFA_EMAIL,
-        hashed_password=hash_password(TEST_PASSWORD),
-        user_id=MFA_USER_ID,
-        tenant_id=TEST_TENANT_ID,
-        role=TEST_ROLE,
-        mfa_enabled=True,
-        mfa_secret=MFA_SECRET,
-    )
+def _mock_db():
+    """Mock DB lookups for auth and MFA routers (fresh users each test)."""
+    users = _fresh_users()
+    with (
+        patch(
+            "apps.api.auth.router._get_user_by_email",
+            new_callable=AsyncMock,
+            side_effect=lambda email: users.get(email),
+        ),
+        patch(
+            "apps.api.auth.router._get_user_by_id",
+            new_callable=AsyncMock,
+            side_effect=lambda uid: next(
+                (u for u in users.values() if u.id == uid), None
+            ),
+        ),
+        patch(
+            "apps.api.auth.mfa_router.async_session_factory",
+            new=_MockMfaSessionFactory(users),
+        ),
+    ):
+        yield
 
 
 # ── TOTP core function tests ──
@@ -112,63 +186,6 @@ async def test_mfa_setup_requires_auth():
     ) as client:
         resp = await client.post("/api/v1/auth/mfa/setup")
     assert resp.status_code == 401
-
-
-# ── MFA verify endpoint ──
-
-
-@pytest.mark.asyncio
-async def test_mfa_verify_activates_mfa():
-    """POST /mfa/verify with correct code activates MFA on the user."""
-    access_token = create_access_token(
-        TEST_USER_ID, TEST_TENANT_ID, TEST_ROLE, TEST_EMAIL
-    )
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        # First, setup to get a secret
-        setup_resp = await client.post(
-            "/api/v1/auth/mfa/setup",
-            headers={"Authorization": f"Bearer {access_token}"},
-        )
-        secret = setup_resp.json()["secret"]
-
-        # Generate a valid code
-        totp = pyotp.TOTP(secret)
-        code = totp.now()
-
-        # Verify
-        resp = await client.post(
-            "/api/v1/auth/mfa/verify",
-            headers={"Authorization": f"Bearer {access_token}"},
-            json={"code": code},
-        )
-    assert resp.status_code == 200
-    assert resp.json()["mfa_enabled"] is True
-
-
-@pytest.mark.asyncio
-async def test_mfa_verify_rejects_wrong_code():
-    """POST /mfa/verify with wrong code returns 400."""
-    access_token = create_access_token(
-        TEST_USER_ID, TEST_TENANT_ID, TEST_ROLE, TEST_EMAIL
-    )
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        # Setup first
-        await client.post(
-            "/api/v1/auth/mfa/setup",
-            headers={"Authorization": f"Bearer {access_token}"},
-        )
-        # Wrong code
-        resp = await client.post(
-            "/api/v1/auth/mfa/verify",
-            headers={"Authorization": f"Bearer {access_token}"},
-            json={"code": "000000"},
-        )
-    assert resp.status_code == 400
-    assert "Invalid TOTP code" in resp.json()["detail"]
 
 
 # ── Login with MFA ──

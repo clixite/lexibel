@@ -9,6 +9,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
+from sqlalchemy import select
 
 from apps.api.auth.jwt import (
     TokenError,
@@ -17,8 +18,9 @@ from apps.api.auth.jwt import (
     verify_token,
 )
 from apps.api.auth.mfa import generate_provisioning_uri, generate_secret, verify_totp
-from apps.api.auth.router import _STUB_USERS
 from apps.api.dependencies import get_current_user
+from packages.db.models.user import User
+from packages.db.session import async_session_factory
 
 mfa_router = APIRouter(prefix="/api/v1/auth/mfa", tags=["mfa"])
 
@@ -66,10 +68,15 @@ async def mfa_setup(
     email = current_user["email"]
     uri = generate_provisioning_uri(email, secret)
 
-    # Store the pending secret on the stub user
-    user = _STUB_USERS.get(email)
-    if user:
-        user["mfa_secret"] = secret
+    # Store the pending secret on the user record
+    async with async_session_factory() as session:
+        async with session.begin():
+            result = await session.execute(
+                select(User).where(User.id == current_user["user_id"])
+            )
+            user = result.scalar_one_or_none()
+            if user:
+                user.mfa_secret = secret
 
     return MfaSetupResponse(secret=secret, provisioning_uri=uri)
 
@@ -84,23 +91,27 @@ async def mfa_verify(
     Must be called after /setup. The user scans the QR code with their
     authenticator app, then submits the 6-digit code here.
     """
-    email = current_user["email"]
-    user = _STUB_USERS.get(email)
+    async with async_session_factory() as session:
+        async with session.begin():
+            result = await session.execute(
+                select(User).where(User.id == current_user["user_id"])
+            )
+            user = result.scalar_one_or_none()
 
-    if not user or not user.get("mfa_secret"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="MFA setup not initiated. Call /mfa/setup first.",
-        )
+            if not user or not user.mfa_secret:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="MFA setup not initiated. Call /mfa/setup first.",
+                )
 
-    if not verify_totp(user["mfa_secret"], body.code):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid TOTP code",
-        )
+            if not verify_totp(user.mfa_secret, body.code):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid TOTP code",
+                )
 
-    # Activate MFA
-    user["mfa_enabled"] = True
+            # Activate MFA
+            user.mfa_enabled = True
 
     return MfaVerifyResponse(mfa_enabled=True)
 
@@ -126,19 +137,17 @@ async def mfa_challenge(body: MfaChallengeRequest) -> MfaChallengeResponse:
     email = claims.get("email", "")
 
     # Look up user to get MFA secret
-    user = None
-    for u in _STUB_USERS.values():
-        if u["user_id"] == user_id:
-            user = u
-            break
+    async with async_session_factory() as session:
+        result = await session.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
 
-    if not user or not user.get("mfa_secret"):
+    if not user or not user.mfa_secret:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="MFA not configured for this user",
         )
 
-    if not verify_totp(user["mfa_secret"], body.code):
+    if not verify_totp(user.mfa_secret, body.code):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid TOTP code",
@@ -148,7 +157,7 @@ async def mfa_challenge(body: MfaChallengeRequest) -> MfaChallengeResponse:
     access_token = create_access_token(
         user_id=user_id,
         tenant_id=tenant_id,
-        role=user["role"],
+        role=user.role,
         email=email,
     )
     refresh_token = create_refresh_token(

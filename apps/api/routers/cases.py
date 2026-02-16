@@ -98,6 +98,69 @@ async def update_case(
     return CaseResponse.model_validate(case)
 
 
+@router.get("/{case_id}/contacts")
+async def get_case_contacts(
+    case_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db_session),
+) -> dict:
+    """List contacts linked to a case via case_contacts junction."""
+    from sqlalchemy import select as sa_select
+
+    from packages.db.models.case_contact import CaseContact
+    from packages.db.models.contact import Contact
+
+    result = await session.execute(
+        sa_select(Contact, CaseContact.role)
+        .join(CaseContact, CaseContact.contact_id == Contact.id)
+        .where(CaseContact.case_id == case_id)
+    )
+    rows = result.all()
+    return {
+        "items": [
+            {
+                "id": str(contact.id),
+                "full_name": contact.full_name,
+                "type": contact.type,
+                "email": contact.email,
+                "phone_e164": contact.phone_e164,
+                "role": role,
+            }
+            for contact, role in rows
+        ]
+    }
+
+
+@router.post("/{case_id}/contacts", status_code=status.HTTP_201_CREATED)
+async def link_case_contact(
+    case_id: uuid.UUID,
+    body: dict,
+    tenant_id: uuid.UUID = Depends(get_current_tenant),
+    session: AsyncSession = Depends(get_db_session),
+) -> dict:
+    """Link a contact to a case."""
+    from packages.db.models.case_contact import CaseContact
+
+    contact_id = body.get("contact_id")
+    role = body.get("role", "client")
+    if not contact_id:
+        raise HTTPException(status_code=400, detail="contact_id required")
+
+    link = CaseContact(
+        case_id=case_id,
+        contact_id=uuid.UUID(contact_id),
+        tenant_id=tenant_id,
+        role=role,
+    )
+    session.add(link)
+    await session.flush()
+    return {
+        "message": "Contact linked",
+        "case_id": str(case_id),
+        "contact_id": contact_id,
+        "role": role,
+    }
+
+
 @router.post("/{case_id}/conflict-check")
 async def conflict_check(
     case_id: uuid.UUID,

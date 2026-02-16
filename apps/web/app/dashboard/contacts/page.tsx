@@ -2,7 +2,8 @@
 
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
-import { Plus, Loader2, Search, UserX, Mail, Phone } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Plus, Loader2, Search, UserX, Mail, Phone, X, Check } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 
 interface Contact {
@@ -11,6 +12,7 @@ interface Contact {
   type: string;
   email: string | null;
   phone_e164: string | null;
+  bce_number: string | null;
 }
 
 interface ContactListResponse {
@@ -32,21 +34,70 @@ const TYPE_LABELS: Record<string, string> = {
 
 export default function ContactsPage() {
   const { data: session } = useSession();
+  const router = useRouter();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
+  const [showModal, setShowModal] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [success, setSuccess] = useState<string | null>(null);
 
-  useEffect(() => {
-    const token = (session?.user as any)?.accessToken;
+  const [form, setForm] = useState({
+    type: "natural" as "natural" | "legal",
+    full_name: "",
+    email: "",
+    phone_e164: "",
+    bce_number: "",
+    language: "fr",
+  });
+
+  const token = (session?.user as any)?.accessToken;
+  const tenantId = (session?.user as any)?.tenantId;
+
+  const loadContacts = () => {
     if (!token) return;
-
-    apiFetch<ContactListResponse>("/contacts", token)
+    setLoading(true);
+    apiFetch<ContactListResponse>("/contacts", token, { tenantId })
       .then((data) => setContacts(data.items))
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadContacts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
+
+  const handleCreate = async () => {
+    if (!token || !form.full_name.trim()) return;
+    setCreating(true);
+    setError(null);
+    try {
+      await apiFetch("/contacts", token, {
+        tenantId,
+        method: "POST",
+        body: JSON.stringify({
+          type: form.type,
+          full_name: form.full_name,
+          email: form.email || null,
+          phone_e164: form.phone_e164 || null,
+          bce_number: form.type === "legal" ? form.bce_number || null : null,
+          language: form.language,
+        }),
+      });
+      setSuccess("Contact créé avec succès");
+      setShowModal(false);
+      setForm({ type: "natural", full_name: "", email: "", phone_e164: "", bce_number: "", language: "fr" });
+      loadContacts();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const filtered = contacts.filter((c) => {
     if (typeFilter && c.type !== typeFilter) return false;
@@ -60,14 +111,6 @@ export default function ContactsPage() {
     return true;
   });
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-accent" />
-      </div>
-    );
-  }
-
   const getInitials = (name: string) => {
     return name
       .split(" ")
@@ -77,8 +120,24 @@ export default function ContactsPage() {
       .toUpperCase();
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-accent" />
+      </div>
+    );
+  }
+
   return (
     <div>
+      {/* Success toast */}
+      {success && (
+        <div className="fixed top-4 right-4 z-50 bg-success-50 border border-success-200 text-success-700 px-4 py-3 rounded-md text-sm flex items-center gap-2 shadow-lg">
+          <Check className="w-4 h-4" />
+          {success}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
@@ -87,7 +146,10 @@ export default function ContactsPage() {
             {contacts.length}
           </span>
         </div>
-        <button className="btn-primary flex items-center gap-2">
+        <button
+          onClick={() => setShowModal(true)}
+          className="btn-primary flex items-center gap-2"
+        >
           <Plus className="w-4 h-4" />
           Nouveau contact
         </button>
@@ -132,6 +194,118 @@ export default function ContactsPage() {
         </div>
       )}
 
+      {/* Create Modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-semibold text-neutral-900">
+                Nouveau contact
+              </h2>
+              <button
+                onClick={() => setShowModal(false)}
+                className="text-neutral-400 hover:text-neutral-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  Type
+                </label>
+                <div className="flex gap-3">
+                  {[
+                    { value: "natural", label: "Personne physique" },
+                    { value: "legal", label: "Personne morale" },
+                  ].map((t) => (
+                    <button
+                      key={t.value}
+                      onClick={() => setForm((f) => ({ ...f, type: t.value as "natural" | "legal" }))}
+                      className={`flex-1 px-4 py-2 rounded-md text-sm font-medium border transition-all ${
+                        form.type === t.value
+                          ? "border-accent bg-accent-50 text-accent-700"
+                          : "border-neutral-200 text-neutral-600 hover:border-neutral-300"
+                      }`}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  {form.type === "natural" ? "Nom complet" : "Raison sociale"}
+                </label>
+                <input
+                  type="text"
+                  value={form.full_name}
+                  onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))}
+                  placeholder={form.type === "natural" ? "Jean Dupont" : "SA Immobel"}
+                  className="input"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                    placeholder="contact@example.be"
+                    className="input"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                    Téléphone
+                  </label>
+                  <input
+                    type="tel"
+                    value={form.phone_e164}
+                    onChange={(e) => setForm((f) => ({ ...f, phone_e164: e.target.value }))}
+                    placeholder="+32470123456"
+                    className="input"
+                  />
+                </div>
+              </div>
+              {form.type === "legal" && (
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                    Numéro BCE
+                  </label>
+                  <input
+                    type="text"
+                    value={form.bce_number}
+                    onChange={(e) => setForm((f) => ({ ...f, bce_number: e.target.value }))}
+                    placeholder="0123.456.789"
+                    className="input"
+                  />
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => setShowModal(false)}
+                className="px-4 py-2 text-sm font-medium text-neutral-600 bg-neutral-100 rounded-md hover:bg-neutral-200 transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleCreate}
+                disabled={creating || !form.full_name.trim()}
+                className="btn-primary flex items-center gap-2 disabled:opacity-50"
+              >
+                {creating && <Loader2 className="w-4 h-4 animate-spin" />}
+                Créer le contact
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Table */}
       <div className="bg-white rounded-lg shadow-subtle overflow-hidden">
         <table className="w-full">
@@ -147,7 +321,7 @@ export default function ContactsPage() {
                 Email
               </th>
               <th className="text-left px-6 py-3 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
-                T&eacute;l&eacute;phone
+                Téléphone
               </th>
             </tr>
           </thead>
@@ -157,7 +331,7 @@ export default function ContactsPage() {
                 <td colSpan={4} className="px-6 py-16 text-center">
                   <UserX className="w-12 h-12 text-neutral-300 mx-auto mb-3" />
                   <p className="text-neutral-500 font-medium">
-                    Aucun contact trouv&eacute;
+                    Aucun contact trouvé
                   </p>
                   <p className="text-neutral-400 text-sm mt-1">
                     {searchQuery || typeFilter
@@ -165,7 +339,10 @@ export default function ContactsPage() {
                       : "Ajoutez votre premier contact pour commencer."}
                   </p>
                   {!searchQuery && !typeFilter && (
-                    <button className="btn-primary mt-4">
+                    <button
+                      onClick={() => setShowModal(true)}
+                      className="btn-primary mt-4"
+                    >
                       <Plus className="w-4 h-4 inline mr-1.5" />
                       Nouveau contact
                     </button>
@@ -176,6 +353,7 @@ export default function ContactsPage() {
               filtered.map((c) => (
                 <tr
                   key={c.id}
+                  onClick={() => router.push(`/dashboard/contacts/${c.id}`)}
                   className="hover:bg-neutral-50 transition-colors duration-150 cursor-pointer"
                 >
                   <td className="px-6 py-4">
@@ -199,26 +377,20 @@ export default function ContactsPage() {
                   </td>
                   <td className="px-6 py-4">
                     {c.email ? (
-                      <a
-                        href={`mailto:${c.email}`}
-                        className="flex items-center gap-1.5 text-sm text-accent hover:text-accent-600 transition-colors"
-                      >
+                      <span className="flex items-center gap-1.5 text-sm text-accent">
                         <Mail className="w-3.5 h-3.5" />
                         {c.email}
-                      </a>
+                      </span>
                     ) : (
                       <span className="text-sm text-neutral-400">&mdash;</span>
                     )}
                   </td>
                   <td className="px-6 py-4">
                     {c.phone_e164 ? (
-                      <a
-                        href={`tel:${c.phone_e164}`}
-                        className="flex items-center gap-1.5 text-sm text-accent hover:text-accent-600 transition-colors"
-                      >
+                      <span className="flex items-center gap-1.5 text-sm text-accent">
                         <Phone className="w-3.5 h-3.5" />
                         {c.phone_e164}
-                      </a>
+                      </span>
                     ) : (
                       <span className="text-sm text-neutral-400">&mdash;</span>
                     )}

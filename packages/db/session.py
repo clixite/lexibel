@@ -4,6 +4,7 @@ Every database session sets `app.current_tenant_id` via SET LOCAL,
 which scopes all RLS-enabled queries to a single tenant.
 """
 
+import os
 import uuid
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -15,11 +16,12 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy import text
 
-# Default dev DSN — overridden by environment variable in production.
+# Default dev DSN — overridden by DATABASE_URL environment variable in production.
 _DEFAULT_DSN = "postgresql+asyncpg://lexibel:lexibel_dev_2026@localhost:5432/lexibel"
+_DSN = os.getenv("DATABASE_URL", _DEFAULT_DSN)
 
 engine = create_async_engine(
-    _DEFAULT_DSN,
+    _DSN,
     echo=False,
     pool_size=10,
     max_overflow=20,
