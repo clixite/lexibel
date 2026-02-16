@@ -42,6 +42,23 @@ services:
       - qdrant_data:/qdrant/storage
     restart: unless-stopped
 
+  # ── Neo4j (Knowledge Graph) ──
+  neo4j:
+    image: neo4j:5-community
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-lexibel2026}
+    volumes:
+      - neo4j_data:/data
+    healthcheck:
+      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "lexibel2026", "RETURN 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
   # ── MinIO (S3-compatible) ──
   minio:
     image: minio/minio:latest
@@ -69,6 +86,9 @@ services:
       REDIS_URL: redis://redis:6379/0
       QDRANT_URL: http://qdrant:6333
       MINIO_ENDPOINT: minio:9000
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-lexibel2026}
       SECRET_KEY: ${SECRET_KEY:-dev-secret-change-me-in-production}
       ENVIRONMENT: development
     depends_on:
@@ -127,4 +147,5 @@ volumes:
   postgres_data:
   redis_data:
   qdrant_data:
+  neo4j_data:
   minio_data:

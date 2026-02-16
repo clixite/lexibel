@@ -13,6 +13,7 @@ import {
   FileText,
   Inbox,
   Upload,
+  Share2,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -23,6 +24,7 @@ const NAV_ITEMS = [
   { label: "Facturation", href: "/dashboard/billing", icon: FileText },
   { label: "Inbox", href: "/dashboard/inbox", icon: Inbox },
   { label: "Migration", href: "/dashboard/migration", icon: Upload },
+  { label: "Graphe", href: "/dashboard/graph", icon: Share2 },
 ];
 
 interface SidebarProps {
