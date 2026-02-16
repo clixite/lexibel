@@ -1,4 +1,5 @@
 """LexiBel Celery Workers"""
+
 from celery import Celery
 import os
 

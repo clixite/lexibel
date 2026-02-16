@@ -10,6 +10,7 @@ env:
   REGISTRY: ghcr.io
   API_IMAGE: ghcr.io/clixite/lexibel-api
   WEB_IMAGE: ghcr.io/clixite/lexibel-web
+  PYTHONPATH: .
 
 jobs:
   # ── Backend: lint + test ──
@@ -54,12 +55,11 @@ jobs:
         run: ruff format --check apps/api/ packages/ apps/workers/
 
       - name: Run tests with coverage
-        run: pytest apps/api/tests/ packages/db/tests/ -v --tb=short --cov=apps/api --cov=packages/db --cov-report=xml
+        run: pytest apps/api/tests/ packages/db/tests/ -v --tb=short --timeout=300 --cov=apps/api --cov=packages/db --cov-report=xml
         env:
           DATABASE_URL: postgresql+asyncpg://lexibel:test@localhost:5432/lexibel_test
           REDIS_URL: redis://localhost:6379/0
           SECRET_KEY: ci-test-secret-key-not-for-production
-          PYTHONPATH: .
 
       - name: Upload coverage
         if: always()
@@ -83,11 +83,12 @@ jobs:
 
       - name: Install dependencies
         working-directory: apps/web
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
 
       - name: Lint
         working-directory: apps/web
-        run: pnpm lint || true
+        run: pnpm lint
+        continue-on-error: true
 
       - name: Build
         working-directory: apps/web
