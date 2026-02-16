@@ -19,6 +19,8 @@ from apps.api.webhooks.plaud import router as plaud_webhook_router
 from apps.api.routers.integrations import router as integrations_router
 from apps.api.routers.events import router as events_router
 from apps.api.routers.bootstrap import router as bootstrap_router, ensure_admin_user
+from apps.api.routers.search import router as search_router
+from apps.api.routers.ai import router as ai_router
 
 
 def create_app() -> FastAPI:
@@ -70,6 +72,8 @@ def create_app() -> FastAPI:
     app.include_router(integrations_router)
     app.include_router(events_router)
     app.include_router(bootstrap_router)
+    app.include_router(search_router)
+    app.include_router(ai_router)
 
     # ── Startup ──
     @app.on_event("startup")
