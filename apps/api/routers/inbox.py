@@ -1,19 +1,21 @@
 """Inbox router — human-in-the-loop queue for unvalidated items.
 
 GET    /api/v1/inbox                     — list inbox items (paginated)
+POST   /api/v1/inbox                     — create manual inbox item
 POST   /api/v1/inbox/{id}/validate       — validate → create InteractionEvent
 POST   /api/v1/inbox/{id}/refuse         — refuse item
 POST   /api/v1/inbox/{id}/create-case    — create case from inbox item
 """
 
 import uuid
+
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.api.dependencies import get_current_user, get_db_session
+from apps.api.dependencies import get_current_tenant, get_current_user, get_db_session
 from apps.api.schemas.inbox import (
     InboxItemResponse,
     InboxListResponse,
@@ -22,6 +24,12 @@ from apps.api.schemas.inbox import (
 from apps.api.services import inbox_service
 
 router = APIRouter(prefix="/api/v1/inbox", tags=["inbox"])
+
+
+class CreateInboxItemRequest(BaseModel):
+    source: str = Field("MANUAL", pattern="^(OUTLOOK|RINGOVER|PLAUD|DPA_DEPOSIT|DPA_JBOX|MANUAL)$")
+    raw_payload: dict = Field(default_factory=dict)
+    suggested_case_id: Optional[uuid.UUID] = None
 
 
 class CreateCaseFromInboxRequest(BaseModel):
@@ -47,6 +55,23 @@ async def list_inbox(
         page=page,
         per_page=per_page,
     )
+
+
+@router.post("", response_model=InboxItemResponse, status_code=status.HTTP_201_CREATED)
+async def create_inbox_item(
+    body: CreateInboxItemRequest,
+    tenant_id: uuid.UUID = Depends(get_current_tenant),
+    user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+) -> InboxItemResponse:
+    item = await inbox_service.create_inbox_item(
+        session,
+        tenant_id=tenant_id,
+        source=body.source,
+        raw_payload=body.raw_payload,
+        suggested_case_id=body.suggested_case_id,
+    )
+    return InboxItemResponse.model_validate(item)
 
 
 @router.post("/{item_id}/validate", response_model=InboxItemResponse)

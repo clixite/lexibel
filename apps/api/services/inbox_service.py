@@ -39,6 +39,27 @@ async def list_inbox(
     return items, total
 
 
+async def create_inbox_item(
+    session: AsyncSession,
+    *,
+    tenant_id: uuid.UUID,
+    source: str = "MANUAL",
+    raw_payload: dict | None = None,
+    suggested_case_id: uuid.UUID | None = None,
+) -> InboxItem:
+    """Create a new inbox item (e.g. manual entry)."""
+    item = InboxItem(
+        tenant_id=tenant_id,
+        source=source,
+        raw_payload=raw_payload or {},
+        suggested_case_id=suggested_case_id,
+    )
+    session.add(item)
+    await session.flush()
+    await session.refresh(item)
+    return item
+
+
 async def get_inbox_item(
     session: AsyncSession,
     item_id: uuid.UUID,
