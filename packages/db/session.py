@@ -66,9 +66,10 @@ async def get_tenant_session(
     async with async_session_factory() as session:
         async with session.begin():
             # SET LOCAL is transaction-scoped: automatically reset on COMMIT/ROLLBACK.
+            # asyncpg doesn't support bind params in SET, so we format
+            # the validated UUID directly (safe — uuid.UUID cannot inject SQL).
             await session.execute(
-                text("SET LOCAL app.current_tenant_id = :tid"),
-                {"tid": str(tenant_id)},
+                text(f"SET LOCAL app.current_tenant_id = '{tenant_id}'")
             )
             yield session
 
