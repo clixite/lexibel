@@ -13,6 +13,8 @@ from packages.db.models.time_entry import TimeEntry
 from packages.db.models.invoice import Invoice
 from packages.db.models.invoice_line import InvoiceLine
 from packages.db.models.third_party_entry import ThirdPartyEntry
+from packages.db.models.migration_job import MigrationJob
+from packages.db.models.migration_mapping import MigrationMapping
 
 __all__ = [
     "Base",
@@ -29,4 +31,6 @@ __all__ = [
     "Invoice",
     "InvoiceLine",
     "ThirdPartyEntry",
+    "MigrationJob",
+    "MigrationMapping",
 ]

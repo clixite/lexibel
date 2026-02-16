@@ -12,6 +12,7 @@ import {
   Clock,
   FileText,
   Inbox,
+  Upload,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -21,6 +22,7 @@ const NAV_ITEMS = [
   { label: "Timeline", href: "/dashboard/timeline", icon: Clock },
   { label: "Facturation", href: "/dashboard/billing", icon: FileText },
   { label: "Inbox", href: "/dashboard/inbox", icon: Inbox },
+  { label: "Migration", href: "/dashboard/migration", icon: Upload },
 ];
 
 interface SidebarProps {
