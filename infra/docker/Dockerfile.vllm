@@ -1,0 +1,99 @@
+# vLLM Multi-LoRA container with GPU support
+# Serves local LLM with domain-specific LoRA adapters
+#
+# Build: docker build -f infra/docker/Dockerfile.vllm -t lexibel-vllm .
+# Run: requires NVIDIA GPU with CUDA support
+#
+# Environment variables:
+#   MODEL_NAME: Base model to serve (default: mistralai/Mistral-7B-Instruct-v0.2)
+#   LORA_MODULES: Comma-separated list of adapter_name=path pairs
+#   MAX_MODEL_LEN: Maximum context length (default: 8192)
+#   TENSOR_PARALLEL_SIZE: Number of GPUs for tensor parallelism (default: 1)
+
+FROM nvidia/cuda:12.1.1-devel-ubuntu22.04 AS base
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+
+RUN apt-get update && apt-get install -y \
+    python3.11 \
+    python3.11-venv \
+    python3-pip \
+    git \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN ln -s /usr/bin/python3.11 /usr/bin/python
+
+# Install vLLM
+RUN pip install --no-cache-dir \
+    vllm>=0.4.0 \
+    torch>=2.1.0 \
+    transformers>=4.38.0 \
+    huggingface_hub>=0.21.0
+
+WORKDIR /app
+
+# Download model script
+COPY infra/lora/adapters.yaml /app/adapters.yaml
+
+# Model download script
+RUN cat > /app/download_model.py << 'PYEOF'
+"""Download base model and LoRA adapters from HuggingFace."""
+import os
+from huggingface_hub import snapshot_download
+
+MODEL_NAME = os.getenv("MODEL_NAME", "mistralai/Mistral-7B-Instruct-v0.2")
+MODEL_DIR = os.getenv("MODEL_DIR", "/models/base")
+
+print(f"Downloading {MODEL_NAME} to {MODEL_DIR}...")
+snapshot_download(
+    MODEL_NAME,
+    local_dir=MODEL_DIR,
+    local_dir_use_symlinks=False,
+)
+print("Model download complete.")
+PYEOF
+
+# Entrypoint script
+RUN cat > /app/entrypoint.sh << 'SHEOF'
+#!/bin/bash
+set -e
+
+MODEL_NAME=${MODEL_NAME:-mistralai/Mistral-7B-Instruct-v0.2}
+MODEL_DIR=${MODEL_DIR:-/models/base}
+MAX_MODEL_LEN=${MAX_MODEL_LEN:-8192}
+TENSOR_PARALLEL_SIZE=${TENSOR_PARALLEL_SIZE:-1}
+PORT=${PORT:-8000}
+
+# Build LoRA modules argument
+LORA_ARGS=""
+if [ -n "$LORA_MODULES" ]; then
+    IFS=',' read -ra ADAPTERS <<< "$LORA_MODULES"
+    for adapter in "${ADAPTERS[@]}"; do
+        LORA_ARGS="$LORA_ARGS --lora-modules $adapter"
+    done
+fi
+
+echo "Starting vLLM server..."
+echo "  Model: $MODEL_NAME"
+echo "  Max context: $MAX_MODEL_LEN"
+echo "  Tensor parallel: $TENSOR_PARALLEL_SIZE"
+echo "  LoRA: $LORA_MODULES"
+
+exec python -m vllm.entrypoints.openai.api_server \
+    --model "$MODEL_DIR" \
+    --served-model-name "$MODEL_NAME" \
+    --max-model-len "$MAX_MODEL_LEN" \
+    --tensor-parallel-size "$TENSOR_PARALLEL_SIZE" \
+    --enable-lora \
+    $LORA_ARGS \
+    --host 0.0.0.0 \
+    --port "$PORT"
+SHEOF
+
+RUN chmod +x /app/entrypoint.sh
+
+EXPOSE 8000
+
+CMD ["/app/entrypoint.sh"]

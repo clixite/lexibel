@@ -1,0 +1,29 @@
+CONCLUSIONS
+
+Devant le {{ court_name }}
+
+AFFAIRE : {{ case_number }}
+{{ plaintiff_name }} c/ {{ defendant_name }}
+
+{% if case_reference %}Référence interne : {{ case_reference }}{% endif %}
+
+I. FAITS
+
+{{ facts }}
+
+II. DISCUSSION — MOYENS DE DROIT
+
+{{ legal_arguments }}
+
+III. DISPOSITIF
+
+PAR CES MOTIFS,
+
+Plaise au Tribunal de :
+
+{{ demands }}
+
+{% if lawyer_name %}
+{{ lawyer_name }}
+{% if lawyer_bar %}Avocat au Barreau de {{ lawyer_bar }}{% endif %}
+{% endif %}

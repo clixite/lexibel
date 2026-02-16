@@ -26,6 +26,7 @@ from apps.api.routers.dpa import router as dpa_router
 from apps.api.routers.outlook import router as outlook_router
 from apps.api.routers.ml import router as ml_router
 from apps.api.routers.graph import router as graph_router
+from apps.api.routers.agents import router as agents_router
 
 
 def create_app() -> FastAPI:
@@ -84,6 +85,7 @@ def create_app() -> FastAPI:
     app.include_router(outlook_router)
     app.include_router(ml_router)
     app.include_router(graph_router)
+    app.include_router(agents_router)
 
     # ── Startup ──
     @app.on_event("startup")

@@ -1,0 +1,29 @@
+REQUÊTE UNILATÉRALE
+
+À Monsieur/Madame le Président du {{ court_name }}
+
+REQUÉRANT :
+{{ requester_name }}
+{{ requester_address }}
+
+{% if case_reference %}Référence : {{ case_reference }}{% endif %}
+
+OBJET :
+{{ object }}
+
+{% if urgency_reason %}
+URGENCE :
+{{ urgency_reason }}
+{% endif %}
+
+FAITS :
+{{ facts }}
+
+BASE LÉGALE :
+{{ legal_basis }}
+
+PAR CES MOTIFS,
+
+Le requérant demande respectueusement à Monsieur/Madame le Président de bien vouloir :
+
+{{ demand }}

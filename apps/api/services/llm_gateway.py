@@ -165,19 +165,26 @@ Chaque observation doit être sourcée."""
 
 
 class LLMGateway:
-    """LLM Gateway with OpenAI-compatible API support and P3 enforcement."""
+    """LLM Gateway with OpenAI-compatible API support and P3 enforcement.
+
+    Supports vLLM (local) with automatic fallback to OpenAI.
+    Set VLLM_BASE_URL to enable local vLLM backend.
+    """
 
     def __init__(
         self,
         base_url: Optional[str] = None,
         api_key: Optional[str] = None,
         model: Optional[str] = None,
+        vllm_base_url: Optional[str] = None,
     ) -> None:
         self._base_url = base_url or os.getenv(
             "LLM_BASE_URL", "https://api.openai.com/v1"
         )
         self._api_key = api_key or os.getenv("LLM_API_KEY", "")
         self._model = model or os.getenv("LLM_MODEL", "gpt-4o-mini")
+        self._vllm_base_url = vllm_base_url or os.getenv("VLLM_BASE_URL", "")
+        self._vllm_available: Optional[bool] = None
 
     def _build_messages(
         self,
@@ -205,6 +212,24 @@ class LLMGateway:
             {"role": "user", "content": user_message},
         ]
 
+    async def _resolve_backend(self) -> str:
+        """Resolve which backend to use: vLLM first, fallback to OpenAI."""
+        if not self._vllm_base_url:
+            return self._base_url
+
+        # Check vLLM health (cache result for 30s via simple flag)
+        if self._vllm_available is None:
+            try:
+                import httpx
+
+                async with httpx.AsyncClient(timeout=5.0) as client:
+                    resp = await client.get(f"{self._vllm_base_url}/models")
+                    self._vllm_available = resp.status_code == 200
+            except Exception:
+                self._vllm_available = False
+
+        return self._vllm_base_url if self._vllm_available else self._base_url
+
     async def generate(
         self,
         prompt: str,
@@ -227,12 +252,15 @@ class LLMGateway:
 
         messages = self._build_messages(prompt, context_chunks, system_prompt)
 
+        # Try vLLM first, fallback to OpenAI
+        api_base = await self._resolve_backend()
+
         try:
             import httpx
 
             async with httpx.AsyncClient(timeout=60.0) as client:
                 response = await client.post(
-                    f"{self._base_url}/chat/completions",
+                    f"{api_base}/chat/completions",
                     headers={
                         "Authorization": f"Bearer {self._api_key}",
                         "Content-Type": "application/json",

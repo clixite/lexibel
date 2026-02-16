@@ -1,0 +1,30 @@
+CITATION À COMPARAÎTRE
+
+L'AN DEUX MILLE VINGT-SIX, le {{ date }}
+
+À la requête de :
+{{ plaintiff_name }}
+
+{% if bailiff_name %}Par le ministère de {{ bailiff_name }}, Huissier de Justice{% endif %}
+
+J'AI CITÉ :
+{{ defendant_name }}
+demeurant à {{ defendant_address }}
+
+À COMPARAÎTRE le {{ hearing_date }}
+devant le {{ court_name }}
+
+{% if case_reference %}Référence : {{ case_reference }}{% endif %}
+
+OBJET :
+{{ object }}
+
+FAITS :
+{{ facts }}
+
+DEMANDES :
+{{ demands }}
+
+Sous toutes réserves et sans reconnaissance préjudiciable.
+
+DONT ACTE.

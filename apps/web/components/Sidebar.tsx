@@ -14,6 +14,7 @@ import {
   Inbox,
   Upload,
   Share2,
+  Brain,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -25,6 +26,7 @@ const NAV_ITEMS = [
   { label: "Inbox", href: "/dashboard/inbox", icon: Inbox },
   { label: "Migration", href: "/dashboard/migration", icon: Upload },
   { label: "Graphe", href: "/dashboard/graph", icon: Share2 },
+  { label: "Hub IA", href: "/dashboard/ai", icon: Brain },
 ];
 
 interface SidebarProps {

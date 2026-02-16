@@ -1,0 +1,54 @@
+# LexiBel Multi-LoRA Adapter Registry
+# Used by apps/api/services/lora_registry.py
+
+base_model: mistralai/Mistral-7B-Instruct-v0.2
+
+adapters:
+  - name: legal-fr
+    base_model: mistralai/Mistral-7B-Instruct-v0.2
+    lora_path: /models/lora/legal-fr
+    description: "French Belgian legal language — trained on Belgian Code Judiciaire, jurisprudence, and legal correspondence"
+    task_types:
+      - DRAFTING
+      - SUMMARIZATION
+      - ANALYSIS
+    languages: [fr]
+    priority: 10
+
+  - name: legal-nl
+    base_model: mistralai/Mistral-7B-Instruct-v0.2
+    lora_path: /models/lora/legal-nl
+    description: "Dutch Belgian legal language — trained on Gerechtelijk Wetboek and Flemish legal practice"
+    task_types:
+      - DRAFTING
+      - SUMMARIZATION
+      - ANALYSIS
+    languages: [nl]
+    priority: 10
+
+  - name: summarization
+    base_model: mistralai/Mistral-7B-Instruct-v0.2
+    lora_path: /models/lora/summarization
+    description: "Document summarization — optimized for legal briefs, judgments, and case files"
+    task_types:
+      - SUMMARIZATION
+    languages: [fr, nl]
+    priority: 5
+
+  - name: drafting
+    base_model: mistralai/Mistral-7B-Instruct-v0.2
+    lora_path: /models/lora/drafting
+    description: "Legal drafting — mise en demeure, conclusions, requêtes, citations"
+    task_types:
+      - DRAFTING
+    languages: [fr, nl]
+    priority: 5
+
+  - name: classification
+    base_model: mistralai/Mistral-7B-Instruct-v0.2
+    lora_path: /models/lora/classification
+    description: "Email and document classification — urgency, type, routing"
+    task_types:
+      - CLASSIFICATION
+    languages: [fr, nl]
+    priority: 5

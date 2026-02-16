@@ -59,6 +59,31 @@ services:
       retries: 5
     restart: unless-stopped
 
+  # ── vLLM (Multi-LoRA, optional — set ENABLE_VLLM=true) ──
+  vllm:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.vllm
+    ports:
+      - "8001:8000"
+    environment:
+      MODEL_NAME: ${VLLM_MODEL:-mistralai/Mistral-7B-Instruct-v0.2}
+      MAX_MODEL_LEN: ${VLLM_MAX_CTX:-8192}
+      TENSOR_PARALLEL_SIZE: ${VLLM_TP:-1}
+      LORA_MODULES: ${VLLM_LORA_MODULES:-}
+    volumes:
+      - vllm_models:/models
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    profiles:
+      - gpu
+    restart: unless-stopped
+
   # ── MinIO (S3-compatible) ──
   minio:
     image: minio/minio:latest
@@ -89,6 +114,7 @@ services:
       NEO4J_URI: bolt://neo4j:7687
       NEO4J_USER: neo4j
       NEO4J_PASSWORD: ${NEO4J_PASSWORD:-lexibel2026}
+      VLLM_BASE_URL: ${VLLM_BASE_URL:-http://vllm:8000/v1}
       SECRET_KEY: ${SECRET_KEY:-dev-secret-change-me-in-production}
       ENVIRONMENT: development
     depends_on:
@@ -149,3 +175,4 @@ volumes:
   qdrant_data:
   neo4j_data:
   minio_data:
+  vllm_models:
