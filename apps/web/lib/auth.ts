@@ -57,20 +57,27 @@ const authConfig = NextAuth({
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.role = user.role;
-        token.tenantId = user.tenantId;
-        token.accessToken = user.accessToken;
-        token.refreshToken = user.refreshToken;
+        const u = user as any;
+        token.id = u.id;
+        token.email = u.email;
+        token.name = u.name;
+        token.role = u.role;
+        token.tenantId = u.tenantId;
+        token.accessToken = u.accessToken;
+        token.refreshToken = u.refreshToken;
       }
       return token;
     },
     async session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.sub as string;
-        session.user.role = token.role as string;
-        session.user.tenantId = token.tenantId as string;
-        session.user.accessToken = token.accessToken as string;
-      }
+      const t = token as any;
+      (session.user as any) = {
+        id: t.id || t.sub,
+        email: t.email,
+        name: t.name || t.email,
+        role: t.role,
+        tenantId: t.tenantId,
+        accessToken: t.accessToken,
+      };
       return session;
     },
   },
