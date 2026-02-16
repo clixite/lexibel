@@ -69,7 +69,10 @@ def create_app() -> FastAPI:
     # 1. CORS (outermost)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:3000"],
+        allow_origins=[
+            "http://localhost:3000",
+            "https://lexibel.clixite.cloud",
+        ],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
