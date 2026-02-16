@@ -12,9 +12,11 @@ import {
   Clock,
   FileText,
   Inbox,
-  Upload,
+  Search,
   Share2,
   Brain,
+  Upload,
+  Shield,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -24,10 +26,17 @@ const NAV_ITEMS = [
   { label: "Timeline", href: "/dashboard/timeline", icon: Clock },
   { label: "Facturation", href: "/dashboard/billing", icon: FileText },
   { label: "Inbox", href: "/dashboard/inbox", icon: Inbox },
-  { label: "Migration", href: "/dashboard/migration", icon: Upload },
+  { label: "Recherche", href: "/dashboard/search", icon: Search },
   { label: "Graphe", href: "/dashboard/graph", icon: Share2 },
   { label: "Hub IA", href: "/dashboard/ai", icon: Brain },
+  { label: "Migration", href: "/dashboard/migration", icon: Upload },
 ];
+
+const ADMIN_ITEM = {
+  label: "Admin",
+  href: "/dashboard/admin",
+  icon: Shield,
+};
 
 interface SidebarProps {
   userEmail: string;
@@ -36,6 +45,9 @@ interface SidebarProps {
 
 export default function Sidebar({ userEmail, userRole }: SidebarProps) {
   const pathname = usePathname();
+
+  const navItems =
+    userRole === "super_admin" ? [...NAV_ITEMS, ADMIN_ITEM] : NAV_ITEMS;
 
   return (
     <aside className="w-64 bg-slate-800 text-white flex flex-col fixed inset-y-0 left-0">
@@ -46,8 +58,8 @@ export default function Sidebar({ userEmail, userRole }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-1">
-        {NAV_ITEMS.map((item) => {
+      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        {navItems.map((item) => {
           const isActive =
             pathname === item.href ||
             (item.href !== "/dashboard" && pathname.startsWith(item.href));

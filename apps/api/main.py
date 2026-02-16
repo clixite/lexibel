@@ -1,9 +1,13 @@
 """LexiBel API — FastAPI Application Factory"""
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.gzip import GZipMiddleware
 
 from apps.api.middleware.tenant import TenantMiddleware
 from apps.api.middleware.audit import AuditMiddleware
+from apps.api.middleware.rate_limit import RateLimitMiddleware
+from apps.api.middleware.security_headers import SecurityHeadersMiddleware
+from apps.api.middleware.compression import CompressionMiddleware
 from apps.api.auth.router import router as auth_router
 from apps.api.auth.mfa_router import mfa_router
 from apps.api.routers.cases import router as cases_router
@@ -27,6 +31,8 @@ from apps.api.routers.outlook import router as outlook_router
 from apps.api.routers.ml import router as ml_router
 from apps.api.routers.graph import router as graph_router
 from apps.api.routers.agents import router as agents_router
+from apps.api.routers.admin import router as admin_router
+from apps.api.routers.mobile import router as mobile_router
 
 
 def create_app() -> FastAPI:
@@ -41,17 +47,23 @@ def create_app() -> FastAPI:
     # ── Middleware stack (outermost → innermost) ──
     # Registration order is reversed: last added = outermost.
 
-    # 5. Audit (innermost — runs last, captures status code + latency)
+    # 7. Audit (innermost — runs last, captures status code + latency)
     app.add_middleware(AuditMiddleware)
+
+    # 6. ETag / Compression support
+    app.add_middleware(CompressionMiddleware)
+
+    # 5. Rate limiting (per-user, per-role)
+    app.add_middleware(RateLimitMiddleware)
 
     # 4. Tenant (extracts tenant_id from JWT claims or X-Tenant-ID header)
     app.add_middleware(TenantMiddleware)
 
-    # 3. Auth — JWT validation is handled inside TenantMiddleware
-    #    (token is decoded there to extract tenant_id + user claims)
+    # 3. Security headers (X-Content-Type-Options, CSP, HSTS, X-Request-ID)
+    app.add_middleware(SecurityHeadersMiddleware)
 
-    # 2. RateLimit stub (future: slowapi or similar)
-    # app.add_middleware(RateLimitMiddleware)
+    # 2. GZip compression (for mobile optimization)
+    app.add_middleware(GZipMiddleware, minimum_size=500)
 
     # 1. CORS (outermost)
     app.add_middleware(
@@ -86,6 +98,8 @@ def create_app() -> FastAPI:
     app.include_router(ml_router)
     app.include_router(graph_router)
     app.include_router(agents_router)
+    app.include_router(admin_router)
+    app.include_router(mobile_router)
 
     # ── Startup ──
     @app.on_event("startup")
