@@ -46,7 +46,8 @@ async def create_contact(
     body: ContactCreate,
     tenant_id: uuid.UUID = Depends(get_current_tenant),
     session: AsyncSession = Depends(get_db_session),
-) -> ContactResponse:
+) -> dict:
+    """Create contact with duplicate detection warning."""
     contact = await contact_service.create_contact(
         session,
         tenant_id=tenant_id,
@@ -58,7 +59,14 @@ async def create_contact(
         address=body.address,
         language=body.language,
     )
-    return ContactResponse.model_validate(contact)
+    response = ContactResponse.model_validate(contact).model_dump()
+
+    # Add duplicate warning if found
+    if hasattr(contact, "_duplicate_warning"):
+        response["duplicate_warning"] = contact._duplicate_warning
+
+    await session.commit()
+    return response
 
 
 @router.get("/search", response_model=ContactListResponse)
@@ -88,6 +96,38 @@ async def get_contact(
     if contact is None:
         raise HTTPException(status_code=404, detail="Contact not found")
     return ContactResponse.model_validate(contact)
+
+
+@router.get("/{contact_id}/cases")
+async def get_contact_cases(
+    contact_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db_session),
+) -> dict:
+    """Get all cases linked to this contact with their roles."""
+    from packages.db.models.case import Case
+    from packages.db.models.case_contact import CaseContact
+    from sqlalchemy import select as sa_select
+
+    result = await session.execute(
+        sa_select(Case, CaseContact.role)
+        .join(CaseContact, CaseContact.case_id == Case.id)
+        .where(CaseContact.contact_id == contact_id)
+        .order_by(Case.created_at.desc())
+    )
+    rows = result.all()
+    return {
+        "items": [
+            {
+                "id": str(case.id),
+                "reference": case.reference,
+                "title": case.title,
+                "status": case.status,
+                "matter_type": case.matter_type,
+                "role": role,
+            }
+            for case, role in rows
+        ]
+    }
 
 
 @router.patch("/{contact_id}", response_model=ContactResponse)

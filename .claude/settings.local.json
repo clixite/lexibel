@@ -30,7 +30,8 @@
       "Bash(__NEW_LINE_6ede7080d5f5f07e__ ssh root@76.13.46.55 \"curl -s https://lexibel.clixite.cloud/api/v1/contacts -H ''Authorization: Bearer $TOKEN'' -H ''X-Tenant-ID: $TID''\")",
       "Bash(__NEW_LINE_2f3ae6130571136f__ ssh root@76.13.46.55 \"curl -s https://lexibel.clixite.cloud/api/v1/invoices -H ''Authorization: Bearer $TOKEN'' -H ''X-Tenant-ID: $TID''\")",
       "Bash(__NEW_LINE_66734195911da5cb__ ssh root@76.13.46.55 \"curl -s https://lexibel.clixite.cloud/api/v1/time-entries -H ''Authorization: Bearer $TOKEN'' -H ''X-Tenant-ID: $TID''\")",
-      "Bash(ssh:*)"
+      "Bash(ssh:*)",
+      "WebFetch(domain:lexibel.clixite.cloud)"
     ]
   }
 }

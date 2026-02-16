@@ -13,11 +13,43 @@ async def create_contact(
     tenant_id: uuid.UUID,
     **kwargs,
 ) -> Contact:
-    """Create a new contact within the tenant scope."""
+    """Create a new contact within the tenant scope.
+
+    Performs duplicate detection based on email or phone_e164.
+    Does NOT raise exception, but adds metadata flag for frontend warning.
+    """
+    # Check for potential duplicates
+    email = kwargs.get("email")
+    phone = kwargs.get("phone_e164")
+
+    duplicate_found = None
+    if email or phone:
+        conditions = []
+        if email:
+            conditions.append(Contact.email == email)
+        if phone:
+            conditions.append(Contact.phone_e164 == phone)
+
+        query = select(Contact).where(or_(*conditions))
+        result = await session.execute(query)
+        existing = result.scalar_one_or_none()
+
+        if existing:
+            duplicate_found = {
+                "id": str(existing.id),
+                "full_name": existing.full_name,
+                "match_field": "email" if existing.email == email else "phone",
+            }
+
     contact = Contact(tenant_id=tenant_id, **kwargs)
     session.add(contact)
     await session.flush()
     await session.refresh(contact)
+
+    # Attach duplicate warning as transient attribute (not persisted to DB)
+    if duplicate_found:
+        contact._duplicate_warning = duplicate_found  # type: ignore
+
     return contact
 
 
