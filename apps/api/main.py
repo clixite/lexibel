@@ -22,6 +22,9 @@ from apps.api.routers.bootstrap import router as bootstrap_router, ensure_admin_
 from apps.api.routers.search import router as search_router
 from apps.api.routers.ai import router as ai_router
 from apps.api.routers.migration import router as migration_router
+from apps.api.routers.dpa import router as dpa_router
+from apps.api.routers.outlook import router as outlook_router
+from apps.api.routers.ml import router as ml_router
 
 
 def create_app() -> FastAPI:
@@ -76,6 +79,9 @@ def create_app() -> FastAPI:
     app.include_router(search_router)
     app.include_router(ai_router)
     app.include_router(migration_router)
+    app.include_router(dpa_router)
+    app.include_router(outlook_router)
+    app.include_router(ml_router)
 
     # ── Startup ──
     @app.on_event("startup")
