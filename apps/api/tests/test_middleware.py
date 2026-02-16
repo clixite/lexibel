@@ -70,7 +70,7 @@ async def test_missing_tenant_header_returns_401():
     ) as client:
         resp = await client.get("/api/v1/protected")
     assert resp.status_code == 401
-    assert "Missing X-Tenant-ID" in resp.json()["detail"]
+    assert "Missing Authorization header or X-Tenant-ID" in resp.json()["detail"]
 
 
 @pytest.mark.asyncio
@@ -171,23 +171,16 @@ async def test_rbac_decorator_rejects_insufficient_role():
     """Route with @require_role("admin", "super_admin") must reject junior."""
     app = _create_test_app()
 
-    # Manually add user_role to request.state via a middleware
-    from starlette.middleware.base import BaseHTTPMiddleware
-
-    class MockUserMiddleware(BaseHTTPMiddleware):
-        async def dispatch(self, request, call_next):
-            request.state.user_role = "junior"
-            request.state.user_id = uuid.UUID(USER_ID)
-            return await call_next(request)
-
-    app.add_middleware(MockUserMiddleware)
-
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
         resp = await client.get(
             "/api/v1/admin-only",
-            headers={"X-Tenant-ID": TENANT_ID},
+            headers={
+                "X-Tenant-ID": TENANT_ID,
+                "X-User-ID": USER_ID,
+                "X-User-Role": "junior",
+            },
         )
     assert resp.status_code == 403
     assert "not in allowed roles" in resp.json()["detail"]
@@ -198,22 +191,16 @@ async def test_rbac_decorator_allows_super_admin():
     """super_admin must pass any role check."""
     app = _create_test_app()
 
-    from starlette.middleware.base import BaseHTTPMiddleware
-
-    class MockSuperAdminMiddleware(BaseHTTPMiddleware):
-        async def dispatch(self, request, call_next):
-            request.state.user_role = "super_admin"
-            request.state.user_id = uuid.UUID(USER_ID)
-            return await call_next(request)
-
-    app.add_middleware(MockSuperAdminMiddleware)
-
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
         resp = await client.get(
             "/api/v1/admin-only",
-            headers={"X-Tenant-ID": TENANT_ID},
+            headers={
+                "X-Tenant-ID": TENANT_ID,
+                "X-User-ID": USER_ID,
+                "X-User-Role": "super_admin",
+            },
         )
     assert resp.status_code == 200
     assert resp.json()["message"] == "admin access granted"
