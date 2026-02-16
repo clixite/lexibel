@@ -20,20 +20,19 @@ export default function BillingPage() {
   return (
     <div>
       <div className="flex items-center gap-3 mb-6">
-        <FileText className="w-6 h-6 text-blue-600" />
-        <h1 className="text-2xl font-bold text-gray-900">Facturation</h1>
+        <h1 className="text-2xl font-bold text-neutral-900">Facturation</h1>
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1 mb-6 bg-gray-100 rounded-lg p-1 w-fit">
+      <div className="flex gap-1 mb-6 bg-neutral-100 rounded-md p-1 w-fit">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all duration-150 ${
               activeTab === tab.id
-                ? "bg-white text-gray-900 shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
+                ? "bg-white text-neutral-900 shadow-subtle"
+                : "text-neutral-500 hover:text-neutral-700"
             }`}
           >
             <tab.icon className="w-4 h-4" />

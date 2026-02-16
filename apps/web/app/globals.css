@@ -10,46 +10,76 @@
   }
 
   body {
-    @apply bg-white text-gray-900 font-sans;
+    @apply bg-neutral-50 text-neutral-900 font-sans;
   }
 
   h1 {
-    @apply text-3xl font-bold tracking-tight;
+    @apply text-3xl font-bold tracking-tight text-neutral-900;
   }
 
   h2 {
-    @apply text-2xl font-semibold tracking-tight;
+    @apply text-2xl font-semibold tracking-tight text-neutral-900;
   }
 
   h3 {
-    @apply text-xl font-semibold;
+    @apply text-xl font-semibold text-neutral-900;
   }
 }
 
 @layer components {
+  .card {
+    @apply bg-white rounded-lg shadow-subtle p-6
+           hover:shadow-medium transition-shadow duration-150;
+  }
+
   .btn-primary {
-    @apply bg-primary text-white px-4 py-2 rounded-lg font-medium
-           hover:bg-primary-600 focus:outline-none focus:ring-2
-           focus:ring-primary-300 focus:ring-offset-2
-           transition-colors duration-150 disabled:opacity-50
-           disabled:cursor-not-allowed;
+    @apply bg-accent text-white px-4 py-2 rounded-md font-medium text-sm
+           hover:bg-accent-600 active:bg-accent-700
+           focus:outline-none focus:ring-2 focus:ring-accent-300 focus:ring-offset-2
+           transition-all duration-150
+           disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .btn-secondary {
-    @apply bg-secondary text-white px-4 py-2 rounded-lg font-medium
-           hover:bg-secondary-600 focus:outline-none focus:ring-2
-           focus:ring-secondary-300 focus:ring-offset-2
-           transition-colors duration-150;
+    @apply border border-neutral-300 bg-transparent text-neutral-700 px-4 py-2 rounded-md font-medium text-sm
+           hover:bg-neutral-50 hover:border-neutral-400 active:bg-neutral-100
+           focus:outline-none focus:ring-2 focus:ring-accent-300 focus:ring-offset-2
+           transition-all duration-150
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-success {
+    @apply badge bg-success-50 text-success-700;
+  }
+
+  .badge-warning {
+    @apply badge bg-warning-50 text-warning-700;
+  }
+
+  .badge-danger {
+    @apply badge bg-danger-50 text-danger-700;
+  }
+
+  .badge-neutral {
+    @apply badge bg-neutral-100 text-neutral-600;
+  }
+
+  .badge-accent {
+    @apply badge bg-accent-50 text-accent-700;
+  }
+
+  .input {
+    @apply w-full px-3 py-2 border border-neutral-300 rounded-md text-sm
+           placeholder:text-neutral-400 bg-white
+           focus:outline-none focus:ring-2 focus:ring-accent-200 focus:border-accent
+           transition-all duration-150;
   }
 
   .input-field {
-    @apply w-full px-3 py-2 border border-gray-300 rounded-lg
-           text-sm placeholder:text-gray-400
-           focus:outline-none focus:ring-2 focus:ring-primary-300
-           focus:border-primary transition-colors duration-150;
-  }
-
-  .card {
-    @apply bg-white rounded-xl border border-gray-200 shadow-sm p-6;
+    @apply input;
   }
 }

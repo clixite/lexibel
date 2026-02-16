@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 
@@ -13,6 +13,7 @@ export default function DashboardLayout({
 }) {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -22,8 +23,8 @@ export default function DashboardLayout({
 
   if (status === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
+      <div className="min-h-screen flex items-center justify-center bg-neutral-50">
+        <Loader2 className="w-10 h-10 animate-spin text-accent" />
       </div>
     );
   }
@@ -35,12 +36,18 @@ export default function DashboardLayout({
   const user = session.user as any;
 
   return (
-    <div className="min-h-screen flex bg-gray-50">
+    <div className="min-h-screen flex bg-neutral-50">
       <Sidebar
         userEmail={user.email || ""}
         userRole={user.role || ""}
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
-      <main className="flex-1 ml-64">
+      <main
+        className={`flex-1 transition-all duration-300 ease-in-out ${
+          sidebarCollapsed ? "ml-16" : "ml-64"
+        }`}
+      >
         <div className="p-8">{children}</div>
       </main>
     </div>
