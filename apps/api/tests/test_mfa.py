@@ -1,5 +1,6 @@
 """LXB-011: Tests for MFA TOTP — setup, verify, login challenge."""
 
+import time
 import uuid
 from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -231,25 +232,28 @@ async def test_login_non_mfa_user_returns_tokens():
 @pytest.mark.asyncio
 async def test_mfa_challenge_completes_login():
     """POST /mfa/challenge with valid mfa_token + code returns full JWT pair."""
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        # Step 1: Login (gets mfa_token)
-        login_resp = await client.post(
-            "/api/v1/auth/login",
-            json={"email": MFA_EMAIL, "password": TEST_PASSWORD},
-        )
-        mfa_token = login_resp.json()["mfa_token"]
+    # Freeze time at mid-window to avoid TOTP boundary flakes
+    frozen_time = (time.time() // 30) * 30 + 15  # 15s into current window
+    with patch("time.time", return_value=frozen_time):
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            # Step 1: Login (gets mfa_token)
+            login_resp = await client.post(
+                "/api/v1/auth/login",
+                json={"email": MFA_EMAIL, "password": TEST_PASSWORD},
+            )
+            mfa_token = login_resp.json()["mfa_token"]
 
-        # Step 2: Generate valid TOTP code
-        totp = pyotp.TOTP(MFA_SECRET)
-        code = totp.now()
+            # Step 2: Generate valid TOTP code
+            totp = pyotp.TOTP(MFA_SECRET)
+            code = totp.now()
 
-        # Step 3: Complete MFA challenge
-        resp = await client.post(
-            "/api/v1/auth/mfa/challenge",
-            json={"mfa_token": mfa_token, "code": code},
-        )
+            # Step 3: Complete MFA challenge
+            resp = await client.post(
+                "/api/v1/auth/mfa/challenge",
+                json={"mfa_token": mfa_token, "code": code},
+            )
     assert resp.status_code == 200
     data = resp.json()
     assert data["access_token"] is not None

@@ -25,14 +25,15 @@ export default function TimeEntryApproval() {
   const [processing, setProcessing] = useState(false);
 
   const token = (session?.user as any)?.accessToken;
+  const tenantId = (session?.user as any)?.tenantId;
 
   useEffect(() => {
     if (!token) return;
-    apiFetch<{ items: TimeEntry[] }>("/time-entries?status=submitted", token)
+    apiFetch<{ items: TimeEntry[] }>("/time-entries?status=submitted", token, { tenantId })
       .then((data) => setEntries(data.items))
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
-  }, [token]);
+  }, [token, tenantId]);
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
@@ -56,11 +57,13 @@ export default function TimeEntryApproval() {
     setProcessing(true);
     try {
       const endpoint = action === "approve" ? "approve" : "refuse";
-      Array.from(selected).forEach(async (id) => {
-        await apiFetch(`/time-entries/${id}/${endpoint}`, token, { method: "POST" });
-      });
+      await Promise.all(
+        Array.from(selected).map(async (id) => {
+          await apiFetch(`/time-entries/${id}/${endpoint}`, token, { tenantId, method: "POST" });
+        })
+      );
       // Reload
-      const data = await apiFetch<{ items: TimeEntry[] }>("/time-entries?status=submitted", token);
+      const data = await apiFetch<{ items: TimeEntry[] }>("/time-entries?status=submitted", token, { tenantId });
       setEntries(data.items);
       setSelected(new Set());
     } catch (err: any) {
@@ -79,30 +82,30 @@ export default function TimeEntryApproval() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        <Loader2 className="w-8 h-8 animate-spin text-accent" />
       </div>
     );
   }
 
   return (
     <div className="mt-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">
+      <h3 className="text-lg font-semibold text-neutral-900 mb-4">
         Approbation des prestations
       </h3>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">{error}</div>
+        <div className="bg-danger-50 border border-danger-200 text-danger-700 px-4 py-3 rounded-md mb-4 text-sm">{error}</div>
       )}
 
       {entries.length > 0 && (
         <div className="flex items-center gap-3 mb-4">
-          <span className="text-sm text-gray-500">
-            {selected.size} / {entries.length} sélectionnée(s)
+          <span className="text-sm text-neutral-500">
+            {selected.size} / {entries.length} s&eacute;lectionn&eacute;e(s)
           </span>
           <button
             onClick={() => batchAction("approve")}
             disabled={selected.size === 0 || processing}
-            className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1 px-3 py-1.5 bg-success text-white rounded-md text-sm font-medium hover:bg-success/90 transition-colors disabled:opacity-50"
           >
             <Check className="w-4 h-4" />
             Approuver
@@ -110,7 +113,7 @@ export default function TimeEntryApproval() {
           <button
             onClick={() => batchAction("reject")}
             disabled={selected.size === 0 || processing}
-            className="flex items-center gap-1 px-3 py-1.5 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1 px-3 py-1.5 bg-danger text-white rounded-md text-sm font-medium hover:bg-danger/90 transition-colors disabled:opacity-50"
           >
             <X className="w-4 h-4" />
             Refuser
@@ -118,46 +121,46 @@ export default function TimeEntryApproval() {
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-lg shadow-subtle overflow-hidden">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-gray-200 bg-gray-50">
+            <tr className="border-b border-neutral-200">
               <th className="w-10 px-4 py-3">
                 <input
                   type="checkbox"
                   checked={entries.length > 0 && selected.size === entries.length}
                   onChange={selectAll}
-                  className="rounded border-gray-300"
+                  className="rounded border-neutral-300"
                 />
               </th>
-              <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-              <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-              <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Durée</th>
-              <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Arrondi</th>
+              <th className="text-left px-6 py-3 text-xs font-semibold text-neutral-500 uppercase tracking-wider">Date</th>
+              <th className="text-left px-6 py-3 text-xs font-semibold text-neutral-500 uppercase tracking-wider">Description</th>
+              <th className="text-left px-6 py-3 text-xs font-semibold text-neutral-500 uppercase tracking-wider">Dur&eacute;e</th>
+              <th className="text-left px-6 py-3 text-xs font-semibold text-neutral-500 uppercase tracking-wider">Arrondi</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200">
+          <tbody className="divide-y divide-neutral-100">
             {entries.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-8 text-center text-sm text-gray-400">
+                <td colSpan={5} className="px-6 py-8 text-center text-sm text-neutral-400">
                   Aucune prestation en attente d&apos;approbation.
                 </td>
               </tr>
             ) : (
               entries.map((e) => (
-                <tr key={e.id} className="hover:bg-gray-50 transition-colors">
+                <tr key={e.id} className="hover:bg-neutral-50 transition-colors">
                   <td className="px-4 py-4">
                     <input
                       type="checkbox"
                       checked={selected.has(e.id)}
                       onChange={() => toggleSelect(e.id)}
-                      className="rounded border-gray-300"
+                      className="rounded border-neutral-300"
                     />
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">{e.date}</td>
-                  <td className="px-6 py-4 text-sm text-gray-700 max-w-xs truncate">{e.description}</td>
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900">{formatDuration(e.duration_minutes)}</td>
-                  <td className="px-6 py-4 text-sm text-gray-500">{e.rounding_rule}</td>
+                  <td className="px-6 py-4 text-sm text-neutral-900">{e.date}</td>
+                  <td className="px-6 py-4 text-sm text-neutral-700 max-w-xs truncate">{e.description}</td>
+                  <td className="px-6 py-4 text-sm font-medium text-neutral-900">{formatDuration(e.duration_minutes)}</td>
+                  <td className="px-6 py-4 text-sm text-neutral-500">{e.rounding_rule}</td>
                 </tr>
               ))
             )}

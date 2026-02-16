@@ -1,21 +1,61 @@
 "use client";
 
 import { useSession } from "next-auth/react";
+import { useEffect, useState } from "react";
 import {
   Briefcase,
   Users,
   Clock,
   FileText,
   Loader2,
-  TrendingUp,
   Mail,
   Phone,
   FileCheck,
   CalendarDays,
 } from "lucide-react";
+import { apiFetch } from "@/lib/api";
+
+interface DashboardStats {
+  cases: number;
+  contacts: number;
+  hoursThisMonth: number;
+  invoices: number;
+}
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  const user = session?.user as any;
+  const token = user?.accessToken;
+  const tenantId = user?.tenantId;
+
+  useEffect(() => {
+    if (!token) return;
+    Promise.all([
+      apiFetch<{ items: any[] }>("/cases", token, { tenantId }),
+      apiFetch<{ items: any[] }>("/contacts", token, { tenantId }),
+      apiFetch<{ items: any[] }>("/time-entries", token, { tenantId }),
+      apiFetch<{ items: any[] }>("/invoices", token, { tenantId }),
+    ])
+      .then(([casesData, contactsData, timeData, invoicesData]) => {
+        const totalMinutes = timeData.items.reduce(
+          (sum: number, e: any) => sum + (e.duration_minutes || 0),
+          0,
+        );
+        setStats({
+          cases: casesData.items.length,
+          contacts: contactsData.items.length,
+          hoursThisMonth: Math.round((totalMinutes / 60) * 10) / 10,
+          invoices: invoicesData.items.length,
+        });
+      })
+      .catch(() => {
+        setStats({ cases: 0, contacts: 0, hoursThisMonth: 0, invoices: 0 });
+      })
+      .finally(() => setStatsLoading(false));
+  }, [token, tenantId]);
 
   if (status === "loading") {
     return (
@@ -25,7 +65,6 @@ export default function DashboardPage() {
     );
   }
 
-  const user = session?.user as any;
   const email = user?.email || "Utilisateur";
   const firstName = email.split("@")[0].split(".")[0];
   const displayName = firstName.charAt(0).toUpperCase() + firstName.slice(1);
@@ -41,42 +80,35 @@ export default function DashboardPage() {
   const STAT_CARDS = [
     {
       label: "Dossiers ouverts",
-      value: "24",
+      value: stats?.cases ?? "\u2014",
       icon: Briefcase,
       iconBg: "bg-accent-50",
       iconColor: "text-accent",
-      trend: "+12%",
-      trendUp: true,
     },
     {
       label: "Contacts",
-      value: "156",
+      value: stats?.contacts ?? "\u2014",
       icon: Users,
       iconBg: "bg-success-50",
       iconColor: "text-success",
-      trend: "+8%",
-      trendUp: true,
     },
     {
       label: "Heures ce mois",
-      value: "87.5",
+      value: stats?.hoursThisMonth ?? "\u2014",
       icon: Clock,
       iconBg: "bg-warning-50",
       iconColor: "text-warning",
-      trend: "+5%",
-      trendUp: true,
     },
     {
       label: "Factures en attente",
-      value: "3",
+      value: stats?.invoices ?? "\u2014",
       icon: FileText,
       iconBg: "bg-danger-50",
       iconColor: "text-danger",
-      trend: "-2",
-      trendUp: false,
     },
   ];
 
+  // TODO: fetch from API when endpoints exist
   const RECENT_ACTIVITY = [
     {
       color: "bg-accent",
@@ -105,6 +137,7 @@ export default function DashboardPage() {
     },
   ];
 
+  // TODO: fetch from API when endpoints exist
   const INBOX_ITEMS = [
     {
       title: "Email de Me Verhaegen \u2014 Pi\u00e8ces manquantes",
@@ -128,6 +161,7 @@ export default function DashboardPage() {
     },
   ];
 
+  // TODO: fetch from API when endpoints exist
   const DEADLINES = [
     {
       title: "Conclusions \u2014 Dupont c/ Immobel",
@@ -197,21 +231,15 @@ export default function DashboardPage() {
               <div className={`p-3 rounded-md ${card.iconBg}`}>
                 <card.icon className={`w-5 h-5 ${card.iconColor}`} />
               </div>
-              <div
-                className={`flex items-center gap-1 text-xs font-medium ${
-                  card.trendUp ? "text-success" : "text-danger"
-                }`}
-              >
-                <TrendingUp
-                  className={`w-3 h-3 ${!card.trendUp ? "rotate-180" : ""}`}
-                />
-                {card.trend}
-              </div>
             </div>
             <div className="mt-4">
-              <p className="text-2xl font-bold text-neutral-900">
-                {card.value}
-              </p>
+              {statsLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin text-neutral-300" />
+              ) : (
+                <p className="text-2xl font-bold text-neutral-900">
+                  {card.value}
+                </p>
+              )}
               <p className="text-sm text-neutral-500 mt-0.5">{card.label}</p>
             </div>
           </div>
