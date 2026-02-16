@@ -27,7 +27,9 @@ router = APIRouter(prefix="/api/v1/inbox", tags=["inbox"])
 
 
 class CreateInboxItemRequest(BaseModel):
-    source: str = Field("MANUAL", pattern="^(OUTLOOK|RINGOVER|PLAUD|DPA_DEPOSIT|DPA_JBOX|MANUAL)$")
+    source: str = Field(
+        "MANUAL", pattern="^(OUTLOOK|RINGOVER|PLAUD|DPA_DEPOSIT|DPA_JBOX|MANUAL)$"
+    )
     raw_payload: dict = Field(default_factory=dict)
     suggested_case_id: Optional[uuid.UUID] = None
 
