@@ -44,6 +44,7 @@ from apps.api.routers.calendar import router as calendar_router
 from apps.api.routers.emails import router as emails_router
 from apps.api.routers.calls import router as calls_router
 from apps.api.routers.transcriptions import router as transcriptions_router
+from apps.api.services.metrics import metrics_endpoint
 
 logger = logging.getLogger(__name__)
 
@@ -157,6 +158,12 @@ def create_app() -> FastAPI:
     @app.get("/api/v1/health")
     async def health():
         return {"status": "ok", "service": "lexibel-api", "version": "0.1.0"}
+
+    # ── Metrics endpoint ──
+    @app.get("/metrics")
+    async def metrics():
+        """Prometheus metrics."""
+        return await metrics_endpoint()
 
     return app
 
