@@ -27,6 +27,10 @@ from packages.db.models.transcription_segment import TranscriptionSegment
 from packages.db.models.brain_action import BrainAction
 from packages.db.models.brain_insight import BrainInsight
 from packages.db.models.brain_memory import BrainMemory
+from packages.db.models.prophet_prediction import ProphetPrediction
+from packages.db.models.prophet_simulation import ProphetSimulation
+from packages.db.models.sentinel_conflict import SentinelConflict
+from packages.db.models.sentinel_entity import SentinelEntity
 
 __all__ = [
     "Base",
@@ -56,4 +60,8 @@ __all__ = [
     "BrainAction",
     "BrainInsight",
     "BrainMemory",
+    "ProphetPrediction",
+    "ProphetSimulation",
+    "SentinelConflict",
+    "SentinelEntity",
 ]
