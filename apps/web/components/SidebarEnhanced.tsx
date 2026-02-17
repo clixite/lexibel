@@ -1,0 +1,336 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { signOut } from "next-auth/react";
+import { useState } from "react";
+import {
+  Scale,
+  LogOut,
+  Home,
+  Briefcase,
+  Users,
+  Clock,
+  FileText,
+  Inbox,
+  Mail,
+  Calendar,
+  Phone,
+  Search,
+  Share2,
+  Brain,
+  Mic,
+  Upload,
+  Shield,
+  ChevronLeft,
+  ChevronRight,
+  Moon,
+  Sun,
+  ChevronDown,
+  Folder,
+  FolderOpen,
+  Archive,
+  Star,
+  User,
+  Building,
+  BarChart3,
+} from "lucide-react";
+
+interface NavChild {
+  label: string;
+  href: string;
+  icon?: any;
+}
+
+interface NavItem {
+  label: string;
+  href: string;
+  icon: any;
+  badge?: number;
+  children?: NavChild[];
+}
+
+// NAV_ITEMS groupés par section avec sous-navigation
+const NAV_GROUPS = [
+  {
+    label: "PRINCIPAL",
+    items: [
+      { label: "Dashboard", href: "/dashboard", icon: Home },
+      {
+        label: "Dossiers",
+        href: "/dashboard/cases",
+        icon: Briefcase,
+        children: [
+          { label: "Tous les dossiers", href: "/dashboard/cases", icon: Folder },
+          { label: "Mes dossiers", href: "/dashboard/cases/my", icon: User },
+          { label: "En cours", href: "/dashboard/cases/active", icon: FolderOpen },
+          { label: "Récents", href: "/dashboard/cases/recent", icon: Clock },
+          { label: "Archivés", href: "/dashboard/cases/archived", icon: Archive },
+        ],
+      },
+      {
+        label: "Contacts",
+        href: "/dashboard/contacts",
+        icon: Users,
+        children: [
+          { label: "Tous", href: "/dashboard/contacts", icon: Users },
+          { label: "Physiques", href: "/dashboard/contacts/individuals", icon: User },
+          { label: "Moraux", href: "/dashboard/contacts/organizations", icon: Building },
+          { label: "Favoris", href: "/dashboard/contacts/favorites", icon: Star },
+        ],
+      },
+      { label: "Timeline", href: "/dashboard/timeline", icon: Clock },
+      { label: "Facturation", href: "/dashboard/billing", icon: FileText },
+    ],
+  },
+  {
+    label: "COMMUNICATION",
+    items: [
+      { label: "Inbox", href: "/dashboard/inbox", icon: Inbox, badge: 3 },
+      { label: "Emails", href: "/dashboard/emails", icon: Mail },
+      { label: "Agenda", href: "/dashboard/calendar", icon: Calendar },
+      { label: "Appels", href: "/dashboard/calls", icon: Phone },
+    ],
+  },
+  {
+    label: "INTELLIGENCE",
+    items: [
+      { label: "Recherche", href: "/dashboard/search", icon: Search },
+      { label: "Graphe", href: "/dashboard/graph", icon: Share2 },
+      { label: "Hub IA", href: "/dashboard/ai", icon: Brain },
+      { label: "Legal RAG", href: "/dashboard/legal", icon: Scale },
+      { label: "Transcription", href: "/dashboard/ai/transcription", icon: Mic },
+      { label: "Analyses", href: "/dashboard/analytics", icon: BarChart3 },
+      { label: "Migration", href: "/dashboard/migration", icon: Upload },
+    ],
+  },
+];
+
+interface SidebarProps {
+  userEmail: string;
+  userRole: string;
+  collapsed: boolean;
+  onToggle: () => void;
+}
+
+export default function SidebarEnhanced({
+  userEmail,
+  userRole,
+  collapsed,
+  onToggle,
+}: SidebarProps) {
+  const pathname = usePathname();
+  const [darkMode, setDarkMode] = useState(false);
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set(["/dashboard/cases", "/dashboard/contacts"]));
+
+  // Initials
+  const initials = userEmail
+    ? userEmail.split("@")[0].split(".").map((p) => p[0]).slice(0, 2).join("").toUpperCase()
+    : "U";
+
+  const toggleExpanded = (href: string) => {
+    const newSet = new Set(expandedItems);
+    if (newSet.has(href)) {
+      newSet.delete(href);
+    } else {
+      newSet.add(href);
+    }
+    setExpandedItems(newSet);
+  };
+
+  return (
+    <aside
+      className={`fixed inset-y-0 left-0 z-30 flex flex-col bg-primary transition-all duration-300 ${
+        collapsed ? "w-20" : "w-72"
+      }`}
+    >
+      {/* Logo */}
+      <div
+        className={`flex items-center gap-3 ${
+          collapsed ? "justify-center px-4" : "px-6"
+        } py-6 border-b border-white/10`}
+      >
+        <div className="w-10 h-10 rounded bg-primary/10 flex items-center justify-center">
+          <Scale className="w-6 h-6 text-accent" />
+        </div>
+        {!collapsed && (
+          <div>
+            <h1 className="text-xl font-display font-bold text-white">LexiBel</h1>
+            <p className="text-xs text-white/60">Legal Management</p>
+          </div>
+        )}
+      </div>
+
+      {/* Navigation Groups */}
+      <nav className="flex-1 px-3 py-4 overflow-y-auto space-y-6">
+        {NAV_GROUPS.map((group) => (
+          <div key={group.label}>
+            {!collapsed && (
+              <div className="px-3 mb-2 text-[10px] font-semibold text-white/40 tracking-wider">
+                {group.label}
+              </div>
+            )}
+            <div className="space-y-1">
+              {group.items.map((item) => {
+                const isActive =
+                  pathname === item.href ||
+                  (item.href !== "/dashboard" && pathname.startsWith(item.href));
+
+                const isExpanded = expandedItems.has(item.href);
+                const hasChildren = 'children' in item && item.children && item.children.length > 0;
+
+                return (
+                  <div key={item.href}>
+                    {/* Main Item */}
+                    <div className="relative flex items-center">
+                      <Link
+                        href={item.href}
+                        title={collapsed ? item.label : undefined}
+                        className={`flex-1 flex items-center gap-3 px-3 py-2.5 rounded transition-colors duration-150 group ${
+                          isActive
+                            ? "bg-white/10 text-white"
+                            : "text-white/70 hover:bg-white/5 hover:text-white"
+                        }`}
+                      >
+                        {/* Active indicator */}
+                        {isActive && (
+                          <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-accent rounded-r" />
+                        )}
+
+                        <item.icon
+                          className={`w-5 h-5 flex-shrink-0 ${
+                            collapsed ? "mx-auto" : ""
+                          }`}
+                        />
+
+                        {!collapsed && (
+                          <>
+                            <span className="flex-1 text-sm font-medium">{item.label}</span>
+                            {'badge' in item && item.badge !== undefined && item.badge > 0 && (
+                              <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-accent text-white rounded">
+                                {item.badge}
+                              </span>
+                            )}
+                          </>
+                        )}
+                      </Link>
+
+                      {/* Expand/Collapse button for items with children */}
+                      {hasChildren && !collapsed && (
+                        <button
+                          onClick={() => toggleExpanded(item.href)}
+                          className="p-2 text-white/50 hover:text-white transition-colors duration-150"
+                        >
+                          <ChevronDown
+                            className={`w-4 h-4 transition-transform duration-200 ${
+                              isExpanded ? "rotate-180" : ""
+                            }`}
+                          />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Sub-navigation */}
+                    {hasChildren && !collapsed && isExpanded && 'children' in item && item.children && (
+                      <div className="ml-8 mt-1 space-y-1 border-l border-white/10 pl-3">
+                        {item.children.map((child) => {
+                          const childActive = pathname === child.href;
+                          return (
+                            <Link
+                              key={child.href}
+                              href={child.href}
+                              className={`flex items-center gap-2 px-3 py-2 rounded text-sm transition-colors duration-150 ${
+                                childActive
+                                  ? "bg-white/10 text-white font-medium"
+                                  : "text-white/60 hover:bg-white/5 hover:text-white"
+                              }`}
+                            >
+                              {child.icon && <child.icon className="w-4 h-4" />}
+                              <span>{child.label}</span>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+
+        {/* Admin (conditionnel) */}
+        {userRole === "super_admin" && (
+          <div>
+            {!collapsed && (
+              <div className="px-3 mb-2 text-[10px] font-semibold text-white/40 tracking-wider">
+                ADMINISTRATION
+              </div>
+            )}
+            <Link
+              href="/dashboard/admin"
+              className={`relative flex items-center gap-3 px-3 py-2.5 rounded transition-colors duration-150 group ${
+                pathname.startsWith("/dashboard/admin")
+                  ? "bg-white/10 text-white"
+                  : "text-white/70 hover:bg-white/5 hover:text-white"
+              }`}
+            >
+              <Shield className="w-5 h-5 flex-shrink-0" />
+              {!collapsed && <span className="text-sm font-medium">Admin</span>}
+            </Link>
+          </div>
+        )}
+      </nav>
+
+      {/* User Section */}
+      <div className="p-3 border-t border-white/10 space-y-2">
+        {/* Dark Mode Toggle */}
+        {!collapsed && (
+          <button
+            onClick={() => setDarkMode(!darkMode)}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded text-white/70 hover:bg-white/5 hover:text-white transition-colors duration-150"
+          >
+            {darkMode ? (
+              <Sun className="w-4 h-4" />
+            ) : (
+              <Moon className="w-4 h-4" />
+            )}
+            <span className="text-sm">Mode {darkMode ? "Clair" : "Sombre"}</span>
+          </button>
+        )}
+
+        {/* User Info */}
+        <div className={`flex items-center gap-3 ${collapsed ? "justify-center" : "px-3"} py-2`}>
+          <div className="w-9 h-9 rounded-full bg-accent/20 flex items-center justify-center text-sm font-semibold text-accent flex-shrink-0">
+            {initials}
+          </div>
+          {!collapsed && (
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-white truncate">{userEmail}</p>
+              <p className="text-[10px] text-white/50 capitalize">{userRole.replace("_", " ")}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Logout */}
+        <button
+          onClick={() => signOut({ callbackUrl: "/login" })}
+          className="w-full flex items-center gap-3 px-3 py-2 rounded text-white/70 hover:bg-white/5 hover:text-red-400 transition-colors duration-150"
+          title={collapsed ? "Déconnexion" : undefined}
+        >
+          <LogOut className="w-4 h-4" />
+          {!collapsed && <span className="text-sm">Déconnexion</span>}
+        </button>
+      </div>
+
+      {/* Collapse Toggle */}
+      <button
+        onClick={onToggle}
+        className="absolute -right-3 top-6 w-6 h-6 bg-white rounded-full shadow-md flex items-center justify-center text-primary hover:bg-accent hover:text-white transition-colors duration-150 hover:scale-110"
+        title={collapsed ? "Développer" : "Réduire"}
+      >
+        {collapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
+      </button>
+    </aside>
+  );
+}

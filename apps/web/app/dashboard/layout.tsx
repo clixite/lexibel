@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
+import CommandPalette from "@/components/CommandPalette";
+import ToastContainer from "@/components/ToastContainer";
 
 export default function DashboardLayout({
   children,
@@ -45,6 +47,8 @@ export default function DashboardLayout({
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
       <TopBar sidebarCollapsed={sidebarCollapsed} />
+      <CommandPalette />
+      <ToastContainer />
       <main
         className={`transition-all duration-300 pt-16 ${
           sidebarCollapsed ? "ml-20" : "ml-72"
