@@ -31,15 +31,30 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api.dependencies import get_current_tenant, get_current_user, get_db_session
 from apps.api.services import outlook_service
-from apps.api.services.google_oauth_service import get_google_oauth_service
-from apps.api.services.microsoft_oauth_service import get_microsoft_oauth_service
-from apps.api.services.gmail_sync_service import get_gmail_sync_service
-from apps.api.services.calendar_sync_service import get_calendar_sync_service
-from apps.api.services.microsoft_outlook_sync_service import (
-    get_microsoft_outlook_sync_service,
-)
-from apps.api.services.microsoft_calendar_service import get_microsoft_calendar_service
 from packages.db.models.oauth_token import OAuthToken
+
+# OAuth service imports with graceful fallback
+try:
+    from apps.api.services.google_oauth_service import get_google_oauth_service
+    from apps.api.services.gmail_sync_service import get_gmail_sync_service
+    from apps.api.services.calendar_sync_service import get_calendar_sync_service
+
+    GOOGLE_OAUTH_AVAILABLE = True
+except ImportError as e:
+    GOOGLE_OAUTH_AVAILABLE = False
+    print(f"Google OAuth services unavailable: {e}")
+
+try:
+    from apps.api.services.microsoft_oauth_service import get_microsoft_oauth_service
+    from apps.api.services.microsoft_outlook_sync_service import (
+        get_microsoft_outlook_sync_service,
+    )
+    from apps.api.services.microsoft_calendar_service import get_microsoft_calendar_service
+
+    MICROSOFT_OAUTH_AVAILABLE = True
+except ImportError as e:
+    MICROSOFT_OAUTH_AVAILABLE = False
+    print(f"Microsoft OAuth services unavailable: {e}")
 
 router = APIRouter(prefix="/api/v1/integrations", tags=["integrations"])
 
@@ -234,6 +249,12 @@ async def get_google_auth_url() -> GoogleAuthUrlResponse:
     Returns authorization URL with state parameter for CSRF protection.
     User should be redirected to this URL to grant permissions.
     """
+    if not GOOGLE_OAUTH_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Google OAuth integration is not available. Install google-auth packages.",
+        )
+
     google_oauth = get_google_oauth_service()
     state = secrets.token_urlsafe(32)
 
@@ -256,6 +277,12 @@ async def handle_google_callback(
 
     Stores encrypted access and refresh tokens in the database.
     """
+    if not GOOGLE_OAUTH_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Google OAuth integration is not available. Install google-auth packages.",
+        )
+
     user_id = user["user_id"]
     google_oauth = get_google_oauth_service()
 
@@ -289,6 +316,12 @@ async def disconnect_google(
 
     Revokes and deletes stored OAuth tokens.
     """
+    if not GOOGLE_OAUTH_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Google OAuth integration is not available. Install google-auth packages.",
+        )
+
     user_id = user["user_id"]
     google_oauth = get_google_oauth_service()
 
@@ -322,6 +355,12 @@ async def sync_gmail(
     Fetches emails from Gmail API and stores them in EmailThread and EmailMessage tables.
     Requires active Google OAuth connection.
     """
+    if not GOOGLE_OAUTH_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Google OAuth integration is not available. Install google-auth packages.",
+        )
+
     user_id = user["user_id"]
     gmail_sync = get_gmail_sync_service()
 
@@ -364,6 +403,12 @@ async def sync_google_calendar(
     Fetches calendar events from Google Calendar API and stores them in CalendarEvent table.
     Requires active Google OAuth connection.
     """
+    if not GOOGLE_OAUTH_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Google OAuth integration is not available. Install google-auth packages.",
+        )
+
     user_id = user["user_id"]
     calendar_sync = get_calendar_sync_service()
 
@@ -403,6 +448,12 @@ async def get_microsoft_auth_url() -> MicrosoftAuthUrlResponse:
     Returns authorization URL with state parameter for CSRF protection.
     User should be redirected to this URL to grant permissions.
     """
+    if not MICROSOFT_OAUTH_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Microsoft OAuth integration is not available. Install msgraph-core package.",
+        )
+
     microsoft_oauth = get_microsoft_oauth_service()
     state = secrets.token_urlsafe(32)
 
@@ -425,6 +476,12 @@ async def handle_microsoft_callback(
 
     Stores encrypted access and refresh tokens in the database.
     """
+    if not MICROSOFT_OAUTH_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Microsoft OAuth integration is not available. Install msgraph-core package.",
+        )
+
     user_id = user["user_id"]
     microsoft_oauth = get_microsoft_oauth_service()
 
@@ -458,6 +515,12 @@ async def disconnect_microsoft(
 
     Revokes and deletes stored OAuth tokens.
     """
+    if not MICROSOFT_OAUTH_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Microsoft OAuth integration is not available. Install msgraph-core package.",
+        )
+
     user_id = user["user_id"]
     microsoft_oauth = get_microsoft_oauth_service()
 
@@ -494,6 +557,12 @@ async def sync_microsoft_outlook(
     Fetches emails from Outlook and stores them in EmailThread and EmailMessage tables.
     Requires active Microsoft OAuth connection.
     """
+    if not MICROSOFT_OAUTH_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Microsoft OAuth integration is not available. Install msgraph-core package.",
+        )
+
     user_id = user["user_id"]
     outlook_sync = get_microsoft_outlook_sync_service()
 
@@ -544,6 +613,12 @@ async def sync_microsoft_calendar(
     Fetches calendar events and stores them in CalendarEvent table.
     Requires active Microsoft OAuth connection.
     """
+    if not MICROSOFT_OAUTH_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Microsoft OAuth integration is not available. Install msgraph-core package.",
+        )
+
     user_id = user["user_id"]
     calendar_service = get_microsoft_calendar_service()
 

@@ -18,8 +18,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Enable pgvector extension for vector embeddings
-    op.execute('CREATE EXTENSION IF NOT EXISTS vector')
+    # pgvector extension disabled — using LargeBinary for embeddings instead
+    # op.execute('CREATE EXTENSION IF NOT EXISTS vector')
 
     # ── chunks ──
     op.create_table(
@@ -52,7 +52,7 @@ def upgrade() -> None:
             index=True,
         ),
         sa.Column("content", sa.Text, nullable=False),
-        sa.Column("embedding", sa.types.UserDefinedType("vector(1536)"), nullable=True),
+        sa.Column("embedding", sa.LargeBinary, nullable=True),
         sa.Column(
             "metadata", JSONB, nullable=False, server_default=sa.text("'{}'::jsonb")
         ),
@@ -75,10 +75,10 @@ def upgrade() -> None:
 
     # Indexes
     op.create_index("idx_chunks_tenant_case", "chunks", ["tenant_id", "case_id"])
-    # Vector similarity index (requires pgvector)
-    op.execute(
-        "CREATE INDEX idx_chunks_embedding ON chunks USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100)"
-    )
+    # Vector similarity index disabled — pgvector not installed
+    # op.execute(
+    #     "CREATE INDEX idx_chunks_embedding ON chunks USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100)"
+    # )
 
     # ── oauth_tokens ──
     op.create_table(
@@ -140,4 +140,5 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_table("oauth_tokens")
     op.drop_table("chunks")
-    op.execute('DROP EXTENSION IF EXISTS vector')
+    # pgvector extension disabled
+    # op.execute('DROP EXTENSION IF EXISTS vector')

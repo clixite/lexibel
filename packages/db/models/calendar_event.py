@@ -1,27 +1,32 @@
 """Calendar event model for Outlook/Google Calendar sync."""
 
 import uuid
-from sqlalchemy import Column, String, Text, ForeignKey, DateTime, Boolean, Index
-from sqlalchemy.dialects.postgresql import UUID, JSONB
-from sqlalchemy.orm import relationship
+from datetime import datetime
+
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, Text, text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.orm import Mapped, mapped_column
+
 from packages.db.base import Base, TenantMixin, TimestampMixin
 
 
-class CalendarEvent(Base, TenantMixin, TimestampMixin):
+class CalendarEvent(TenantMixin, TimestampMixin, Base):
     """Synced calendar event from Outlook or Google Calendar."""
 
     __tablename__ = "calendar_events"
 
-    id = Column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, nullable=False
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
     )
-    user_id = Column(
+    user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
-    case_id = Column(
+    case_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("cases.id", ondelete="SET NULL"),
         nullable=True,
@@ -29,36 +34,62 @@ class CalendarEvent(Base, TenantMixin, TimestampMixin):
     )
 
     # External ID from provider
-    external_id = Column(String(255), nullable=False, index=True)
+    external_id: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+        index=True,
+    )
 
     # Provider: 'outlook', 'google'
-    provider = Column(String(50), nullable=False, index=True)
+    provider: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        index=True,
+        comment="Calendar provider: outlook, google",
+    )
 
-    title = Column(String(500), nullable=False)
-    description = Column(Text, nullable=True)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    start_time = Column(DateTime(timezone=True), nullable=False, index=True)
-    end_time = Column(DateTime(timezone=True), nullable=False)
+    start_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        index=True,
+    )
+    end_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
 
-    location = Column(String(500), nullable=True)
+    location: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     # Attendees: [{email, name, status}]
-    attendees = Column(JSONB, nullable=False, default=list, server_default="[]")
+    attendees: Mapped[list] = mapped_column(
+        JSONB,
+        nullable=False,
+        server_default=text("'[]'::jsonb"),
+    )
 
     # Is all-day event
-    is_all_day = Column(Boolean, default=False, server_default="false")
+    is_all_day: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("false"),
+    )
 
     # Additional metadata
-    metadata_ = Column(
-        "metadata", JSONB, nullable=False, default=dict, server_default="{}"
+    metadata_: Mapped[dict] = mapped_column(
+        "metadata",
+        JSONB,
+        nullable=False,
+        server_default=text("'{}'::jsonb"),
     )
 
     # Last sync timestamp
-    synced_at = Column(DateTime(timezone=True), nullable=True)
-
-    # Relationships
-    user = relationship("User")
-    case = relationship("Case")
+    synced_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
 
     __table_args__ = (
         Index("idx_calendar_events_tenant_user", "tenant_id", "user_id"),

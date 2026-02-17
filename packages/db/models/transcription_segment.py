@@ -1,21 +1,26 @@
 """Transcription segment model for timestamped text."""
 
 import uuid
-from sqlalchemy import Column, String, Text, Integer, Numeric, ForeignKey, Index
+from decimal import Decimal
+
+from sqlalchemy import ForeignKey, Index, Integer, Numeric, String, Text, text
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, mapped_column
+
 from packages.db.base import Base, TimestampMixin
 
 
-class TranscriptionSegment(Base, TimestampMixin):
+class TranscriptionSegment(TimestampMixin, Base):
     """Individual timestamped segment of a transcription."""
 
     __tablename__ = "transcription_segments"
 
-    id = Column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, nullable=False
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
     )
-    transcription_id = Column(
+    transcription_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("transcriptions.id", ondelete="CASCADE"),
         nullable=False,
@@ -23,23 +28,40 @@ class TranscriptionSegment(Base, TimestampMixin):
     )
 
     # Segment order within transcription
-    segment_index = Column(Integer, nullable=False)
+    segment_index: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        comment="Segment order in transcription",
+    )
 
     # Speaker diarization (if available)
-    speaker = Column(String(100), nullable=True)
+    speaker: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+        comment="Speaker identifier for diarization",
+    )
 
     # Timestamp in seconds
-    start_time = Column(Numeric(10, 3), nullable=False)  # e.g., 12.345 seconds
-    end_time = Column(Numeric(10, 3), nullable=False)
+    start_time: Mapped[Decimal] = mapped_column(
+        Numeric(10, 3),
+        nullable=False,
+        comment="Segment start time in seconds",
+    )
+    end_time: Mapped[Decimal] = mapped_column(
+        Numeric(10, 3),
+        nullable=False,
+        comment="Segment end time in seconds",
+    )
 
     # Segment text
-    text = Column(Text, nullable=False)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
 
     # Confidence score from STT model (0.0 to 1.0)
-    confidence = Column(Numeric(3, 2), nullable=True)
-
-    # Relationships
-    transcription = relationship("Transcription")
+    confidence: Mapped[Decimal | None] = mapped_column(
+        Numeric(3, 2),
+        nullable=True,
+        comment="STT confidence score 0.0-1.0",
+    )
 
     __table_args__ = (
         Index(

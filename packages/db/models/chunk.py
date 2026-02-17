@@ -1,44 +1,47 @@
 """Chunk model for RAG/vector storage."""
 
 import uuid
-from sqlalchemy import Column, String, Text, ForeignKey, Index, LargeBinary
-from sqlalchemy.dialects.postgresql import UUID, JSONB
-from sqlalchemy.orm import relationship
+from sqlalchemy import ForeignKey, Index, LargeBinary, String, Text, text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.orm import Mapped, mapped_column
+
 from packages.db.base import Base, TenantMixin, TimestampMixin
 
 
-class Chunk(Base, TenantMixin, TimestampMixin):
+class Chunk(TenantMixin, TimestampMixin, Base):
     """Document chunk for semantic search and RAG."""
 
     __tablename__ = "chunks"
 
-    id = Column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, nullable=False
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
     )
-    case_id = Column(
+    case_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("cases.id", ondelete="CASCADE"),
         nullable=True,
         index=True,
     )
-    document_id = Column(
+    document_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("evidence_links.id", ondelete="CASCADE"),
         nullable=True,
         index=True,
     )
 
-    content = Column(Text, nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+
     # Embedding stored as binary data
-    embedding = Column(LargeBinary, nullable=True)
+    embedding: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
 
     # Metadata: page_number, chunk_index, source_type, etc.
-    metadata_ = Column(
-        "metadata", JSONB, nullable=False, default=dict, server_default="{}"
+    metadata_: Mapped[dict] = mapped_column(
+        "metadata",
+        JSONB,
+        nullable=False,
+        server_default=text("'{}'::jsonb"),
     )
-
-    # Relationships
-    # case = relationship("Case")
-    # document = relationship("EvidenceLink")
 
     __table_args__ = (Index("idx_chunks_tenant_case", "tenant_id", "case_id"),)

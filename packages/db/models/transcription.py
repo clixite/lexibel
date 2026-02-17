@@ -1,30 +1,27 @@
 """Transcription model for AI-powered audio transcription."""
 
 import uuid
-from sqlalchemy import (
-    Column,
-    String,
-    Text,
-    Integer,
-    Numeric,
-    ForeignKey,
-    DateTime,
-    Index,
-)
-from sqlalchemy.dialects.postgresql import UUID, JSONB
-from sqlalchemy.orm import relationship
+from datetime import datetime
+from decimal import Decimal
+
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, Numeric, String, Text, text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.orm import Mapped, mapped_column
+
 from packages.db.base import Base, TenantMixin, TimestampMixin
 
 
-class Transcription(Base, TenantMixin, TimestampMixin):
+class Transcription(TenantMixin, TimestampMixin, Base):
     """AI transcription of audio (calls, meetings, notes)."""
 
     __tablename__ = "transcriptions"
 
-    id = Column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, nullable=False
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
     )
-    case_id = Column(
+    case_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("cases.id", ondelete="SET NULL"),
         nullable=True,
@@ -32,46 +29,67 @@ class Transcription(Base, TenantMixin, TimestampMixin):
     )
 
     # Source: 'ringover', 'plaud', 'manual'
-    source = Column(String(50), nullable=False, index=True)
+    source: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        index=True,
+        comment="Transcription source: ringover, plaud, manual",
+    )
 
-    audio_url = Column(String(500), nullable=True)
-    audio_duration_seconds = Column(Integer, nullable=True)
+    audio_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    audio_duration_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # Language detected: 'fr', 'nl', 'en'
-    language = Column(String(10), nullable=True)
+    language: Mapped[str | None] = mapped_column(
+        String(10),
+        nullable=True,
+        comment="Detected language code",
+    )
 
     # Status: 'pending', 'processing', 'completed', 'failed'
-    status = Column(String(50), nullable=False, default="pending", index=True)
+    status: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        server_default=text("'pending'"),
+        index=True,
+        comment="Processing status",
+    )
 
     # Full transcript text
-    full_text = Column(Text, nullable=True)
+    full_text: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # AI-generated summary
-    summary = Column(Text, nullable=True)
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Sentiment analysis: -1.0 (very negative) to 1.0 (very positive)
-    sentiment_score = Column(Numeric(3, 2), nullable=True)
-    sentiment_label = Column(
-        String(50), nullable=True
-    )  # 'positive', 'neutral', 'negative'
+    sentiment_score: Mapped[Decimal | None] = mapped_column(
+        Numeric(3, 2),
+        nullable=True,
+    )
+    sentiment_label: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+        comment="Sentiment: positive, neutral, negative",
+    )
 
     # Extracted tasks/action items
-    extracted_tasks = Column(JSONB, nullable=False, default=list, server_default="[]")
+    extracted_tasks: Mapped[list] = mapped_column(
+        JSONB,
+        nullable=False,
+        server_default=text("'[]'::jsonb"),
+    )
 
     # Additional metadata
-    metadata_ = Column("metadata", JSONB, nullable=False, default=dict, server_default="{}")
-
-    completed_at = Column(DateTime(timezone=True), nullable=True)
-
-    # Relationships
-    case = relationship("Case")
-    segments = relationship(
-        "TranscriptionSegment",
-        cascade="all, delete-orphan",
-        order_by="TranscriptionSegment.segment_index",
+    metadata_: Mapped[dict] = mapped_column(
+        "metadata",
+        JSONB,
+        nullable=False,
+        server_default=text("'{}'::jsonb"),
     )
-    call_record = relationship(
-        "CallRecord", uselist=False
+
+    completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
     )
 
     __table_args__ = (

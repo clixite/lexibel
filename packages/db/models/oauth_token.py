@@ -1,21 +1,26 @@
 """OAuth token model for Google/Microsoft integrations."""
 
 import uuid
-from sqlalchemy import Column, String, Text, ForeignKey, DateTime
+from datetime import datetime
+
+from sqlalchemy import DateTime, ForeignKey, String, Text, text
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, mapped_column
+
 from packages.db.base import Base, TenantMixin, TimestampMixin
 
 
-class OAuthToken(Base, TenantMixin, TimestampMixin):
+class OAuthToken(TenantMixin, TimestampMixin, Base):
     """Encrypted OAuth tokens for third-party integrations."""
 
     __tablename__ = "oauth_tokens"
 
-    id = Column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, nullable=False
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
     )
-    user_id = Column(
+    user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
@@ -23,20 +28,29 @@ class OAuthToken(Base, TenantMixin, TimestampMixin):
     )
 
     # Provider: 'google', 'microsoft', 'ringover', 'plaud'
-    provider = Column(String(50), nullable=False, index=True)
+    provider: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        index=True,
+        comment="OAuth provider identifier",
+    )
 
     # Encrypted tokens (use Fernet encryption in service layer)
-    access_token = Column(Text, nullable=False)
-    refresh_token = Column(Text, nullable=True)
+    access_token: Mapped[str] = mapped_column(Text, nullable=False)
+    refresh_token: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    token_type = Column(String(50), nullable=False, default="Bearer")
-    expires_at = Column(DateTime(timezone=True), nullable=True)
+    token_type: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        server_default=text("'Bearer'"),
+    )
+    expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
 
     # Space-separated scopes
-    scope = Column(Text, nullable=True)
-
-    # Relationships
-    user = relationship("User")
+    scope: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     __table_args__ = (
         # Unique constraint: one token per user per provider

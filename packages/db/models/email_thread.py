@@ -1,21 +1,26 @@
 """Email thread model for conversation grouping."""
 
 import uuid
-from sqlalchemy import Column, String, Integer, Boolean, ForeignKey, DateTime, Index
-from sqlalchemy.dialects.postgresql import UUID, JSONB
-from sqlalchemy.orm import relationship
+from datetime import datetime
+
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.orm import Mapped, mapped_column
+
 from packages.db.base import Base, TenantMixin, TimestampMixin
 
 
-class EmailThread(Base, TenantMixin, TimestampMixin):
+class EmailThread(TenantMixin, TimestampMixin, Base):
     """Email conversation thread from Outlook or Gmail."""
 
     __tablename__ = "email_threads"
 
-    id = Column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, nullable=False
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
     )
-    case_id = Column(
+    case_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("cases.id", ondelete="SET NULL"),
         nullable=True,
@@ -23,27 +28,54 @@ class EmailThread(Base, TenantMixin, TimestampMixin):
     )
 
     # External thread ID from provider
-    external_id = Column(String(255), nullable=False, index=True)
+    external_id: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+        index=True,
+        comment="External thread ID from email provider",
+    )
 
     # Provider: 'outlook', 'google'
-    provider = Column(String(50), nullable=False, index=True)
+    provider: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        index=True,
+        comment="Email provider: outlook or google",
+    )
 
-    subject = Column(String(500), nullable=True)
+    subject: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     # Participants: {from: {email, name}, to: [], cc: [], bcc: []}
-    participants = Column(JSONB, nullable=False, default=dict, server_default="{}")
+    participants: Mapped[dict] = mapped_column(
+        JSONB,
+        nullable=False,
+        server_default=text("'{}'::jsonb"),
+    )
 
-    message_count = Column(Integer, nullable=False, default=0, server_default="0")
-    has_attachments = Column(Boolean, default=False, server_default="false")
-    is_important = Column(Boolean, default=False, server_default="false")
+    message_count: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        server_default=text("0"),
+    )
+    has_attachments: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("false"),
+    )
+    is_important: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("false"),
+    )
 
-    last_message_at = Column(DateTime(timezone=True), nullable=True, index=True)
-    synced_at = Column(DateTime(timezone=True), nullable=True)
-
-    # Relationships
-    case = relationship("Case")
-    messages = relationship(
-        "EmailMessage", cascade="all, delete-orphan"
+    last_message_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        index=True,
+    )
+    synced_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
     )
 
     __table_args__ = (

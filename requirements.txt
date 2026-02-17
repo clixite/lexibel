@@ -23,6 +23,12 @@ bcrypt==4.0.1
 pyotp>=2.9.0
 email-validator>=2.0.0
 
+# OAuth Integrations
+google-auth>=2.27.0
+google-auth-oauthlib>=1.2.0
+google-api-python-client>=2.116.0
+msgraph-core>=1.0.0
+
 # Storage
 boto3>=1.34.0
 

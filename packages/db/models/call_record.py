@@ -1,27 +1,32 @@
 """Call record model for Ringover telephony integration."""
 
 import uuid
-from sqlalchemy import Column, String, Integer, ForeignKey, DateTime, Index
-from sqlalchemy.dialects.postgresql import UUID, JSONB
-from sqlalchemy.orm import relationship
+from datetime import datetime
+
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.orm import Mapped, mapped_column
+
 from packages.db.base import Base, TenantMixin, TimestampMixin
 
 
-class CallRecord(Base, TenantMixin, TimestampMixin):
+class CallRecord(TenantMixin, TimestampMixin, Base):
     """Phone call record from Ringover or other telephony providers."""
 
     __tablename__ = "call_records"
 
-    id = Column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, nullable=False
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
     )
-    case_id = Column(
+    case_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("cases.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
-    contact_id = Column(
+    contact_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("contacts.id", ondelete="SET NULL"),
         nullable=True,
@@ -29,43 +34,67 @@ class CallRecord(Base, TenantMixin, TimestampMixin):
     )
 
     # External call ID from Ringover
-    external_id = Column(String(255), nullable=False, index=True, unique=True)
+    external_id: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+        index=True,
+        unique=True,
+        comment="External call ID from telephony provider",
+    )
 
     # Direction: 'inbound', 'outbound'
-    direction = Column(String(50), nullable=False, index=True)
+    direction: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        index=True,
+        comment="Call direction: inbound or outbound",
+    )
 
-    caller_number = Column(String(50), nullable=True)
-    callee_number = Column(String(50), nullable=True)
+    caller_number: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    callee_number: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
-    duration_seconds = Column(Integer, nullable=True)
+    duration_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # Call type: 'answered', 'missed', 'voicemail'
-    call_type = Column(String(50), nullable=True, index=True)
+    call_type: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+        index=True,
+        comment="Call type: answered, missed, voicemail",
+    )
 
     # Recording URL from provider
-    recording_url = Column(String(500), nullable=True)
+    recording_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     # Link to transcription if available
-    transcription_id = Column(
+    transcription_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("transcriptions.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
 
-    started_at = Column(DateTime(timezone=True), nullable=True, index=True)
-    ended_at = Column(DateTime(timezone=True), nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        index=True,
+    )
+    ended_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
 
     # AI insights: {sentiment_score, sentiment_label, ai_summary, extracted_tasks}
-    metadata_ = Column("metadata", JSONB, nullable=False, default=dict, server_default="{}")
+    metadata_: Mapped[dict] = mapped_column(
+        "metadata",
+        JSONB,
+        nullable=False,
+        server_default=text("'{}'::jsonb"),
+    )
 
-    synced_at = Column(DateTime(timezone=True), nullable=True)
-
-    # Relationships
-    case = relationship("Case")
-    contact = relationship("Contact")
-    transcription = relationship(
-        "Transcription", uselist=False
+    synced_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
     )
 
     __table_args__ = (
