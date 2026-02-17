@@ -1,11 +1,13 @@
 "use client";
 
+import { useSession } from "next-auth/react";
 import { useState } from "react";
 import { Shield } from "lucide-react";
 import { useRouter } from "next/navigation";
 import UsersManager from "./UsersManager";
 import TenantsManager from "./TenantsManager";
 import SystemHealth from "./SystemHealth";
+import IntegrationsManager from "./IntegrationsManager";
 
 const TABS = [
   { id: "users", label: "Utilisateurs" },
@@ -17,8 +19,28 @@ const TABS = [
 type TabId = (typeof TABS)[number]["id"];
 
 export default function AdminPage() {
+  const { data: session } = useSession();
   const [activeTab, setActiveTab] = useState<TabId>("users");
   const router = useRouter();
+
+  // Protection: only super_admin can access
+  const userRole = (session?.user as any)?.role;
+  if (session && userRole !== "super_admin") {
+    return (
+      <div className="bg-danger-50 border border-danger-200 rounded-lg p-6">
+        <h2 className="text-lg font-semibold text-danger-900 mb-2">Accès refusé</h2>
+        <p className="text-danger-700 text-sm mb-4">
+          Vous n'avez pas les permissions pour accéder à cette page.
+        </p>
+        <button
+          onClick={() => router.push("/dashboard")}
+          className="btn-primary"
+        >
+          Retour au tableau de bord
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -28,7 +50,7 @@ export default function AdminPage() {
           Administration
         </h1>
         <p className="text-neutral-500 mt-1 text-sm">
-          Gestion des utilisateurs, tenants et supervision syst&egrave;me.
+          Gestion des utilisateurs, tenants et supervision système.
         </p>
       </div>
 
@@ -53,19 +75,7 @@ export default function AdminPage() {
       {activeTab === "users" && <UsersManager />}
       {activeTab === "tenants" && <TenantsManager />}
       {activeTab === "system" && <SystemHealth />}
-      {activeTab === "integrations" && (
-        <div className="text-center py-8">
-          <p className="text-neutral-600 mb-4">
-            Gérez vos intégrations OAuth et API
-          </p>
-          <button
-            onClick={() => router.push("/dashboard/admin/integrations")}
-            className="btn-primary"
-          >
-            Ouvrir les intégrations
-          </button>
-        </div>
-      )}
+      {activeTab === "integrations" && <IntegrationsManager />}
     </div>
   );
 }

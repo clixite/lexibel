@@ -8,13 +8,11 @@ import { apiFetch } from "@/lib/api";
 type Step = 1 | 2 | 3 | 4 | 5;
 
 const SOURCES = [
-  { id: "forlex", label: "Forlex", description: "Import depuis Forlex (CSV/ZIP)" },
-  { id: "dpa_jbox", label: "DPA JBox", description: "Import depuis DPA JBox (PDF + metadata)" },
-  { id: "outlook", label: "Outlook", description: "Import emails depuis Microsoft Outlook" },
-  { id: "csv", label: "CSV g\u00e9n\u00e9rique", description: "Import depuis un fichier CSV" },
+  { id: "veoCRM", label: "VeoCRM", description: "Import depuis VeoCRM" },
+  { id: "custom", label: "Custom", description: "Import depuis source personnalisée" },
 ];
 
-const STEP_LABELS = ["Source", "Upload", "Preview", "Import", "R\u00e9sultat"];
+const STEP_LABELS = ["Source", "Upload", "Preview", "Confirmation", "Résultats"];
 
 export default function MigrationPage() {
   const { data: session } = useSession();
@@ -26,15 +24,19 @@ export default function MigrationPage() {
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [importLoading, setImportLoading] = useState(false);
 
   const token = (session?.user as any)?.accessToken;
+
+  // Progress calculation
+  const progressPercent = (step / 5) * 100;
 
   const createJob = async () => {
     if (!token || !source) return;
     setLoading(true);
     setError(null);
     try {
-      const job = await apiFetch<any>("/migration/jobs", token, {
+      const job = await apiFetch<any>("/api/v1/migration/jobs", token, {
         method: "POST",
         body: JSON.stringify({ source_system: source }),
       });
@@ -64,7 +66,7 @@ export default function MigrationPage() {
       });
 
       const previewData = await apiFetch<any>(
-        `/migration/jobs/${jobId}/preview`,
+        `/api/v1/migration/jobs/${jobId}/preview`,
         token,
         { method: "POST", body: JSON.stringify({ data }) }
       );
@@ -77,16 +79,19 @@ export default function MigrationPage() {
     }
   };
 
+  const goToConfirmation = () => {
+    setStep(4);
+  };
+
   const startImport = async () => {
     if (!token || !jobId) return;
-    setLoading(true);
+    setImportLoading(true);
     setError(null);
     try {
-      setStep(4);
       const importResult = await apiFetch<any>(
-        `/migration/jobs/${jobId}/start`,
+        `/api/v1/migration/import`,
         token,
-        { method: "POST" }
+        { method: "POST", body: JSON.stringify({ job_id: jobId }) }
       );
       setResult(importResult);
       setStep(5);
@@ -94,22 +99,42 @@ export default function MigrationPage() {
       setError(err.message);
       setStep(3);
     } finally {
-      setLoading(false);
+      setImportLoading(false);
     }
   };
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-6">
-        <h1 className="text-2xl font-bold text-neutral-900">Migration Center</h1>
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-neutral-900 flex items-center gap-2">
+          <Upload className="w-6 h-6 text-accent" />
+          Migration Center
+        </h1>
+        <p className="text-neutral-500 mt-1 text-sm">
+          Importez vos données depuis VeoCRM ou une source personnalisée.
+        </p>
+      </div>
+
+      {/* Progress Bar */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-medium text-neutral-900">Progression</span>
+          <span className="text-sm font-medium text-neutral-600">{Math.round(progressPercent)}%</span>
+        </div>
+        <div className="h-2 bg-neutral-200 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-accent transition-all duration-300"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
       </div>
 
       {/* Step indicator */}
-      <div className="flex items-center gap-2 mb-8">
+      <div className="flex items-center gap-2 mb-8 overflow-x-auto pb-2">
         {STEP_LABELS.map((label, i) => (
-          <div key={label} className="flex items-center gap-2">
+          <div key={label} className="flex items-center gap-2 flex-shrink-0">
             <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-150 ${
+              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-150 flex-shrink-0 ${
                 i + 1 === step
                   ? "bg-accent text-white"
                   : i + 1 < step
@@ -119,11 +144,11 @@ export default function MigrationPage() {
             >
               {i + 1 < step ? <Check className="w-4 h-4" /> : i + 1}
             </div>
-            <span className={`text-sm ${i + 1 === step ? "font-medium text-neutral-900" : "text-neutral-500"}`}>
+            <span className={`text-sm whitespace-nowrap ${i + 1 === step ? "font-medium text-neutral-900" : "text-neutral-500"}`}>
               {label}
             </span>
             {i < STEP_LABELS.length - 1 && (
-              <div className={`w-8 h-0.5 transition-colors ${i + 1 < step ? "bg-success" : "bg-neutral-200"}`} />
+              <div className={`w-8 h-0.5 transition-colors flex-shrink-0 ${i + 1 < step ? "bg-success" : "bg-neutral-200"}`} />
             )}
           </div>
         ))}
@@ -139,8 +164,8 @@ export default function MigrationPage() {
       {/* Step 1: Select source */}
       {step === 1 && (
         <div>
-          <h2 className="text-lg font-semibold text-neutral-900 mb-4">S&eacute;lectionnez la source</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <h2 className="text-lg font-semibold text-neutral-900 mb-4">Étape 1: Sélectionnez la source</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             {SOURCES.map((s) => (
               <button
                 key={s.id}
@@ -156,14 +181,14 @@ export default function MigrationPage() {
               </button>
             ))}
           </div>
-          <div className="flex justify-end mt-6">
+          <div className="flex justify-end">
             <button
               onClick={createJob}
               disabled={!source || loading}
               className="btn-primary flex items-center gap-2"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
-              Continuer
+              Suivant
             </button>
           </div>
         </div>
@@ -172,16 +197,19 @@ export default function MigrationPage() {
       {/* Step 2: Upload */}
       {step === 2 && (
         <div>
-          <h2 className="text-lg font-semibold text-neutral-900 mb-4">Collez vos donn&eacute;es (CSV)</h2>
+          <h2 className="text-lg font-semibold text-neutral-900 mb-4">Étape 2: Téléchargez le fichier CSV</h2>
+          <p className="text-sm text-neutral-600 mb-4">
+            Collez le contenu de votre fichier CSV ci-dessous.
+          </p>
           <textarea
             value={csvText}
             onChange={(e) => setCsvText(e.target.value)}
             placeholder={"reference,title,type,status\nDOS-001,Dossier Test,general,open"}
-            className="input h-64 font-mono"
+            className="input h-64 font-mono mb-6"
           />
-          <div className="flex justify-between mt-6">
+          <div className="flex justify-between">
             <button onClick={() => setStep(1)} className="btn-secondary flex items-center gap-2">
-              <ArrowLeft className="w-4 h-4" /> Retour
+              <ArrowLeft className="w-4 h-4" /> Précédent
             </button>
             <button
               onClick={uploadAndPreview}
@@ -189,7 +217,7 @@ export default function MigrationPage() {
               className="btn-primary flex items-center gap-2"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
-              Pr&eacute;visualiser
+              Suivant
             </button>
           </div>
         </div>
@@ -198,74 +226,141 @@ export default function MigrationPage() {
       {/* Step 3: Preview */}
       {step === 3 && preview && (
         <div>
-          <h2 className="text-lg font-semibold text-neutral-900 mb-4">Pr&eacute;visualisation</h2>
+          <h2 className="text-lg font-semibold text-neutral-900 mb-4">Étape 3: Prévisualisation des données</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div className="bg-white rounded-lg shadow-subtle p-4">
-              <p className="text-sm text-neutral-500">Total</p>
+              <p className="text-sm text-neutral-500">Total enregistrements</p>
               <p className="text-2xl font-bold text-neutral-900">{preview.total_records}</p>
             </div>
             <div className="bg-white rounded-lg shadow-subtle p-4">
-              <p className="text-sm text-neutral-500">Doublons d&eacute;tect&eacute;s</p>
-              <p className="text-2xl font-bold text-warning">{preview.duplicates}</p>
+              <p className="text-sm text-neutral-500">Doublons détectés</p>
+              <p className="text-2xl font-bold text-warning">{preview.duplicates || 0}</p>
             </div>
             <div className="bg-white rounded-lg shadow-subtle p-4">
-              <p className="text-sm text-neutral-500">Tables cibles</p>
-              <p className="text-sm font-medium text-neutral-900 mt-1">{preview.tables.join(", ")}</p>
+              <p className="text-sm text-neutral-500">Statut</p>
+              <p className="text-sm font-medium text-success mt-1">Prêt à importer</p>
             </div>
           </div>
 
           {preview.sample && preview.sample.length > 0 && (
             <div className="bg-white rounded-lg shadow-subtle p-4 mb-6">
-              <h3 className="text-sm font-medium text-neutral-900 mb-2">&Eacute;chantillon</h3>
-              <pre className="text-xs text-neutral-600 overflow-auto max-h-48">
-                {JSON.stringify(preview.sample, null, 2)}
-              </pre>
+              <h3 className="text-sm font-medium text-neutral-900 mb-2">Échantillon des données</h3>
+              <div className="overflow-x-auto">
+                <pre className="text-xs text-neutral-600 overflow-auto max-h-48">
+                  {JSON.stringify(preview.sample, null, 2)}
+                </pre>
+              </div>
             </div>
           )}
 
           <div className="flex justify-between">
             <button onClick={() => setStep(2)} className="btn-secondary flex items-center gap-2">
-              <ArrowLeft className="w-4 h-4" /> Retour
+              <ArrowLeft className="w-4 h-4" /> Précédent
+            </button>
+            <button
+              onClick={goToConfirmation}
+              disabled={loading}
+              className="btn-primary flex items-center gap-2"
+            >
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
+              Suivant
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 4: Confirmation */}
+      {step === 4 && preview && (
+        <div>
+          <h2 className="text-lg font-semibold text-neutral-900 mb-4">Étape 4: Confirmation de l'import</h2>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <p className="text-sm text-blue-800">
+              Vous êtes sur le point d'importer <strong>{preview.total_records} enregistrements</strong> depuis la source <strong>{source}</strong>.
+              Cette opération ne peut pas être annulée.
+            </p>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-subtle p-4 mb-6">
+            <h3 className="text-sm font-medium text-neutral-900 mb-3">Résumé de l'import</h3>
+            <ul className="space-y-2 text-sm">
+              <li className="flex justify-between">
+                <span className="text-neutral-600">Source:</span>
+                <span className="font-medium text-neutral-900">{source}</span>
+              </li>
+              <li className="flex justify-between">
+                <span className="text-neutral-600">Enregistrements:</span>
+                <span className="font-medium text-neutral-900">{preview.total_records}</span>
+              </li>
+              <li className="flex justify-between">
+                <span className="text-neutral-600">Doublons:</span>
+                <span className="font-medium text-warning">{preview.duplicates || 0}</span>
+              </li>
+            </ul>
+          </div>
+
+          <div className="flex justify-between">
+            <button onClick={() => setStep(3)} className="btn-secondary flex items-center gap-2">
+              <ArrowLeft className="w-4 h-4" /> Précédent
             </button>
             <button
               onClick={startImport}
-              disabled={loading}
+              disabled={importLoading}
               className="flex items-center gap-2 px-4 py-2 bg-success text-white rounded-md text-sm font-medium hover:bg-success-600 transition-all duration-150 disabled:opacity-50"
             >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+              {importLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
               Lancer l&apos;import
             </button>
           </div>
         </div>
       )}
 
-      {/* Step 4: Progress */}
-      {step === 4 && (
-        <div className="text-center py-12">
-          <Loader2 className="w-12 h-12 animate-spin text-accent mx-auto mb-4" />
-          <p className="text-lg font-medium text-neutral-900">Import en cours...</p>
-          <p className="text-sm text-neutral-500 mt-1">Veuillez patienter.</p>
-        </div>
-      )}
-
       {/* Step 5: Results */}
       {step === 5 && result && (
         <div>
-          <h2 className="text-lg font-semibold text-neutral-900 mb-4">R&eacute;sultat</h2>
+          <h2 className="text-lg font-semibold text-neutral-900 mb-4">Étape 5: Résultats de l'import</h2>
+
+          {/* Success/Error Alert */}
+          {result.status === "completed" ? (
+            <div className="bg-success-50 border border-success-200 rounded-lg p-4 mb-6">
+              <div className="flex items-start gap-3">
+                <Check className="w-5 h-5 text-success-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="font-semibold text-success-900">Import réussi</h3>
+                  <p className="text-success-700 text-sm mt-1">
+                    Vos données ont été importées avec succès.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-danger-50 border border-danger-200 rounded-lg p-4 mb-6">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-danger-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="font-semibold text-danger-900">Erreur lors de l'import</h3>
+                  <p className="text-danger-700 text-sm mt-1">
+                    Une erreur s'est produite lors de l'import de vos données.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Stats */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div className="bg-white rounded-lg shadow-subtle p-4">
               <p className="text-sm text-neutral-500">Statut</p>
               <p className={`text-lg font-bold ${result.status === "completed" ? "text-success" : "text-danger"}`}>
-                {result.status === "completed" ? "Termin\u00e9" : "\u00c9chou\u00e9"}
+                {result.status === "completed" ? "Réussi" : "Erreur"}
               </p>
             </div>
             <div className="bg-white rounded-lg shadow-subtle p-4">
-              <p className="text-sm text-neutral-500">Import&eacute;s</p>
-              <p className="text-2xl font-bold text-success">{result.imported_records}</p>
+              <p className="text-sm text-neutral-500">Importés</p>
+              <p className="text-2xl font-bold text-success">{result.imported_records || 0}</p>
             </div>
             <div className="bg-white rounded-lg shadow-subtle p-4">
-              <p className="text-sm text-neutral-500">&Eacute;chou&eacute;s</p>
-              <p className="text-2xl font-bold text-danger">{result.failed_records}</p>
+              <p className="text-sm text-neutral-500">Échoués</p>
+              <p className="text-2xl font-bold text-danger">{result.failed_records || 0}</p>
             </div>
             <div className="bg-white rounded-lg shadow-subtle p-4">
               <p className="text-sm text-neutral-500">Total</p>
@@ -275,10 +370,12 @@ export default function MigrationPage() {
 
           {result.error_log && result.error_log.length > 0 && (
             <div className="bg-danger-50 rounded-lg border border-danger-200 p-4 mb-6">
-              <h3 className="text-sm font-medium text-danger-700 mb-2">Erreurs</h3>
-              <pre className="text-xs text-danger-600 overflow-auto max-h-32">
-                {JSON.stringify(result.error_log, null, 2)}
-              </pre>
+              <h3 className="text-sm font-medium text-danger-700 mb-2">Erreurs détectées</h3>
+              <div className="bg-white rounded p-2 max-h-48 overflow-y-auto">
+                <pre className="text-xs text-danger-600">
+                  {JSON.stringify(result.error_log, null, 2)}
+                </pre>
+              </div>
             </div>
           )}
 
