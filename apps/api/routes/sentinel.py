@@ -12,6 +12,7 @@ This module provides REST API endpoints for the SENTINEL system:
 import asyncio
 import logging
 import math
+import uuid
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
@@ -50,6 +51,20 @@ from packages.db.models.contact import Contact
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+def get_conflict_status(conflict: SentinelConflict) -> str:
+    """Determine conflict status from resolution field.
+
+    Args:
+        conflict: The SentinelConflict object
+
+    Returns:
+        Status string: 'active', 'resolved', or 'dismissed'
+    """
+    if not conflict.resolution:
+        return "active"
+    return "dismissed" if conflict.resolution == "false_positive" else "resolved"
 
 
 # ── 1. POST /check-conflict ──
@@ -136,7 +151,7 @@ async def check_conflict(
                 )
 
             conflict_detail = ConflictDetail(
-                id=UUID(int=0),  # Temporary ID - will be assigned when saved
+                id=uuid.uuid4(),  # Temporary ID - will be assigned when saved
                 conflict_type=conflict["conflict_type"],
                 severity_score=conflict["severity_score"],
                 description=conflict["description"],
@@ -165,13 +180,19 @@ async def check_conflict(
                 neo4j_client = detector.neo4j_client
 
                 # Query Neo4j for nodes and relationships involving these entities
+                # Restructured to avoid inefficient collect(DISTINCT ...) operations
                 query = """
                 MATCH (n)
                 WHERE n.id IN $entity_ids
+                WITH n
                 OPTIONAL MATCH (n)-[r]-(connected)
-                WHERE connected.id IN $entity_ids
-                RETURN collect(DISTINCT {id: n.id, type: labels(n)[0], name: n.name}) as nodes,
-                       collect(DISTINCT {from: n.id, to: connected.id, type: type(r)}) as edges
+                WHERE connected IS NOT NULL AND connected.id IN $entity_ids
+                RETURN
+                    n.id as node_id,
+                    labels(n)[0] as node_type,
+                    n.name as node_name,
+                    connected.id as connected_id,
+                    type(r) as rel_type
                 """
 
                 results = await neo4j_client.execute_query(
@@ -179,10 +200,43 @@ async def check_conflict(
                 )
 
                 if results:
-                    record = results[0]
+                    # Process row-based results into nodes and edges
+                    nodes_dict = {}
+                    edges_set = set()
+
+                    for record in results:
+                        # Add node
+                        node_id = record.get("node_id")
+                        if node_id and node_id not in nodes_dict:
+                            nodes_dict[node_id] = {
+                                "id": node_id,
+                                "type": record.get("node_type", "Entity"),
+                                "name": record.get("node_name", "Unknown")
+                            }
+
+                        # Add edge if relationship exists
+                        connected_id = record.get("connected_id")
+                        rel_type = record.get("rel_type")
+                        if node_id and connected_id and rel_type:
+                            # Use frozenset to avoid duplicate edges
+                            edge_key = frozenset([node_id, connected_id, rel_type])
+                            if edge_key not in edges_set:
+                                edges_set.add(edge_key)
+
+                    # Convert edges_set to list of edge dicts
+                    edges_list = []
+                    for edge_key in edges_set:
+                        edge_parts = list(edge_key)
+                        if len(edge_parts) >= 3:
+                            edges_list.append({
+                                "from": edge_parts[0],
+                                "to": edge_parts[1],
+                                "type": edge_parts[2]
+                            })
+
                     graph_data = {
-                        "nodes": record.get("nodes", []),
-                        "edges": [e for e in record.get("edges", []) if e.get("from") and e.get("to")]
+                        "nodes": list(nodes_dict.values()),
+                        "edges": edges_list
                     }
                 else:
                     # Fallback to basic structure
@@ -297,24 +351,32 @@ async def list_conflicts(
         result = await db.execute(query)
         conflicts = result.scalars().all()
 
+        # Batch load all contacts to avoid N+1 queries
+        contact_ids = set()
+        for conflict in conflicts:
+            contact_ids.add(conflict.trigger_entity_id)
+            if conflict.conflicting_entity_id:
+                contact_ids.add(conflict.conflicting_entity_id)
+
+        # Single batch query for all contacts
+        contacts_map = {}
+        if contact_ids:
+            contact_result = await db.execute(
+                select(Contact).where(Contact.id.in_(contact_ids))
+            )
+            contacts_map = {c.id: c for c in contact_result.scalars().all()}
+
         # Map to ConflictSummary schemas
         conflict_summaries = []
         for conflict in conflicts:
-            # Determine status
-            if conflict.resolution:
-                conflict_status = "resolved" if conflict.resolution != "false_positive" else "dismissed"
-            else:
-                conflict_status = "active"
+            # Determine status using helper function
+            conflict_status = get_conflict_status(conflict)
 
-            # Build entities list with actual contact data
+            # Build entities list with actual contact data from batch-loaded map
             entities = []
 
-            # Fetch actual contact data for trigger entity
-            contact_result = await db.execute(
-                select(Contact).where(Contact.id == conflict.trigger_entity_id)
-            )
-            contact_obj = contact_result.scalar_one_or_none()
-
+            # Get trigger entity from map
+            contact_obj = contacts_map.get(conflict.trigger_entity_id)
             if contact_obj:
                 entities.append(
                     EntityRef(
@@ -324,13 +386,9 @@ async def list_conflicts(
                     )
                 )
 
-            # Fetch conflicting entity if available
+            # Get conflicting entity from map if available
             if conflict.conflicting_entity_id:
-                conflicting_contact_result = await db.execute(
-                    select(Contact).where(Contact.id == conflict.conflicting_entity_id)
-                )
-                conflicting_contact = conflicting_contact_result.scalar_one_or_none()
-
+                conflicting_contact = contacts_map.get(conflict.conflicting_entity_id)
                 if conflicting_contact:
                     entities.append(
                         EntityRef(
@@ -441,8 +499,8 @@ async def resolve_conflict(
         # Refresh conflict to get updated data
         await db.refresh(conflict)
 
-        # Determine new status
-        new_status = "resolved" if request.resolution != "false_positive" else "dismissed"
+        # Determine new status using helper function
+        new_status = get_conflict_status(conflict)
 
         logger.info(f"[{request_id}] Conflict resolved successfully as {new_status}")
 
@@ -537,6 +595,9 @@ async def sync_graph(
                     failed_count += 1
                     logger.warning(f"[{request_id}] Failed to sync entity {entity_id}")
 
+            # Ensure changes are persisted
+            await db.commit()
+
         else:
             # No entities specified
             logger.warning(f"[{request_id}] No entities specified for sync")
@@ -614,6 +675,8 @@ async def get_graph_data(
         neo4j_client = detector.neo4j_client
 
         # Query for entity and neighbors
+        # Note: Neo4j Cypher doesn't support parameterizing path length in [*1..n] syntax,
+        # but depth is validated by FastAPI Query(ge=1, le=3) so f-string is safe here
         query = f"""
         MATCH (center {{id: $entity_id}})
         WHERE center:Person OR center:Company
@@ -643,21 +706,27 @@ async def get_graph_data(
         if results:
             record = results[0]
 
-            # Add center node
+            # Add center node with proper null/empty checks
             center = record.get("center", {})
-            if center:
-                center_label = "Company" if center.get("type") == "legal" else "Person"
-                nodes.append(
-                    GraphNode(
-                        id=str(entity_id),
-                        label=center_label,
-                        name=center.get("name", "Unknown"),
-                        properties={
-                            "email": center.get("email"),
-                            "phone": center.get("phone"),
-                        },
-                    )
+            if not center or not center.get("id"):
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Entity {entity_id} not found in graph"
                 )
+
+            center_type = center.get("type", "Unknown")
+            center_label = "Company" if center_type == "legal" else "Person"
+            nodes.append(
+                GraphNode(
+                    id=str(entity_id),
+                    label=center_label,
+                    name=center.get("name", "Unknown"),
+                    properties={
+                        "email": center.get("email"),
+                        "phone": center.get("phone"),
+                    },
+                )
+            )
 
             # Add neighbor nodes
             neighbors = record.get("neighbors", [])
@@ -681,15 +750,15 @@ async def get_graph_data(
                             )
                         )
 
-            # Add edges
+            # Add edges with proper null checks
             edge_records = record.get("edges", [])
             for edge in edge_records:
-                if edge:
+                if edge and edge.get("from") and edge.get("to"):
                     edges.append(
                         GraphEdge(
                             from_id=str(edge["from"]),
                             to_id=str(edge["to"]),
-                            type=edge["type"],
+                            type=edge.get("type", "RELATED"),
                             properties=edge.get("properties", {}),
                         )
                     )
@@ -868,6 +937,9 @@ async def stream_alerts(
 
     async def event_generator():
         """Generate SSE events for the client."""
+        # Note: ConflictAlerter uses db session only for quick registration operations.
+        # The SSE connection itself doesn't hold the session long-term; it's only used
+        # for initial setup and potential alert queries when conflicts are detected.
         alerter = ConflictAlerter(db)
         connection_placeholder = object()  # Placeholder connection object
 
