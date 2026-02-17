@@ -29,6 +29,9 @@ boto3>=1.34.0
 # Vector DB
 qdrant-client>=1.7.0
 
+# Graph DB
+neo4j>=5.15.0
+
 # ML/NLP
 httpx>=0.26.0
 sentence-transformers>=2.3.0
