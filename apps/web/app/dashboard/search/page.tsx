@@ -113,7 +113,7 @@ export default function SearchPage() {
           {results.length === 0 ? (
             <EmptyState
               title="Aucun résultat"
-              message="Aucun document ne correspond à votre recherche. Essayez d'autres termes."
+              description="Aucun document ne correspond à votre recherche. Essayez d'autres termes."
             />
           ) : (
             <div className="space-y-4">
@@ -156,7 +156,7 @@ export default function SearchPage() {
       {!searched && !loading && (
         <EmptyState
           title="Commencez votre recherche"
-          message="Utilisez la barre de recherche pour trouver des documents et des informations pertinentes."
+          description="Utilisez la barre de recherche pour trouver des documents et des informations pertinentes."
         />
       )}
     </div>

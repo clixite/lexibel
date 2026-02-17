@@ -72,7 +72,7 @@ export default function DashboardPage() {
           apiFetch<{ items: InboxItem[] }>("/inbox?status=DRAFT&per_page=5", token, { tenantId }).catch(() => ({ items: [] })),
         ]);
 
-        setStats(statsRes.stats || {
+        setStats('stats' in statsRes && statsRes.stats ? statsRes.stats : {
           total_cases: 0,
           total_contacts: 0,
           monthly_hours: 0,

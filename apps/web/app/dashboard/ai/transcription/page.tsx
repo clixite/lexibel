@@ -61,8 +61,8 @@ export default function TranscriptionPage() {
       try {
         setLoading(true);
         setError("");
-        const res = await apiFetch<Transcription[]>("/transcriptions", session?.user?.accessToken);
-        setTranscriptions(Array.isArray(res) ? res : res.items || []);
+        const res = await apiFetch<Transcription[]>("/transcriptions", session?.user?.accessToken!);
+        setTranscriptions(res);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Erreur de chargement");
       } finally {
@@ -122,8 +122,8 @@ export default function TranscriptionPage() {
       setUploadFile(null);
 
       // Reload data
-      const res = await apiFetch<Transcription[]>("/transcriptions", session?.user?.accessToken);
-      setTranscriptions(Array.isArray(res) ? res : res.items || []);
+      const res = await apiFetch<Transcription[]>("/transcriptions", session?.user?.accessToken!);
+      setTranscriptions(res);
     } catch (err) {
       toast.error("Erreur d'upload", {
         description: err instanceof Error ? err.message : "Impossible d'uploader le fichier",
@@ -171,7 +171,7 @@ export default function TranscriptionPage() {
 
       {loading && <LoadingSkeleton />}
 
-      {error && <ErrorState title="Erreur de chargement" description={error} />}
+      {error && <ErrorState message={error} />}
 
       {!loading && transcriptions.length === 0 && (
         <EmptyState

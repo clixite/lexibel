@@ -39,12 +39,13 @@ export default function CalendarPage() {
 
   useEffect(() => {
     async function fetchData() {
+      if (!session?.user?.accessToken) return;
       try {
         setLoading(true);
         setError("");
         const query = `?after=${encodeURIComponent(dateAfter)}&before=${encodeURIComponent(dateBefore)}`;
-        const res = await apiFetch<CalendarEvent[]>(`/calendar/events${query}`, session?.user?.accessToken);
-        setEvents(Array.isArray(res) ? res : res.items || []);
+        const res = await apiFetch<CalendarEvent[]>(`/calendar/events${query}`, session.user.accessToken);
+        setEvents(res);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Erreur de chargement");
       } finally {
@@ -59,8 +60,9 @@ export default function CalendarPage() {
 
   useEffect(() => {
     async function fetchStats() {
+      if (!session?.user?.accessToken) return;
       try {
-        const res = await apiFetch<CalendarStats>("/calendar/stats", session?.user?.accessToken);
+        const res = await apiFetch<CalendarStats>("/calendar/stats", session.user.accessToken);
         setStats(res);
       } catch (err) {
         console.error("Erreur stats:", err);
@@ -73,9 +75,10 @@ export default function CalendarPage() {
   }, [session?.user?.accessToken]);
 
   const handleSync = async () => {
+    if (!session?.user?.accessToken) return;
     try {
       setSyncing(true);
-      await apiFetch("/calendar/sync", session?.user?.accessToken, { method: "POST" });
+      await apiFetch("/calendar/sync", session.user.accessToken, { method: "POST" });
     } catch (err) {
       console.error("Erreur sync:", err);
     } finally {
@@ -145,7 +148,7 @@ export default function CalendarPage() {
 
       {loading && <LoadingSkeleton />}
 
-      {error && <ErrorState title="Erreur de chargement" description={error} />}
+      {error && <ErrorState message={error} />}
 
       {!loading && events.length === 0 && (
         <EmptyState

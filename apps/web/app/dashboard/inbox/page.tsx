@@ -546,7 +546,7 @@ export default function InboxPage() {
             </button>
             <button
               onClick={handleRefuse}
-              disabled={refuseTarget && actionLoading === refuseTarget.id}
+              disabled={!!(refuseTarget && actionLoading === refuseTarget.id)}
               className="px-4 py-2 text-sm font-medium text-white bg-danger rounded-md hover:bg-danger/90 transition-colors flex items-center gap-2 disabled:opacity-50"
             >
               {refuseTarget && actionLoading === refuseTarget.id && (
