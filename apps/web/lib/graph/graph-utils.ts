@@ -308,7 +308,7 @@ export function calculateCentrality(
 
   // Count degree for each node
   elements.forEach((el) => {
-    if (!el.data.source && !el.data.target) {
+    if (!el.data.source && !el.data.target && el.data.id) {
       centrality.set(el.data.id, 0);
     }
   });

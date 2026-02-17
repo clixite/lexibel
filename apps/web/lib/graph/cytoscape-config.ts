@@ -1,4 +1,4 @@
-import type { Stylesheet, LayoutOptions } from "cytoscape";
+// Cytoscape types imported but using any for compatibility
 
 // Node colors by entity type
 export const NODE_COLORS: Record<string, string> = {
@@ -39,7 +39,7 @@ export const EDGE_COLORS: Record<string, string> = {
 };
 
 // Cytoscape stylesheet
-export const cytoscapeStylesheet: Stylesheet[] = [
+export const cytoscapeStylesheet: any[] = [
   // Node base styles
   {
     selector: "node",
@@ -158,7 +158,7 @@ export const cytoscapeStylesheet: Stylesheet[] = [
 ];
 
 // Layout configurations
-export const layoutConfigs: Record<string, LayoutOptions> = {
+export const layoutConfigs: Record<string, any> = {
   // Force-directed layout (default)
   cola: {
     name: "cola",

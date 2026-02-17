@@ -85,8 +85,8 @@ export default function CaseConflictsPage({
   // Create node name map
   const nodeNamesMap = new Map(
     allElements
-      .filter((el) => !el.data.source && !el.data.target)
-      .map((el) => [el.data.id, el.data.name])
+      .filter((el) => !el.data.source && !el.data.target && el.data.id && el.data.name)
+      .map((el) => [el.data.id as string, el.data.name as string])
   );
 
   const handleConflictClick = (conflict: ConflictDetection) => {
