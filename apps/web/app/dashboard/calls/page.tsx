@@ -3,9 +3,9 @@
 import { useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Phone, PhoneIncoming, PhoneOutgoing, Clock } from "lucide-react";
+import { Phone, PhoneIncoming, PhoneOutgoing, Clock, ChevronDown } from "lucide-react";
 import { apiFetch } from "@/lib/api";
-import { LoadingSkeleton, ErrorState, EmptyState, StatCard, DataTable, Badge } from "@/components/ui";
+import { LoadingSkeleton, ErrorState, EmptyState, StatCard, DataTable, Badge, Card, Button } from "@/components/ui";
 
 interface Call {
   id: string;
@@ -88,43 +88,54 @@ export default function CallsPage() {
 
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <StatCard
-            title="Total appels"
-            value={stats.total}
-            icon={<Phone className="w-5 h-5" />}
-            color="accent"
-          />
-          <StatCard
-            title="Entrants"
-            value={stats.inbound}
-            icon={<PhoneIncoming className="w-5 h-5" />}
-            color="success"
-          />
-          <StatCard
-            title="Sortants"
-            value={stats.outbound}
-            icon={<PhoneOutgoing className="w-5 h-5" />}
-            color="warning"
-          />
-          <StatCard
-            title="Durée moyenne"
-            value={formatDuration(stats.avg_duration)}
-            icon={<Clock className="w-5 h-5" />}
-            color="accent"
-          />
+          <Card className="hover:shadow-lg transition-shadow">
+            <StatCard
+              title="Total appels"
+              value={stats.total}
+              icon={<Phone className="w-5 h-5" />}
+              color="accent"
+            />
+          </Card>
+          <Card className="hover:shadow-lg transition-shadow">
+            <StatCard
+              title="Entrants"
+              value={stats.inbound}
+              icon={<PhoneIncoming className="w-5 h-5" />}
+              color="success"
+            />
+          </Card>
+          <Card className="hover:shadow-lg transition-shadow">
+            <StatCard
+              title="Sortants"
+              value={stats.outbound}
+              icon={<PhoneOutgoing className="w-5 h-5" />}
+              color="warning"
+            />
+          </Card>
+          <Card className="hover:shadow-lg transition-shadow">
+            <StatCard
+              title="Durée moyenne"
+              value={formatDuration(stats.avg_duration)}
+              icon={<Clock className="w-5 h-5" />}
+              color="accent"
+            />
+          </Card>
         </div>
       )}
 
       <div className="mb-6">
-        <select
-          value={direction}
-          onChange={(e) => setDirection(e.target.value as any)}
-          className="px-4 py-2 border border-neutral-200 rounded-lg text-sm"
-        >
-          <option value="ALL">Toutes directions</option>
-          <option value="INBOUND">Entrant</option>
-          <option value="OUTBOUND">Sortant</option>
-        </select>
+        <div className="relative inline-block">
+          <select
+            value={direction}
+            onChange={(e) => setDirection(e.target.value as any)}
+            className="appearance-none px-4 py-2 border border-neutral-200 rounded-lg text-sm pr-8 bg-white"
+          >
+            <option value="ALL">Toutes directions</option>
+            <option value="INBOUND">Entrant</option>
+            <option value="OUTBOUND">Sortant</option>
+          </select>
+          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
+        </div>
       </div>
 
       {loading && <LoadingSkeleton />}
@@ -140,46 +151,56 @@ export default function CallsPage() {
       )}
 
       {!loading && calls.length > 0 && (
-        <DataTable
-          data={calls}
-          columns={[
-            {
-              key: "date",
-              label: "Date",
-              render: (call) => new Date(call.date).toLocaleDateString("fr-FR"),
-            },
-            {
-              key: "time",
-              label: "Heure",
-              render: (call) => call.time,
-            },
-            {
-              key: "direction",
-              label: "Direction",
-              render: (call) => (
-                <Badge variant={call.direction === "INBOUND" ? "success" : "accent"}>
-                  {call.direction === "INBOUND" ? "Entrant" : "Sortant"}
-                </Badge>
-              ),
-            },
-            {
-              key: "phone_number",
-              label: "Numéro",
-              render: (call) => <span>{call.phone_number}</span>,
-            },
-            {
-              key: "duration",
-              label: "Durée",
-              render: (call) => formatDuration(call.duration),
-            },
-            {
-              key: "status",
-              label: "Statut",
-              render: (call) => <span>{call.status}</span>,
-            },
-          ]}
-          onRowClick={(call) => router.push(`/dashboard/calls/${call.id}`)}
-        />
+        <Card className="overflow-hidden">
+          <DataTable
+            data={calls}
+            columns={[
+              {
+                key: "date",
+                label: "Date",
+                render: (call) => new Date(call.date).toLocaleDateString("fr-FR"),
+              },
+              {
+                key: "time",
+                label: "Heure",
+                render: (call) => call.time,
+              },
+              {
+                key: "direction",
+                label: "Direction",
+                render: (call) => (
+                  <Badge
+                    variant={call.direction === "INBOUND" ? "success" : "accent"}
+                    size="sm"
+                    dot
+                  >
+                    {call.direction === "INBOUND" ? "Entrant" : "Sortant"}
+                  </Badge>
+                ),
+              },
+              {
+                key: "phone_number",
+                label: "Numéro",
+                render: (call) => <span>{call.phone_number}</span>,
+              },
+              {
+                key: "duration",
+                label: "Durée",
+                render: (call) => formatDuration(call.duration),
+              },
+              {
+                key: "status",
+                label: "Statut",
+                render: (call) => (
+                  <Badge variant="neutral" size="sm">
+                    {call.status}
+                  </Badge>
+                ),
+              },
+            ]}
+            onRowClick={(call) => router.push(`/dashboard/calls/${call.id}`)}
+          />
+        </Card>
       )}
     </div>
   );

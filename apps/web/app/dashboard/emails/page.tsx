@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Mail, Paperclip, Clock, RefreshCw } from "lucide-react";
 import { apiFetch } from "@/lib/api";
-import { LoadingSkeleton, ErrorState, EmptyState, StatCard, DataTable, Badge } from "@/components/ui";
+import { LoadingSkeleton, ErrorState, EmptyState, StatCard, DataTable, Badge, Button, Card } from "@/components/ui";
 import { toast } from "sonner";
 
 interface EmailThread {
@@ -89,36 +89,43 @@ export default function EmailsPage() {
           <h1 className="text-2xl font-bold text-neutral-900">Emails</h1>
           <p className="text-neutral-500 text-sm mt-1">Synchronisés depuis Gmail et Outlook</p>
         </div>
-        <button
+        <Button
+          variant="primary"
+          icon={<RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />}
           onClick={handleSync}
           disabled={syncing}
-          className="btn-primary flex items-center gap-2"
+          loading={syncing}
         >
-          <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />
           {syncing ? "Synchronisation..." : "Synchroniser"}
-        </button>
+        </Button>
       </div>
 
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <StatCard
-            title="Total conversations"
-            value={stats.total_threads}
-            icon={<Mail className="w-5 h-5" />}
-            color="accent"
-          />
-          <StatCard
-            title="Non lus"
-            value={stats.unread_count}
-            icon={<Mail className="w-5 h-5" />}
-            color="warning"
-          />
-          <StatCard
-            title="Avec pièces jointes"
-            value={stats.with_attachments}
-            icon={<Paperclip className="w-5 h-5" />}
-            color="success"
-          />
+          <Card className="hover:shadow-lg transition-shadow">
+            <StatCard
+              title="Total conversations"
+              value={stats.total_threads}
+              icon={<Mail className="w-5 h-5" />}
+              color="accent"
+            />
+          </Card>
+          <Card className="hover:shadow-lg transition-shadow">
+            <StatCard
+              title="Non lus"
+              value={stats.unread_count}
+              icon={<Mail className="w-5 h-5" />}
+              color="warning"
+            />
+          </Card>
+          <Card className="hover:shadow-lg transition-shadow">
+            <StatCard
+              title="Avec pièces jointes"
+              value={stats.with_attachments}
+              icon={<Paperclip className="w-5 h-5" />}
+              color="success"
+            />
+          </Card>
         </div>
       )}
 
@@ -135,41 +142,47 @@ export default function EmailsPage() {
       )}
 
       {!loading && threads.length > 0 && (
-        <DataTable
-          data={threads}
-          columns={[
-            {
-              key: "subject",
-              label: "Sujet",
-              render: (thread) => <span className="font-medium">{thread.subject}</span>,
-            },
-            {
-              key: "participants",
-              label: "Participants",
-              render: (thread) => <span>{thread.participants.join(", ")}</span>,
-            },
-            {
-              key: "date",
-              label: "Date",
-              render: (thread) => new Date(thread.date).toLocaleDateString("fr-FR"),
-            },
-            {
-              key: "message_count",
-              label: "Messages",
-              render: (thread) => <span>{thread.message_count}</span>,
-            },
-            {
-              key: "has_attachments",
-              label: "Pièces jointes",
-              render: (thread) => (
-                <Badge variant={thread.has_attachments ? "success" : "default"}>
-                  {thread.has_attachments ? "Oui" : "Non"}
-                </Badge>
-              ),
-            },
-          ]}
-          onRowClick={(thread) => router.push(`/dashboard/emails/${thread.id}`)}
-        />
+        <Card className="overflow-hidden">
+          <DataTable
+            data={threads}
+            columns={[
+              {
+                key: "subject",
+                label: "Sujet",
+                render: (thread) => <span className="font-medium">{thread.subject}</span>,
+              },
+              {
+                key: "participants",
+                label: "Participants",
+                render: (thread) => <span>{thread.participants.join(", ")}</span>,
+              },
+              {
+                key: "date",
+                label: "Date",
+                render: (thread) => new Date(thread.date).toLocaleDateString("fr-FR"),
+              },
+              {
+                key: "message_count",
+                label: "Messages",
+                render: (thread) => (
+                  <Badge variant="neutral" size="sm">
+                    {thread.message_count}
+                  </Badge>
+                ),
+              },
+              {
+                key: "has_attachments",
+                label: "Pièces jointes",
+                render: (thread) => (
+                  <Badge variant={thread.has_attachments ? "success" : "default"} size="sm">
+                    {thread.has_attachments ? "Oui" : "Non"}
+                  </Badge>
+                ),
+              },
+            ]}
+            onRowClick={(thread) => router.push(`/dashboard/emails/${thread.id}`)}
+          />
+        </Card>
       )}
     </div>
   );

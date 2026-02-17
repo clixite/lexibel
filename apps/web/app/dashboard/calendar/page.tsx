@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Calendar as CalendarIcon, Clock, MapPin, Users, ChevronLeft, ChevronRight } from "lucide-react";
 import { apiFetch } from "@/lib/api";
-import { LoadingSkeleton, ErrorState, EmptyState, StatCard } from "@/components/ui";
+import { LoadingSkeleton, ErrorState, EmptyState, StatCard, Button, Card } from "@/components/ui";
 
 interface CalendarEvent {
   id: string;
@@ -111,39 +111,53 @@ export default function CalendarPage() {
 
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <StatCard
-            title="Total événements"
-            value={stats.total_events}
-            icon={<CalendarIcon className="w-5 h-5" />}
-            color="accent"
-          />
-          <StatCard
-            title="Aujourd'hui"
-            value={stats.today_events}
-            icon={<Clock className="w-5 h-5" />}
-            color="success"
-          />
-          <StatCard
-            title="À venir (7 jours)"
-            value={stats.upcoming_week}
-            icon={<Users className="w-5 h-5" />}
-            color="warning"
-          />
+          <Card className="hover:shadow-lg transition-shadow">
+            <StatCard
+              title="Total événements"
+              value={stats.total_events}
+              icon={<CalendarIcon className="w-5 h-5" />}
+              color="accent"
+            />
+          </Card>
+          <Card className="hover:shadow-lg transition-shadow">
+            <StatCard
+              title="Aujourd'hui"
+              value={stats.today_events}
+              icon={<Clock className="w-5 h-5" />}
+              color="success"
+            />
+          </Card>
+          <Card className="hover:shadow-lg transition-shadow">
+            <StatCard
+              title="À venir (7 jours)"
+              value={stats.upcoming_week}
+              icon={<Users className="w-5 h-5" />}
+              color="warning"
+            />
+          </Card>
         </div>
       )}
 
       <div className="flex items-center justify-between mb-6">
-        <button onClick={() => shiftDate(-30)} className="btn-secondary flex items-center gap-2">
-          <ChevronLeft className="w-4 h-4" />
+        <Button
+          variant="secondary"
+          size="sm"
+          icon={<ChevronLeft className="w-4 h-4" />}
+          onClick={() => shiftDate(-30)}
+        >
           -30 jours
-        </button>
-        <div className="text-sm text-neutral-600">
+        </Button>
+        <div className="text-sm text-neutral-600 font-medium">
           {new Date(dateAfter).toLocaleDateString("fr-FR")} - {new Date(dateBefore).toLocaleDateString("fr-FR")}
         </div>
-        <button onClick={() => shiftDate(30)} className="btn-secondary flex items-center gap-2">
+        <Button
+          variant="secondary"
+          size="sm"
+          icon={<ChevronRight className="w-4 h-4" />}
+          onClick={() => shiftDate(30)}
+        >
           +30 jours
-          <ChevronRight className="w-4 h-4" />
-        </button>
+        </Button>
       </div>
 
       {loading && <LoadingSkeleton />}
@@ -161,9 +175,9 @@ export default function CalendarPage() {
       {!loading && events.length > 0 && (
         <div className="space-y-3">
           {events.map((event) => (
-            <div
+            <Card
               key={event.id}
-              className="card p-4 cursor-pointer hover:shadow-md transition-shadow"
+              hover
               onClick={() => router.push(`/dashboard/calendar/${event.id}`)}
             >
               <div className="flex items-start gap-4">
@@ -172,7 +186,7 @@ export default function CalendarPage() {
                 </div>
                 <div className="flex-1">
                   <h3 className="font-medium text-neutral-900">{event.title}</h3>
-                  <div className="flex items-center gap-4 text-sm text-neutral-600 mt-1">
+                  <div className="flex items-center gap-4 text-sm text-neutral-600 mt-1 flex-wrap">
                     <span className="flex items-center gap-1">
                       <Clock className="w-3.5 h-3.5" />
                       {event.time}
@@ -192,7 +206,7 @@ export default function CalendarPage() {
                   </div>
                 </div>
               </div>
-            </div>
+            </Card>
           ))}
         </div>
       )}

@@ -18,7 +18,7 @@ import {
   Clock,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
-import { LoadingSkeleton, ErrorState, EmptyState, Badge, Modal } from "@/components/ui";
+import { LoadingSkeleton, ErrorState, EmptyState, Badge, Modal, Card, Tabs, Button } from "@/components/ui";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -392,23 +392,25 @@ export default function InboxPage() {
         </div>
       </div>
 
-      {/* Filter tabs */}
-      <div className="flex flex-wrap items-center gap-3 mb-6">
-        <div className="flex gap-1 bg-neutral-100 rounded-md p-1">
-          {STATUS_FILTERS.map((f) => (
-            <button
-              key={f.value}
-              onClick={() => setStatusFilter(f.value)}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-150 ${
-                statusFilter === f.value
-                  ? "bg-white text-neutral-900 shadow-subtle"
-                  : "text-neutral-500 hover:text-neutral-700"
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+      {/* Filter tabs with pills and badge counts */}
+      <div className="mb-6">
+        <Tabs
+          tabs={STATUS_FILTERS.map((f) => ({
+            id: f.value,
+            label: f.label,
+            content: null,
+            badge:
+              f.value === ""
+                ? totalCount
+                : f.value === "DRAFT"
+                  ? items.filter((i) => i.status === "DRAFT").length
+                  : f.value === "VALIDATED"
+                    ? items.filter((i) => i.status === "VALIDATED").length
+                    : items.filter((i) => i.status === "REFUSED").length,
+          }))}
+          defaultTab={statusFilter || ""}
+          onTabChange={setStatusFilter}
+        />
       </div>
 
       {/* Error */}
@@ -675,36 +677,23 @@ export default function InboxPage() {
 
       {/* ---- Item list ---- */}
       {filteredItems.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-subtle overflow-hidden">
-          <div className="relative">
-            <div className="absolute inset-0 opacity-[0.03]">
-              <div
-                className="w-full h-full"
-                style={{
-                  backgroundImage:
-                    "radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)",
-                  backgroundSize: "24px 24px",
-                }}
-              />
-            </div>
-            <div className="relative px-6 py-20 text-center">
-              <EmptyState
-                title="Aucun élément"
-                description={
-                  statusFilter
-                    ? "Aucun élément ne correspond à ce filtre. Essayez un autre statut."
-                    : "Votre inbox est vide. Les nouveaux e-mails, appels et documents apparaîtront ici automatiquement."
-                }
-              />
-            </div>
-          </div>
-        </div>
+        <Card className="text-center py-20">
+          <EmptyState
+            title="Aucun élément"
+            description={
+              statusFilter
+                ? "Aucun élément ne correspond à ce filtre. Essayez un autre statut."
+                : "Votre inbox est vide. Les nouveaux e-mails, appels et documents apparaîtront ici automatiquement."
+            }
+          />
+        </Card>
       ) : (
         <div className="space-y-3">
           {filteredItems.map((item) => (
-            <div
+            <Card
               key={item.id}
-              className="bg-white rounded-lg shadow-subtle border border-neutral-100 p-5 hover:border-accent-200 transition-colors duration-150"
+              hover
+              className="border border-neutral-100 hover:border-accent-200"
             >
               <div className="flex items-start gap-4">
                 {/* Source icon */}
@@ -736,14 +725,18 @@ export default function InboxPage() {
                       <span className="text-xs text-neutral-400 whitespace-nowrap">
                         {timeAgo(item.created_at)}
                       </span>
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                          statusStyles[item.status] ||
-                          "bg-neutral-100 text-neutral-600"
-                        }`}
+                      <Badge
+                        variant={
+                          item.status === "DRAFT"
+                            ? "warning"
+                            : item.status === "VALIDATED"
+                              ? "success"
+                              : "danger"
+                        }
+                        size="sm"
                       >
                         {statusLabels[item.status] || item.status}
-                      </span>
+                      </Badge>
                     </div>
                   </div>
 
@@ -766,39 +759,42 @@ export default function InboxPage() {
                       {Math.round(item.confidence * 100)}%
                     </span>
                     {item.suggested_case_id && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs bg-accent-50 text-accent-700 ml-2">
+                      <Badge variant="accent" size="sm" className="ml-2">
                         Dossier suggéré
-                      </span>
+                      </Badge>
                     )}
                   </div>
 
                   {/* Actions for DRAFT items */}
                   {item.status === "DRAFT" && (
                     <div className="flex items-center gap-2 mt-3 pt-3 border-t border-neutral-100">
-                      <button
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        icon={<CheckCircle2 className="w-3.5 h-3.5" />}
                         onClick={() => openValidate(item)}
                         disabled={actionLoading === item.id}
-                        className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1.5 disabled:opacity-50"
                       >
-                        <CheckCircle2 className="w-3.5 h-3.5" />
                         Valider
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        icon={<XCircle className="w-3.5 h-3.5" />}
                         onClick={() => setRefuseTarget(item)}
                         disabled={actionLoading === item.id}
-                        className="px-3 py-1.5 text-xs font-medium text-danger bg-danger-50 rounded-md hover:bg-danger-100 transition-colors flex items-center gap-1.5 disabled:opacity-50"
                       >
-                        <XCircle className="w-3.5 h-3.5" />
                         Refuser
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        icon={<FolderPlus className="w-3.5 h-3.5" />}
                         onClick={() => openCreateCase(item)}
                         disabled={actionLoading === item.id}
-                        className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5 disabled:opacity-50"
                       >
-                        <FolderPlus className="w-3.5 h-3.5" />
                         Créer dossier
-                      </button>
+                      </Button>
                       {actionLoading === item.id && (
                         <Loader2 className="w-4 h-4 animate-spin text-accent ml-1" />
                       )}
@@ -824,7 +820,7 @@ export default function InboxPage() {
                   )}
                 </div>
               </div>
-            </div>
+            </Card>
           ))}
         </div>
       )}
