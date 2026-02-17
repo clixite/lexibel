@@ -44,6 +44,7 @@ from apps.api.routers.calendar import router as calendar_router
 from apps.api.routers.emails import router as emails_router
 from apps.api.routers.calls import router as calls_router
 from apps.api.routers.transcriptions import router as transcriptions_router
+from apps.api.routes.sentinel import router as sentinel_router
 from apps.api.services.metrics import metrics_endpoint
 
 logger = logging.getLogger(__name__)
@@ -153,6 +154,7 @@ def create_app() -> FastAPI:
     app.include_router(emails_router)
     app.include_router(calls_router)
     app.include_router(transcriptions_router)
+    app.include_router(sentinel_router, prefix="/api/sentinel", tags=["sentinel"])
 
     # ── Health check ──
     @app.get("/api/v1/health")
