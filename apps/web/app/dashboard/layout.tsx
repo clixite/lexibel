@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
+import TopBar from "@/components/TopBar";
 
 export default function DashboardLayout({
   children,
@@ -43,9 +44,10 @@ export default function DashboardLayout({
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
+      <TopBar sidebarCollapsed={sidebarCollapsed} />
       <main
-        className={`flex-1 transition-all duration-300 ease-in-out ${
-          sidebarCollapsed ? "ml-16" : "ml-64"
+        className={`transition-all duration-300 pt-16 ${
+          sidebarCollapsed ? "ml-20" : "ml-72"
         }`}
       >
         <div className="p-8">{children}</div>

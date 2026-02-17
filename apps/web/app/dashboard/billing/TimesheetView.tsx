@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import { useEffect, useState, useRef } from "react";
 import { Plus, Play, Square, Loader2, X, Check } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import Badge from "@/components/ui/Badge";
 import SkeletonTable from "@/components/skeletons/SkeletonTable";
 
 interface TimeEntry {
@@ -355,88 +356,99 @@ export default function TimesheetView() {
         </div>
       )}
 
-      {/* Table */}
-      <div className="bg-white rounded-lg shadow-subtle overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-neutral-200">
-              <th className="text-left px-6 py-3 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
-                Date
-              </th>
-              <th className="text-left px-6 py-3 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
-                Dossier
-              </th>
-              <th className="text-left px-6 py-3 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
-                Description
-              </th>
-              <th className="text-left px-6 py-3 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
-                Durée
-              </th>
-              <th className="text-left px-6 py-3 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
-                Montant
-              </th>
-              <th className="text-left px-6 py-3 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
-                Statut
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-neutral-100">
-            {entries.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={6}
-                  className="px-6 py-12 text-center text-sm text-neutral-400"
-                >
-                  Aucune prestation trouvée.
-                </td>
+      {/* Premium Table */}
+      <div className="bg-white rounded-xl shadow-md border border-neutral-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-gradient-to-r from-neutral-50 to-neutral-100 border-b border-neutral-200">
+                <th className="text-left px-6 py-4 text-xs font-semibold text-neutral-700 uppercase tracking-wider">
+                  Date
+                </th>
+                <th className="text-left px-6 py-4 text-xs font-semibold text-neutral-700 uppercase tracking-wider">
+                  Dossier
+                </th>
+                <th className="text-left px-6 py-4 text-xs font-semibold text-neutral-700 uppercase tracking-wider">
+                  Description
+                </th>
+                <th className="text-left px-6 py-4 text-xs font-semibold text-neutral-700 uppercase tracking-wider">
+                  Durée
+                </th>
+                <th className="text-right px-6 py-4 text-xs font-semibold text-neutral-700 uppercase tracking-wider">
+                  Montant
+                </th>
+                <th className="text-center px-6 py-4 text-xs font-semibold text-neutral-700 uppercase tracking-wider">
+                  Statut
+                </th>
               </tr>
-            ) : (
-              entries.map((e) => {
-                const caseRef =
-                  cases.find((c) => c.id === e.case_id)?.reference || "—";
-                const amount =
-                  e.hourly_rate_cents && e.duration_minutes
-                    ? (
-                        (e.hourly_rate_cents / 100) *
-                        (e.duration_minutes / 60)
-                      ).toFixed(2) + " €"
-                    : "—";
-                return (
-                  <tr
-                    key={e.id}
-                    className="hover:bg-neutral-50 transition-colors"
+            </thead>
+            <tbody className="divide-y divide-neutral-100">
+              {entries.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={6}
+                    className="px-6 py-12 text-center text-sm text-neutral-400"
                   >
-                    <td className="px-6 py-4 text-sm text-neutral-900">
-                      {new Date(e.date).toLocaleDateString("fr-BE")}
-                    </td>
-                    <td className="px-6 py-4 text-sm font-medium text-accent">
-                      {caseRef}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-neutral-700 max-w-xs truncate">
-                      {e.description}
-                    </td>
-                    <td className="px-6 py-4 text-sm font-medium text-neutral-900">
-                      {formatDuration(e.duration_minutes)}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-neutral-900">
-                      {amount}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          STATUS_COLORS[e.status] ||
-                          "bg-neutral-100 text-neutral-700"
-                        }`}
-                      >
-                        {STATUS_LABELS[e.status] || e.status}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+                    Aucune prestation trouvée.
+                  </td>
+                </tr>
+              ) : (
+                entries.map((e) => {
+                  const caseRef =
+                    cases.find((c) => c.id === e.case_id)?.reference || "—";
+                  const amount =
+                    e.hourly_rate_cents && e.duration_minutes
+                      ? (
+                          (e.hourly_rate_cents / 100) *
+                          (e.duration_minutes / 60)
+                        ).toFixed(2) + " €"
+                      : "—";
+
+                  const getBadgeVariant = (status: string) => {
+                    const variantMap: Record<string, "default" | "success" | "warning" | "danger" | "accent" | "neutral"> = {
+                      draft: "neutral",
+                      submitted: "accent",
+                      approved: "success",
+                      invoiced: "warning",
+                    };
+                    return variantMap[status] || "default";
+                  };
+
+                  return (
+                    <tr
+                      key={e.id}
+                      className="hover:bg-neutral-50/50 transition-all duration-200 group"
+                    >
+                      <td className="px-6 py-4 text-sm font-medium text-neutral-900">
+                        {new Date(e.date).toLocaleDateString("fr-BE")}
+                      </td>
+                      <td className="px-6 py-4 text-sm font-semibold text-accent">
+                        {caseRef}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-neutral-700 max-w-xs truncate group-hover:text-neutral-900 transition-colors">
+                        {e.description}
+                      </td>
+                      <td className="px-6 py-4 text-sm font-medium text-neutral-900">
+                        {formatDuration(e.duration_minutes)}
+                      </td>
+                      <td className="px-6 py-4 text-sm font-semibold text-neutral-900 text-right">
+                        {amount}
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span className="inline-flex">
+                          {(() => {
+                            const badgeVariant = getBadgeVariant(e.status);
+                            return <Badge variant={badgeVariant as any} size="sm" dot>{STATUS_LABELS[e.status] || e.status}</Badge>;
+                          })()}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

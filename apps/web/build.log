@@ -1,0 +1,55 @@
+  ▲ Next.js 14.2.20
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/25) ...
+   Generating static pages (6/25) 
+   Generating static pages (12/25) 
+   Generating static pages (18/25) 
+ ✓ Generating static pages (25/25)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+┌ ○ /                                    268 B          87.4 kB
+├ ○ /_not-found                          875 B            88 kB
+├ ƒ /api/auth/[...nextauth]              0 B                0 B
+├ ○ /dashboard                           3.48 kB        99.4 kB
+├ ○ /dashboard/admin                     6.36 kB        97.4 kB
+├ ○ /dashboard/admin/integrations        5.03 kB         114 kB
+├ ○ /dashboard/ai                        2.38 kB        98.3 kB
+├ ○ /dashboard/ai/documents              3.69 kB        94.7 kB
+├ ○ /dashboard/ai/due-diligence          3.37 kB        90.5 kB
+├ ○ /dashboard/ai/emotional-radar        3.81 kB          91 kB
+├ ○ /dashboard/ai/transcription          3.49 kB         109 kB
+├ ○ /dashboard/billing                   8.7 kB         99.7 kB
+├ ○ /dashboard/calendar                  2.1 kB           98 kB
+├ ○ /dashboard/calls                     2.11 kB        98.1 kB
+├ ƒ /dashboard/calls/[id]                3.84 kB         113 kB
+├ ○ /dashboard/cases                     3.67 kB        99.6 kB
+├ ƒ /dashboard/cases/[id]                143 kB          234 kB
+├ ƒ /dashboard/cases/[id]/conflicts      177 kB          286 kB
+├ ○ /dashboard/contacts                  3.38 kB        99.3 kB
+├ ƒ /dashboard/contacts/[id]             4.41 kB        95.4 kB
+├ ○ /dashboard/emails                    1.88 kB         107 kB
+├ ƒ /dashboard/emails/[id]               5.41 kB         115 kB
+├ ○ /dashboard/graph                     2.7 kB         98.6 kB
+├ ○ /dashboard/inbox                     4.82 kB         101 kB
+├ ○ /dashboard/legal                     3.05 kB          99 kB
+├ ○ /dashboard/migration                 5.35 kB        96.4 kB
+├ ○ /dashboard/search                    2.35 kB        98.3 kB
+├ ○ /dashboard/timeline                  3.92 kB        99.9 kB
+└ ○ /login                               2.32 kB        93.3 kB
++ First Load JS shared by all            87.2 kB
+  ├ chunks/401-33b73b559f783981.js       31.6 kB
+  ├ chunks/72aacbef-f2afa8050f273eb8.js  53.6 kB
+  └ other shared chunks (total)          1.96 kB
+
+
+ƒ Middleware                             26.5 kB
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

@@ -11,11 +11,19 @@ import {
   Phone,
   FileCheck,
   CalendarDays,
-  Folder,
-  Inbox,
+  FolderOpen,
+  Inbox as InboxIcon,
+  TrendingUp,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
-import { LoadingSkeleton, ErrorState } from "@/components/ui";
+import {
+  LoadingSkeleton,
+  ErrorState,
+  StatCard,
+  Card,
+  Badge,
+  EmptyState,
+} from "@/components/ui";
 
 interface DashboardStats {
   total_cases: number;
@@ -64,22 +72,36 @@ export default function DashboardPage() {
         setError(null);
 
         const [statsRes, recentRes, inboxRes] = await Promise.all([
-          apiFetch<DashboardResponse>("/dashboard/stats", token, { tenantId }).catch(err => {
-            console.error(err);
-            return {};
-          }),
-          apiFetch<{ items: RecentCase[] }>("/cases?page=1&per_page=5&sort=-updated_at", token, { tenantId }).catch(() => ({ items: [] })),
-          apiFetch<{ items: InboxItem[] }>("/inbox?status=DRAFT&per_page=5", token, { tenantId }).catch(() => ({ items: [] })),
+          apiFetch<DashboardResponse>("/dashboard/stats", token, { tenantId }).catch(
+            (err) => {
+              console.error(err);
+              return {};
+            }
+          ),
+          apiFetch<{ items: RecentCase[] }>(
+            "/cases?page=1&per_page=5&sort=-updated_at",
+            token,
+            { tenantId }
+          ).catch(() => ({ items: [] })),
+          apiFetch<{ items: InboxItem[] }>(
+            "/inbox?status=DRAFT&per_page=5",
+            token,
+            { tenantId }
+          ).catch(() => ({ items: [] })),
         ]);
 
-        setStats('stats' in statsRes && statsRes.stats ? statsRes.stats : {
-          total_cases: 0,
-          total_contacts: 0,
-          monthly_hours: 0,
-          total_invoices: 0,
-          total_documents: 0,
-          pending_inbox: 0,
-        });
+        setStats(
+          "stats" in statsRes && statsRes.stats
+            ? statsRes.stats
+            : {
+                total_cases: 0,
+                total_contacts: 0,
+                monthly_hours: 0,
+                total_invoices: 0,
+                total_documents: 0,
+                pending_inbox: 0,
+              }
+        );
         setRecentCases(recentRes.items || []);
         setInboxItems(inboxRes.items || []);
       } catch (err: any) {
@@ -104,62 +126,88 @@ export default function DashboardPage() {
   const user = session?.user as any;
   const email = user?.email || "Utilisateur";
   const firstName = email.split("@")[0].split(".")[0];
-  const displayName = firstName.charAt(0).toUpperCase() + firstName.slice(1);
+  const displayName =
+    firstName.charAt(0).toUpperCase() + firstName.slice(1);
 
   const now = new Date();
-  const dateStr = now.toLocaleDateString("fr-BE", {
+  const dateStr = now.toLocaleDateString("fr-FR", {
     weekday: "long",
     day: "numeric",
     month: "long",
     year: "numeric",
   });
 
+  const getStatusVariant = (
+    status: string
+  ): "default" | "success" | "warning" | "danger" | "accent" | "neutral" => {
+    const lowerStatus = status.toLowerCase();
+    if (
+      lowerStatus.includes("closed") ||
+      lowerStatus.includes("résolu")
+    ) {
+      return "success";
+    }
+    if (
+      lowerStatus.includes("pending") ||
+      lowerStatus.includes("en attente")
+    ) {
+      return "warning";
+    }
+    if (
+      lowerStatus.includes("urgent") ||
+      lowerStatus.includes("critical")
+    ) {
+      return "danger";
+    }
+    return "accent";
+  };
+
   const STAT_CARDS = [
     {
-      label: "Dossiers",
+      title: "Dossiers",
       value: stats?.total_cases ?? 0,
-      icon: Briefcase,
-      iconBg: "bg-accent-50",
-      iconColor: "text-accent",
+      icon: <Briefcase className="w-5 h-5" />,
+      color: "accent" as const,
+      trend: { value: 12, label: "vs mois dernier" },
     },
     {
-      label: "Contacts",
+      title: "Contacts",
       value: stats?.total_contacts ?? 0,
-      icon: Users,
-      iconBg: "bg-success-50",
-      iconColor: "text-success",
+      icon: <Users className="w-5 h-5" />,
+      color: "success" as const,
+      trend: { value: 8, label: "vs mois dernier" },
     },
     {
-      label: "Heures ce mois",
+      title: "Heures ce mois",
       value: stats?.monthly_hours ?? 0,
-      icon: Clock,
-      iconBg: "bg-warning-50",
-      iconColor: "text-warning",
+      icon: <Clock className="w-5 h-5" />,
+      color: "warning" as const,
+      trend: { value: 5, label: "vs mois dernier" },
     },
     {
-      label: "Factures",
+      title: "Factures",
       value: stats?.total_invoices ?? 0,
-      icon: FileText,
-      iconBg: "bg-danger-50",
-      iconColor: "text-danger",
+      icon: <FileText className="w-5 h-5" />,
+      color: "error" as const,
+      trend: { value: 3, label: "vs mois dernier" },
     },
     {
-      label: "Inbox en attente",
+      title: "Inbox en attente",
       value: stats?.pending_inbox ?? 0,
-      icon: Inbox,
-      iconBg: "bg-purple-50",
-      iconColor: "text-purple-600",
+      icon: <InboxIcon className="w-5 h-5" />,
+      color: "warning" as const,
+      trend: { value: -2, label: "vs mois dernier" },
     },
     {
-      label: "Documents",
+      title: "Documents",
       value: stats?.total_documents ?? 0,
-      icon: Folder,
-      iconBg: "bg-teal-50",
-      iconColor: "text-teal-600",
+      icon: <FolderOpen className="w-5 h-5" />,
+      color: "accent" as const,
+      trend: { value: 15, label: "vs mois dernier" },
     },
   ];
 
-  const getTimeAgo = (dateString: string) => {
+  const getTimeAgo = (dateString: string): string => {
     const date = new Date(dateString);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
@@ -173,186 +221,205 @@ export default function DashboardPage() {
     return `Il y a ${diffDays}j`;
   };
 
-  // TODO: fetch from API when endpoints exist
   const DEADLINES = [
     {
-      title: "Conclusions \u2014 Dupont c/ Immobel",
-      date: "18 f\u00e9v 2026",
+      title: "Conclusions — Dupont c/ Immobel",
+      date: "18 février 2026",
       daysLeft: 2,
       urgent: true,
     },
     {
-      title: "Audience \u2014 TPI Bruxelles",
-      date: "21 f\u00e9v 2026",
+      title: "Audience — TPI Bruxelles",
+      date: "21 février 2026",
       daysLeft: 5,
       urgent: false,
     },
     {
-      title: "D\u00e9lai d\u2019appel \u2014 Janssens",
-      date: "28 f\u00e9v 2026",
+      title: "Délai d'appel — Janssens",
+      date: "28 février 2026",
       daysLeft: 12,
       urgent: false,
     },
     {
-      title: "D\u00e9p\u00f4t de bilan \u2014 SA Construct",
+      title: "Dépôt de bilan — SA Construct",
       date: "5 mars 2026",
       daysLeft: 17,
       urgent: false,
     },
   ];
 
-  const sourceIcons = {
+  const sourceIcons: Record<string, React.ComponentType<any>> = {
     email: Mail,
     phone: Phone,
     document: FileCheck,
   };
 
-  const priorityStyles = {
-    high: "bg-danger-50 text-danger-700",
-    medium: "bg-warning-50 text-warning-700",
-    low: "bg-neutral-100 text-neutral-600",
-  };
-
-  const priorityLabels = {
-    high: "Urgent",
-    medium: "Normal",
-    low: "Basse",
-  };
-
   return (
-    <div>
-      {/* Welcome header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-neutral-900">
-          Bonjour{" "}
-          <span className="bg-gradient-to-r from-accent to-accent-400 bg-clip-text text-transparent">
-            {displayName}
-          </span>
-        </h1>
-        <p className="text-neutral-500 mt-1 text-sm capitalize">{dateStr}</p>
+    <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100">
+      {/* Hero Section with Gradient Background */}
+      <div className="mb-8 animate-fadeIn">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary to-primary-dark p-8 md:p-12">
+          <div className="relative z-10">
+            <h1 className="text-4xl md:text-5xl font-display font-bold text-white mb-2">
+              Bonjour, {displayName} 👋
+            </h1>
+            <p className="text-lg text-primary-light capitalize">
+              {dateStr}
+            </p>
+          </div>
+          {/* Decorative Elements */}
+          <div className="absolute top-0 right-0 w-96 h-96 bg-accent opacity-10 rounded-full blur-3xl -z-0" />
+        </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
-        {STAT_CARDS.map((card) => (
+      {/* Stats Grid - 6 Cards with Stagger Animation */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        {STAT_CARDS.map((card, index) => (
           <div
-            key={card.label}
-            className="card group cursor-default hover:-translate-y-0.5 transition-all duration-150"
+            key={card.title}
+            className="animate-slideUp"
+            style={{ animationDelay: `${index * 50}ms` }}
           >
-            <div className="flex items-center justify-between">
-              <div className={`p-3 rounded-md ${card.iconBg}`}>
-                <card.icon className={`w-5 h-5 ${card.iconColor}`} />
-              </div>
-            </div>
-            <div className="mt-4">
-              <p className="text-2xl font-bold text-neutral-900">
-                {card.value}
-              </p>
-              <p className="text-sm text-neutral-500 mt-0.5">{card.label}</p>
-            </div>
+            <StatCard
+              title={card.title}
+              value={card.value}
+              icon={card.icon}
+              color={card.color}
+              trend={card.trend}
+            />
           </div>
         ))}
       </div>
 
-      {/* Three-column grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Activity */}
-        <div className="card">
-          <h3 className="text-base font-semibold text-neutral-900 mb-5">
-            Activité récente
-          </h3>
-          {recentCases.length > 0 ? (
-            <div className="space-y-4">
-              {recentCases.map((caseItem, i) => (
-                <div key={caseItem.id} className="flex items-start gap-3">
-                  <div className="relative mt-1.5">
-                    <div className="w-2.5 h-2.5 rounded-full bg-accent" />
-                    {i < recentCases.length - 1 && (
-                      <div className="absolute top-3 left-1/2 -translate-x-1/2 w-px h-6 bg-neutral-200" />
-                    )}
-                  </div>
+      {/* Two-Column Grid: Recent Activity & Inbox */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        {/* Recent Cases */}
+        <Card
+          header={
+            <h3 className="font-display text-lg font-semibold text-neutral-900">
+              Dossiers récents
+            </h3>
+          }
+        >
+          {recentCases.length === 0 ? (
+            <EmptyState
+              title="Aucun dossier récent"
+              description="Vos dossiers apparaîtront ici"
+              icon={<FolderOpen className="h-12 w-12 text-neutral-300" />}
+            />
+          ) : (
+            <div className="space-y-3">
+              {recentCases.slice(0, 5).map((caseItem, index) => (
+                <div
+                  key={caseItem.id}
+                  className="flex items-center gap-3 p-3 hover:bg-neutral-50 rounded-lg transition-colors cursor-pointer group animate-slideUp"
+                  style={{ animationDelay: `${index * 30}ms` }}
+                >
+                  <Badge variant={getStatusVariant(caseItem.status)} size="sm">
+                    {caseItem.status}
+                  </Badge>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-neutral-700 leading-snug">
-                      Dossier "{caseItem.title}" mis à jour
+                    <p className="font-medium text-sm text-neutral-900 group-hover:text-accent transition-colors">
+                      {caseItem.title}
                     </p>
-                    <p className="text-xs text-neutral-400 mt-0.5">
-                      {getTimeAgo(caseItem.updated_at)}
+                    <p className="text-xs text-neutral-500 mt-0.5">
+                      {new Date(caseItem.updated_at).toLocaleDateString(
+                        "fr-FR"
+                      )}
                     </p>
                   </div>
+                  <TrendingUp className="w-4 h-4 text-neutral-300 flex-shrink-0" />
                 </div>
               ))}
             </div>
-          ) : (
-            <p className="text-sm text-neutral-500 text-center py-4">
-              Aucune activité récente
-            </p>
           )}
-        </div>
+        </Card>
 
-        {/* Inbox */}
-        <div className="card">
-          <h3 className="text-base font-semibold text-neutral-900 mb-5">
-            Inbox — À traiter
-          </h3>
-          {inboxItems.length > 0 ? (
+        {/* Inbox Pending */}
+        <Card
+          header={
+            <h3 className="font-display text-lg font-semibold text-neutral-900">
+              Inbox à traiter
+            </h3>
+          }
+        >
+          {inboxItems.length === 0 ? (
+            <EmptyState
+              title="Aucun élément en attente"
+              description="Votre inbox est vide"
+              icon={<InboxIcon className="h-12 w-12 text-neutral-300" />}
+            />
+          ) : (
             <div className="space-y-3">
-              {inboxItems.map((item) => {
-                const SourceIcon = sourceIcons[item.source as keyof typeof sourceIcons] || Mail;
+              {inboxItems.slice(0, 5).map((item, index) => {
+                const SourceIcon =
+                  sourceIcons[item.source as keyof typeof sourceIcons] || Mail;
                 return (
                   <div
                     key={item.id}
-                    className="flex items-center gap-3 p-2.5 rounded-md hover:bg-neutral-50 transition-colors duration-150 cursor-pointer"
+                    className="flex items-center gap-3 p-3 hover:bg-neutral-50 rounded-lg transition-colors cursor-pointer group animate-slideUp"
+                    style={{ animationDelay: `${index * 30}ms` }}
                   >
-                    <SourceIcon className="w-4 h-4 text-neutral-400 flex-shrink-0" />
-                    <span className="flex-1 text-sm text-neutral-700 truncate">
-                      {item.subject || "(Sans titre)"}
-                      {item.from_name && ` — ${item.from_name}`}
-                    </span>
+                    <div className="p-2 bg-accent-50 rounded-lg flex-shrink-0">
+                      <SourceIcon className="w-4 h-4 text-accent-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-neutral-900 group-hover:text-accent font-medium truncate transition-colors">
+                        {item.subject || "(Sans titre)"}
+                      </p>
+                      {item.from_name && (
+                        <p className="text-xs text-neutral-500 truncate">
+                          {item.from_name}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 );
               })}
             </div>
-          ) : (
-            <p className="text-sm text-neutral-500 text-center py-4">
-              Aucun élément en attente
-            </p>
           )}
-        </div>
-
-        {/* Deadlines */}
-        <div className="card">
-          <h3 className="text-base font-semibold text-neutral-900 mb-5">
-            Prochaines &eacute;ch&eacute;ances
-          </h3>
-          <div className="space-y-3">
-            {DEADLINES.map((item, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-3 p-2.5 rounded-md hover:bg-neutral-50 transition-colors duration-150"
-              >
-                <CalendarDays className="w-4 h-4 text-neutral-400 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-neutral-700 truncate">
-                    {item.title}
-                  </p>
-                  <p className="text-xs text-neutral-400 mt-0.5">{item.date}</p>
-                </div>
-                <span
-                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                    item.urgent
-                      ? "bg-danger-50 text-danger-700"
-                      : item.daysLeft <= 7
-                        ? "bg-warning-50 text-warning-700"
-                        : "bg-neutral-100 text-neutral-600"
-                  }`}
-                >
-                  {item.daysLeft}j
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+        </Card>
       </div>
+
+      {/* Deadlines Section */}
+      <Card
+        header={
+          <h3 className="font-display text-lg font-semibold text-neutral-900">
+            Prochaines échéances
+          </h3>
+        }
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {DEADLINES.map((deadline, index) => (
+            <div
+              key={index}
+              className="flex items-start gap-4 p-4 border border-neutral-200 rounded-lg hover:border-accent hover:bg-accent-50 transition-all cursor-pointer group animate-slideUp"
+              style={{ animationDelay: `${index * 50}ms` }}
+            >
+              <div className="p-2.5 bg-gradient-to-br from-accent-50 to-accent-100 rounded-lg flex-shrink-0 group-hover:shadow-lg transition-shadow">
+                <CalendarDays className="w-5 h-5 text-accent-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-neutral-900 group-hover:text-accent transition-colors">
+                  {deadline.title}
+                </p>
+                <p className="text-xs text-neutral-500 mt-1">
+                  {deadline.date}
+                </p>
+              </div>
+              <Badge
+                variant={
+                  deadline.urgent ? "danger" : "default"
+                }
+                size="sm"
+                pulse={deadline.urgent}
+              >
+                {deadline.daysLeft}j
+              </Badge>
+            </div>
+          ))}
+        </div>
+      </Card>
     </div>
   );
 }

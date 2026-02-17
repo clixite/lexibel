@@ -2,34 +2,122 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap");
+
+:root {
+  /* Colors — Refined Legal Modernism */
+  --color-primary: 15 23 42; /* Deep Slate #0F172A */
+  --color-accent: 217 119 6; /* Warm Gold #D97706 */
+  --color-success: 5 150 105; /* Emerald #059669 */
+  --color-warning: 245 158 11; /* Amber #F59E0B */
+  --color-danger: 225 29 72; /* Rose #E11D48 */
+  --color-background: 250 250 249; /* Warm Off-White #FAFAF9 */
+  --color-surface: 255 255 255; /* White */
+  --color-text-primary: 24 24 27; /* Rich Charcoal #18181B */
+  --color-text-secondary: 113 113 122; /* Zinc-500 */
+  --color-border: 228 228 231; /* Zinc-200 */
+
+  /* Typography Scale */
+  --font-display: 'Crimson Pro', Georgia, serif;
+  --font-body: 'Manrope', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+
+  --text-xs: 0.75rem; /* 12px */
+  --text-sm: 0.875rem; /* 14px */
+  --text-base: 1rem; /* 16px */
+  --text-lg: 1.125rem; /* 18px */
+  --text-xl: 1.25rem; /* 20px */
+  --text-2xl: 1.5rem; /* 24px */
+  --text-3xl: 1.875rem; /* 30px */
+  --text-4xl: 2.25rem; /* 36px */
+
+  /* Spacing Scale */
+  --space-1: 0.25rem; /* 4px */
+  --space-2: 0.5rem; /* 8px */
+  --space-3: 0.75rem; /* 12px */
+  --space-4: 1rem; /* 16px */
+  --space-6: 1.5rem; /* 24px */
+  --space-8: 2rem; /* 32px */
+  --space-12: 3rem; /* 48px */
+  --space-16: 4rem; /* 64px */
+
+  /* Border Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-2xl: 32px;
+  --radius-full: 9999px;
+
+  /* Shadows — Sophisticated */
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 4px 8px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 8px 16px rgba(15, 23, 42, 0.10);
+  --shadow-xl: 0 12px 24px rgba(15, 23, 42, 0.12);
+
+  /* Transitions */
+  --duration-fast: 150ms;
+  --duration-normal: 300ms;
+  --duration-slow: 500ms;
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* Dark mode variables (foundation) */
+[data-theme="dark"] {
+  --color-background: 15 23 42;
+  --color-surface: 30 41 59;
+  --color-text-primary: 248 250 252;
+  --color-text-secondary: 148 163 184;
+  --color-border: 51 65 85;
+}
 
 @layer base {
-  html {
+  * {
     @apply antialiased;
   }
 
+  html {
+    @apply scroll-smooth;
+  }
+
   body {
-    @apply bg-neutral-50 text-neutral-900 font-sans;
+    @apply bg-[rgb(var(--color-background))] text-[rgb(var(--color-text-primary))];
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    line-height: 1.5;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    line-height: 1.2;
+    color: rgb(var(--color-text-primary));
   }
 
   h1 {
-    @apply text-3xl font-bold tracking-tight text-neutral-900;
+    font-size: var(--text-4xl);
+    @apply tracking-tight;
   }
 
   h2 {
-    @apply text-2xl font-semibold tracking-tight text-neutral-900;
+    font-size: var(--text-3xl);
+    @apply tracking-tight;
   }
 
   h3 {
-    @apply text-xl font-semibold text-neutral-900;
+    font-size: var(--text-2xl);
+  }
+
+  h4 {
+    font-size: var(--text-xl);
   }
 }
 
 @layer components {
   .card {
     @apply bg-white rounded-lg shadow-subtle p-6
-           hover:shadow-medium transition-shadow duration-150;
+           hover:shadow-md transition-shadow duration-150;
   }
 
   .btn-primary {
