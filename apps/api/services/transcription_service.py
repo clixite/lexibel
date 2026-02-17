@@ -10,7 +10,6 @@ Handles audio file processing with:
 
 import io
 import os
-import tempfile
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -96,9 +95,7 @@ class TranscriptionService:
             "WHISPER_BASE_URL", "https://api.openai.com/v1"
         )
         if not self.api_key:
-            raise ValueError(
-                "OPENAI_API_KEY must be set for transcription service"
-            )
+            raise ValueError("OPENAI_API_KEY must be set for transcription service")
 
     async def transcribe_audio(
         self,

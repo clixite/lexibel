@@ -22,7 +22,6 @@ from apps.api.schemas.legal_rag import (
     LegalChatRequest,
     LegalChatResponse,
     LegalEntityResponse,
-    LegalSearchRequest,
     LegalSearchResponse,
     LegalSearchResultItem,
     LegalTimelineEvent,

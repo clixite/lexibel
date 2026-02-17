@@ -38,24 +38,6 @@ from apps.api.schemas.search import (
     AISourceItem,
     AISummarizeRequest,
 )
-from apps.api.schemas.legal_rag import (
-    DetectConflictsRequest,
-    ConflictDetectionResponse,
-    ExplainArticleRequest,
-    ExplainArticleResponse,
-    LegalChatRequest,
-    LegalChatResponse,
-    LegalChatMessage,
-    LegalSearchRequest,
-    LegalSearchResponse,
-    LegalSearchResultItem,
-    LegalEntityResponse,
-    LegalTimelineRequest,
-    LegalTimelineResponse,
-    LegalTimelineEvent,
-    PredictJurisprudenceRequest,
-    JurisprudencePrediction,
-)
 from apps.api.services.action_extraction_service import ActionExtractionService
 from apps.api.services.llm_gateway import (
     ContextChunk,
@@ -67,7 +49,11 @@ from apps.api.services.transcription_service import (
     TranscriptionService,
     validate_audio_format,
 )
-from apps.api.routers.search import get_llm_gateway, get_search_service, get_vector_service
+from apps.api.routers.search import (
+    get_llm_gateway,
+    get_search_service,
+    get_vector_service,
+)
 from apps.api.services.rag_service import LegalRAGService
 
 router = APIRouter(prefix="/api/v1/ai", tags=["ai"])
@@ -380,7 +366,9 @@ async def transcribe_audio(
                         action_id=action.action_id,
                         text=action.text,
                         assignee=action.assignee,
-                        deadline=action.deadline.isoformat() if action.deadline else None,
+                        deadline=action.deadline.isoformat()
+                        if action.deadline
+                        else None,
                         priority=action.priority,
                         status=action.status,
                         confidence=action.confidence,
@@ -415,7 +403,7 @@ async def transcribe_audio(
                 suggested_next_actions=insights.suggested_next_actions,
                 extracted_dates=insights.extracted_dates,
             )
-        except Exception as e:
+        except Exception:
             # Don't fail the entire request if insights extraction fails
             # Log the error and continue
             pass

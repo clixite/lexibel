@@ -121,7 +121,9 @@ class LoRAAdapterResponse(BaseModel):
 class TranscribeAudioRequest(BaseModel):
     language: str | None = Field(None, description="ISO 639-1 code: fr, nl, en")
     enable_diarization: bool = Field(True, description="Enable speaker detection")
-    extract_insights: bool = Field(True, description="Extract action items and insights")
+    extract_insights: bool = Field(
+        True, description="Extract action items and insights"
+    )
     case_id: str | None = Field(None, description="Link transcript to case")
 
 

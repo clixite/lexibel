@@ -19,7 +19,7 @@ import uuid
 from collections import defaultdict, Counter
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional, Literal
+from typing import Optional
 from enum import Enum
 
 from apps.api.services.graph.neo4j_service import (
@@ -31,6 +31,7 @@ from apps.api.services.graph.neo4j_service import (
 
 class ConflictSeverity(str, Enum):
     """Conflict severity levels."""
+
     CRITICAL = "critical"  # Direct opposing representation
     HIGH = "high"  # 2nd degree opposing relationship
     MEDIUM = "medium"  # 3rd degree conflict or indirect
@@ -40,6 +41,7 @@ class ConflictSeverity(str, Enum):
 
 class ConflictType(str, Enum):
     """Types of conflicts."""
+
     DIRECT_OPPOSITION = "direct_opposition"  # Represent both sides
     DUAL_REPRESENTATION = "dual_representation"  # Represent conflicting interests
     FORMER_CLIENT = "former_client"  # Past representation conflict
@@ -52,6 +54,7 @@ class ConflictType(str, Enum):
 @dataclass
 class ConflictPath:
     """A path through the graph showing how conflict arises."""
+
     nodes: list[str] = field(default_factory=list)  # Node IDs
     node_names: list[str] = field(default_factory=list)
     relationships: list[str] = field(default_factory=list)  # Rel types
@@ -62,6 +65,7 @@ class ConflictPath:
 @dataclass
 class AdvancedConflict:
     """Enhanced conflict detection result."""
+
     conflict_id: str
     case_id: str
     entity_id: str
@@ -95,6 +99,7 @@ class AdvancedConflict:
 @dataclass
 class ConflictReport:
     """Comprehensive conflict analysis report."""
+
     case_id: str
     total_conflicts: int
     by_severity: dict[ConflictSeverity, int] = field(default_factory=dict)
@@ -102,7 +107,9 @@ class ConflictReport:
     conflicts: list[AdvancedConflict] = field(default_factory=list)
     network_analysis: dict = field(default_factory=dict)
     recommendations: list[str] = field(default_factory=list)
-    report_generated_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    report_generated_at: str = field(
+        default_factory=lambda: datetime.utcnow().isoformat()
+    )
 
 
 class ConflictDetectionService:
@@ -161,7 +168,9 @@ class ConflictDetectionService:
 
         # 2. Second-degree conflicts (2-hop)
         if max_depth >= 2:
-            second = self._detect_second_degree_conflicts(case_id, nodes, rels, tenant_id)
+            second = self._detect_second_degree_conflicts(
+                case_id, nodes, rels, tenant_id
+            )
             report.conflicts.extend(second)
 
         # 3. Third-degree conflicts (3-hop)
@@ -170,12 +179,16 @@ class ConflictDetectionService:
             report.conflicts.extend(third)
 
         # Filter by confidence
-        report.conflicts = [c for c in report.conflicts if c.confidence >= min_confidence]
+        report.conflicts = [
+            c for c in report.conflicts if c.confidence >= min_confidence
+        ]
 
         # Calculate risk scores
         for conflict in report.conflicts:
             conflict.risk_score = self._calculate_risk_score(conflict, nodes, rels)
-            conflict.network_centrality = self._calculate_centrality(conflict.entity_id, rels)
+            conflict.network_centrality = self._calculate_centrality(
+                conflict.entity_id, rels
+            )
 
         # Generate insights
         report.total_conflicts = len(report.conflicts)
@@ -335,7 +348,9 @@ class ConflictDetectionService:
                             conflict_id=str(uuid.uuid4()),
                             case_id=case_id,
                             entity_id=start_node.id,
-                            entity_name=start_node.properties.get("name", start_node.id),
+                            entity_name=start_node.properties.get(
+                                "name", start_node.id
+                            ),
                             entity_type=start_node.label,
                             conflict_type=ConflictType.ASSOCIATE_CONFLICT,
                             severity=ConflictSeverity.HIGH,
@@ -384,11 +399,13 @@ class ConflictDetectionService:
                 rel_type = n_data.get("rel_type", "")
                 direction = n_data.get("direction", "")
 
-                neighbor_roles[n_node.id].append({
-                    "rel_type": rel_type,
-                    "direction": direction,
-                    "node": n_node,
-                })
+                neighbor_roles[n_node.id].append(
+                    {
+                        "rel_type": rel_type,
+                        "direction": direction,
+                        "node": n_node,
+                    }
+                )
 
             # Check for complex conflicts
             # (simplified heuristic: if many opposing relationships in network)
@@ -465,7 +482,9 @@ class ConflictDetectionService:
 
         # Calculate entity importance (how connected)
         entity_connections = sum(
-            1 for r in rels if r.from_id == conflict.entity_id or r.to_id == conflict.entity_id
+            1
+            for r in rels
+            if r.from_id == conflict.entity_id or r.to_id == conflict.entity_id
         )
         connection_score = min(entity_connections / 10.0, 1.0)
 
@@ -474,36 +493,43 @@ class ConflictDetectionService:
 
         # Composite score
         risk = (
-            base_weight * 40 +
-            severity_score * 30 +
-            connection_score * 20 +
-            conflict.confidence * 10
+            base_weight * 40
+            + severity_score * 30
+            + connection_score * 20
+            + conflict.confidence * 10
         ) * case_multiplier
 
         return min(risk, 100.0)
 
-    def _calculate_centrality(self, entity_id: str, rels: list[GraphRelationship]) -> float:
+    def _calculate_centrality(
+        self, entity_id: str, rels: list[GraphRelationship]
+    ) -> float:
         """Calculate network centrality (degree centrality) for an entity."""
-        degree = sum(
-            1 for r in rels if r.from_id == entity_id or r.to_id == entity_id
-        )
+        degree = sum(1 for r in rels if r.from_id == entity_id or r.to_id == entity_id)
 
         # Normalize by total relationships
         if not rels:
             return 0.0
 
-        max_degree = max(
-            sum(1 for r in rels if r.from_id == n or r.to_id == n)
-            for n in {r.from_id for r in rels} | {r.to_id for r in rels}
-        ) or 1
+        max_degree = (
+            max(
+                sum(1 for r in rels if r.from_id == n or r.to_id == n)
+                for n in {r.from_id for r in rels} | {r.to_id for r in rels}
+            )
+            or 1
+        )
 
         return degree / max_degree
 
-    def _count_by_severity(self, conflicts: list[AdvancedConflict]) -> dict[ConflictSeverity, int]:
+    def _count_by_severity(
+        self, conflicts: list[AdvancedConflict]
+    ) -> dict[ConflictSeverity, int]:
         """Count conflicts by severity."""
         return dict(Counter(c.severity for c in conflicts))
 
-    def _count_by_type(self, conflicts: list[AdvancedConflict]) -> dict[ConflictType, int]:
+    def _count_by_type(
+        self, conflicts: list[AdvancedConflict]
+    ) -> dict[ConflictType, int]:
         """Count conflicts by type."""
         return dict(Counter(c.conflict_type for c in conflicts))
 
@@ -514,7 +540,9 @@ class ConflictDetectionService:
     ) -> dict:
         """Perform network analysis on the case graph."""
         return {
-            "total_entities": len([n for n in nodes if n.label in ("Person", "Organization")]),
+            "total_entities": len(
+                [n for n in nodes if n.label in ("Person", "Organization")]
+            ),
             "total_relationships": len(rels),
             "density": self._calculate_graph_density(nodes, rels),
             "avg_degree": self._calculate_avg_degree(nodes, rels),
@@ -632,8 +660,7 @@ class ConflictDetectionService:
 
         # Check for opposing relationships in new entity's network
         opposing_rels = sum(
-            1 for n_data in new_neighbors
-            if "OPPOS" in n_data.get("rel_type", "")
+            1 for n_data in new_neighbors if "OPPOS" in n_data.get("rel_type", "")
         )
 
         opposing_risk = min(opposing_rels / 5.0, 0.3)

@@ -72,6 +72,7 @@ RERANKING_MODELS = {
 
 # ── Qdrant Client Configuration ──
 
+
 def get_qdrant_config() -> dict[str, Any]:
     """Get Qdrant client configuration from environment."""
     return {
@@ -116,12 +117,10 @@ PERFORMANCE_CONFIG = {
     # Batch settings
     "batch_size": 100,  # documents per batch
     "parallel_uploads": 4,  # concurrent upload threads
-
     # Cache settings
     "cache_enabled": True,
     "cache_size": 100,  # queries
     "cache_ttl": 3600,  # seconds (1 hour)
-
     # Memory settings
     "max_memory_mb": 4096,  # 4GB for vector index
     "mmap_threshold": 50000,  # use memory mapping above this
@@ -180,6 +179,7 @@ MONITORING_CONFIG = {
 
 
 # ── Export Configuration ──
+
 
 def export_config() -> dict[str, Any]:
     """Export all configuration as dictionary."""

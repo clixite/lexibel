@@ -119,32 +119,38 @@ class LegalEntityExtractor:
         # Extract articles
         for pattern in self.ARTICLE_PATTERNS:
             for match in re.finditer(pattern, text, re.IGNORECASE):
-                entities.append(LegalEntity(
-                    entity_type="article",
-                    text=match.group(0),
-                    normalized=f"art.{match.group(1)}",
-                    confidence=0.95,
-                ))
+                entities.append(
+                    LegalEntity(
+                        entity_type="article",
+                        text=match.group(0),
+                        normalized=f"art.{match.group(1)}",
+                        confidence=0.95,
+                    )
+                )
 
         # Extract laws
         for pattern in self.LAW_PATTERNS:
             for match in re.finditer(pattern, text, re.IGNORECASE):
-                entities.append(LegalEntity(
-                    entity_type="law",
-                    text=match.group(0),
-                    normalized=match.group(1),
-                    confidence=0.9,
-                ))
+                entities.append(
+                    LegalEntity(
+                        entity_type="law",
+                        text=match.group(0),
+                        normalized=match.group(1),
+                        confidence=0.9,
+                    )
+                )
 
         # Extract case references
         for pattern in self.CASE_PATTERNS:
             for match in re.finditer(pattern, text, re.IGNORECASE):
-                entities.append(LegalEntity(
-                    entity_type="case_reference",
-                    text=match.group(0),
-                    normalized=match.group(1),
-                    confidence=0.85,
-                ))
+                entities.append(
+                    LegalEntity(
+                        entity_type="case_reference",
+                        text=match.group(0),
+                        normalized=match.group(1),
+                        confidence=0.85,
+                    )
+                )
 
         return entities
 
@@ -191,8 +197,7 @@ class CrossEncoderReranker:
     def __init__(self) -> None:
         self._model = None
         self._model_name = os.getenv(
-            "CROSS_ENCODER_MODEL",
-            "cross-encoder/ms-marco-MiniLM-L-6-v2"
+            "CROSS_ENCODER_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2"
         )
 
     def _load_model(self) -> None:
@@ -200,6 +205,7 @@ class CrossEncoderReranker:
         if self._model is None:
             try:
                 from sentence_transformers import CrossEncoder
+
                 self._model = CrossEncoder(self._model_name)
             except ImportError:
                 # Fallback: no re-ranking
@@ -224,11 +230,7 @@ class CrossEncoderReranker:
         scores = self._model.predict(pairs)
 
         # Re-rank results
-        ranked = sorted(
-            zip(results, scores),
-            key=lambda x: x[1],
-            reverse=True
-        )
+        ranked = sorted(zip(results, scores), key=lambda x: x[1], reverse=True)
 
         # Update scores
         reranked = []
@@ -261,24 +263,18 @@ class MultilingualTranslator:
 
     def translate_query(self, query: str, target_lang: str = "nl") -> str:
         """Translate FR query to NL (or vice versa)."""
-        query_lower = query.lower()
+        query.lower()
         translated = query
 
         if target_lang == "nl":
             for fr_term, nl_term in self.TRANSLATIONS.items():
                 translated = re.sub(
-                    rf"\b{fr_term}\b",
-                    nl_term,
-                    translated,
-                    flags=re.IGNORECASE
+                    rf"\b{fr_term}\b", nl_term, translated, flags=re.IGNORECASE
                 )
         else:  # target_lang == "fr"
             for fr_term, nl_term in self.TRANSLATIONS.items():
                 translated = re.sub(
-                    rf"\b{nl_term}\b",
-                    fr_term,
-                    translated,
-                    flags=re.IGNORECASE
+                    rf"\b{nl_term}\b", fr_term, translated, flags=re.IGNORECASE
                 )
 
         return translated
@@ -361,6 +357,7 @@ class LegalRAGService:
             enable_multilingual: Enable FR/NL translation search
         """
         import time
+
         start_time = time.time()
 
         # Cache check
@@ -447,9 +444,7 @@ class LegalRAGService:
         if entities:
             for entity in entities[:2]:
                 if entity.entity_type == "article":
-                    suggested_queries.append(
-                        f"Jurisprudence relative à {entity.text}"
-                    )
+                    suggested_queries.append(f"Jurisprudence relative à {entity.text}")
 
         # Build response
         response = LegalSearchResponse(

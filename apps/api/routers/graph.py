@@ -36,7 +36,7 @@ from apps.api.services.graph.neo4j_service import InMemoryGraphService
 from apps.api.services.graph.graph_builder import GraphBuilder
 from apps.api.services.graph.graph_rag_service import GraphRAGService
 from apps.api.services.graph.conflict_detection_service import ConflictDetectionService
-from apps.api.services.graph.graph_sync_service import GraphSyncService, SyncEvent
+from apps.api.services.graph.graph_sync_service import GraphSyncService
 
 router = APIRouter(prefix="/api/v1/graph", tags=["graph"])
 
@@ -501,7 +501,14 @@ async def get_network_statistics(
 
     # Count nodes by label
     nodes_by_type = {}
-    for label in ["Case", "Person", "Organization", "Court", "Document", "LegalConcept"]:
+    for label in [
+        "Case",
+        "Person",
+        "Organization",
+        "Court",
+        "Document",
+        "LegalConcept",
+    ]:
         nodes = graph.find_nodes_by_label(label, tenant_id)
         nodes_by_type[label] = len(nodes)
         all_nodes.extend(nodes)
@@ -531,15 +538,19 @@ async def get_network_statistics(
     # Get top 10 most connected
     node_map = {n.id: n for n in all_nodes}
     most_connected = []
-    for node_id, count in sorted(connection_counts.items(), key=lambda x: x[1], reverse=True)[:10]:
+    for node_id, count in sorted(
+        connection_counts.items(), key=lambda x: x[1], reverse=True
+    )[:10]:
         node = node_map.get(node_id)
         if node:
-            most_connected.append({
-                "entity_id": node.id,
-                "entity_name": node.properties.get("name", node.id),
-                "entity_type": node.label,
-                "connection_count": count,
-            })
+            most_connected.append(
+                {
+                    "entity_id": node.id,
+                    "entity_name": node.properties.get("name", node.id),
+                    "entity_type": node.label,
+                    "connection_count": count,
+                }
+            )
 
     return {
         "tenant_id": tenant_id,

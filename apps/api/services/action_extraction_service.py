@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional
 
-from apps.api.services.llm_gateway import ContextChunk, LLMGateway, LLMResponse
+from apps.api.services.llm_gateway import ContextChunk, LLMGateway
 
 
 @dataclass
@@ -387,7 +387,9 @@ class ActionExtractionService:
 
         return decisions
 
-    def _parse_references_response(self, response_text: str) -> list[ExtractedReference]:
+    def _parse_references_response(
+        self, response_text: str
+    ) -> list[ExtractedReference]:
         """Parse LLM response to extract references."""
         import json
 
@@ -458,14 +460,10 @@ class ActionExtractionService:
 
         return found_topics
 
-    def _determine_urgency(
-        self, actions: list[ActionItem], sentiment: dict
-    ) -> str:
+    def _determine_urgency(self, actions: list[ActionItem], sentiment: dict) -> str:
         """Determine urgency level based on actions and sentiment."""
         # Check for urgent/high priority actions
-        urgent_count = sum(
-            1 for a in actions if a.priority in ["urgent", "high"]
-        )
+        urgent_count = sum(1 for a in actions if a.priority in ["urgent", "high"])
 
         if urgent_count > 2:
             return "critical"
@@ -497,9 +495,7 @@ class ActionExtractionService:
 
         # Add decision-based suggestions
         if decisions:
-            suggestions.append(
-                f"• Documenter les {len(decisions)} décisions prises"
-            )
+            suggestions.append(f"• Documenter les {len(decisions)} décisions prises")
 
         return suggestions
 

@@ -29,20 +29,34 @@ class RingoverCallEvent(BaseModel):
     )
     duration_seconds: int = Field(0, ge=0, description="Call duration in seconds")
     started_at: str = Field(..., description="ISO 8601 timestamp when call started")
-    ended_at: Optional[str] = Field(None, description="ISO 8601 timestamp when call ended")
-    recording_url: Optional[str] = Field(None, description="URL to call recording (if available)")
-    user_id: Optional[str] = Field(None, description="Ringover user ID who handled the call")
-    metadata: dict = Field(default_factory=dict, description="Additional Ringover metadata")
+    ended_at: Optional[str] = Field(
+        None, description="ISO 8601 timestamp when call ended"
+    )
+    recording_url: Optional[str] = Field(
+        None, description="URL to call recording (if available)"
+    )
+    user_id: Optional[str] = Field(
+        None, description="Ringover user ID who handled the call"
+    )
+    metadata: dict = Field(
+        default_factory=dict, description="Additional Ringover metadata"
+    )
 
 
 class RingoverWebhookResponse(BaseModel):
     """Response returned to Ringover after webhook processing."""
 
-    status: str = Field(..., description="Processing status: accepted | duplicate | error")
+    status: str = Field(
+        ..., description="Processing status: accepted | duplicate | error"
+    )
     call_id: str = Field(..., description="Ringover call ID")
-    event_created: bool = Field(False, description="Whether an InteractionEvent was created")
+    event_created: bool = Field(
+        False, description="Whether an InteractionEvent was created"
+    )
     contact_matched: bool = Field(False, description="Whether a contact was matched")
-    case_linked: bool = Field(False, description="Whether the call was linked to a case")
+    case_linked: bool = Field(
+        False, description="Whether the call was linked to a case"
+    )
     duplicate: bool = Field(False, description="Whether this was a duplicate webhook")
     matched_contact_id: Optional[uuid.UUID] = Field(
         None,
@@ -85,7 +99,9 @@ class CallStreamingUpdate(BaseModel):
     event_type: str = Field(..., description="call_started | call_ended | call_updated")
     call_id: str
     tenant_id: uuid.UUID
-    event_id: Optional[uuid.UUID] = Field(None, description="InteractionEvent ID (once created)")
+    event_id: Optional[uuid.UUID] = Field(
+        None, description="InteractionEvent ID (once created)"
+    )
     contact_name: Optional[str]
     phone_number: str
     direction: str
@@ -104,4 +120,6 @@ class CallTranscriptChunk(BaseModel):
     speaker: str = Field(..., description="agent | client | unknown")
     text: str
     timestamp_ms: int = Field(..., description="Milliseconds from call start")
-    confidence: float = Field(..., ge=0.0, le=1.0, description="Transcription confidence")
+    confidence: float = Field(
+        ..., ge=0.0, le=1.0, description="Transcription confidence"
+    )

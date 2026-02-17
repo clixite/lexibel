@@ -12,7 +12,6 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -80,14 +79,10 @@ async def list_calls(
 
     # Apply filters
     if direction:
-        query = query.where(
-            InteractionEvent.metadata_["direction"].astext == direction
-        )
+        query = query.where(InteractionEvent.metadata_["direction"].astext == direction)
 
     if call_type:
-        query = query.where(
-            InteractionEvent.metadata_["call_type"].astext == call_type
-        )
+        query = query.where(InteractionEvent.metadata_["call_type"].astext == call_type)
 
     if contact_id:
         query = query.where(
@@ -264,13 +259,9 @@ async def get_call_stats(
 
     # Compute stats
     total_calls = len(events)
-    answered = sum(
-        1 for e in events if e.metadata_.get("call_type") == "answered"
-    )
+    answered = sum(1 for e in events if e.metadata_.get("call_type") == "answered")
     missed = sum(1 for e in events if e.metadata_.get("call_type") == "missed")
-    voicemails = sum(
-        1 for e in events if e.metadata_.get("call_type") == "voicemail"
-    )
+    voicemails = sum(1 for e in events if e.metadata_.get("call_type") == "voicemail")
 
     total_duration = sum(e.metadata_.get("duration_seconds", 0) for e in events)
     avg_duration = (total_duration / total_calls) if total_calls > 0 else 0.0
@@ -302,5 +293,3 @@ async def get_call_stats(
         calls_with_recordings=with_recordings,
         calls_with_transcripts=with_transcripts,
     )
-
-

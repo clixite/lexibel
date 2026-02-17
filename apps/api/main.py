@@ -39,6 +39,11 @@ from apps.api.routers.agents import router as agents_router
 from apps.api.routers.admin import router as admin_router
 from apps.api.routers.mobile import router as mobile_router
 from apps.api.routers.ringover import router as ringover_router
+from apps.api.routers.legal_rag import router as legal_rag_router
+from apps.api.routers.calendar import router as calendar_router
+from apps.api.routers.emails import router as emails_router
+from apps.api.routers.calls import router as calls_router
+from apps.api.routers.transcriptions import router as transcriptions_router
 
 logger = logging.getLogger(__name__)
 
@@ -142,6 +147,11 @@ def create_app() -> FastAPI:
     app.include_router(admin_router)
     app.include_router(mobile_router)
     app.include_router(ringover_router)
+    app.include_router(legal_rag_router)
+    app.include_router(calendar_router)
+    app.include_router(emails_router)
+    app.include_router(calls_router)
+    app.include_router(transcriptions_router)
 
     # ── Health check ──
     @app.get("/api/v1/health")

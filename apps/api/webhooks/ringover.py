@@ -240,7 +240,8 @@ async def _process_call_ai_background(
             "call_ai_completed",
             {
                 "event_id": str(event_id),
-                "has_transcript": updated_metadata.get("transcript_status") == "completed",
+                "has_transcript": updated_metadata.get("transcript_status")
+                == "completed",
                 "has_summary": updated_metadata.get("summary_status") == "completed",
                 "sentiment_score": updated_metadata.get("sentiment_score"),
                 "tasks_generated": updated_metadata.get("tasks_generated", False),

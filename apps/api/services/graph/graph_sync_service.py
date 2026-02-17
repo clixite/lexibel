@@ -21,13 +21,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from typing import Optional, Any
-from uuid import UUID
 
 from apps.api.services.graph.neo4j_service import (
     InMemoryGraphService,
-    Neo4jService,
-    GraphNode,
-    GraphRelationship,
 )
 
 logger = logging.getLogger(__name__)
@@ -35,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 class EntityType(str, Enum):
     """PostgreSQL entity types."""
+
     CASE = "case"
     CONTACT = "contact"
     LAWYER = "lawyer"
@@ -46,6 +43,7 @@ class EntityType(str, Enum):
 
 class SyncOperation(str, Enum):
     """Sync operation types."""
+
     CREATE = "create"
     UPDATE = "update"
     DELETE = "delete"
@@ -54,6 +52,7 @@ class SyncOperation(str, Enum):
 @dataclass
 class SyncEvent:
     """Event representing a change in PostgreSQL."""
+
     entity_type: EntityType
     entity_id: str
     operation: SyncOperation
@@ -69,6 +68,7 @@ class SyncEvent:
 @dataclass
 class SyncResult:
     """Result of a sync operation."""
+
     success: bool
     entity_id: str
     entity_type: EntityType
@@ -161,7 +161,7 @@ class GraphSyncService:
                 return result
 
             # Create/update case node
-            case_node = self.graph.create_node(
+            self.graph.create_node(
                 label="Case",
                 properties={
                     "id": case_id,
@@ -179,7 +179,7 @@ class GraphSyncService:
 
             # Sync court if present
             if case_data.get("court_id") and case_data.get("court_name"):
-                court_node = self.graph.create_node(
+                self.graph.create_node(
                     label="Court",
                     properties={
                         "id": str(case_data["court_id"]),
@@ -279,16 +279,20 @@ class GraphSyncService:
 
             # Add type-specific properties
             if label == "Person":
-                properties.update({
-                    "first_name": contact_data.get("first_name", ""),
-                    "last_name": contact_data.get("last_name", ""),
-                })
+                properties.update(
+                    {
+                        "first_name": contact_data.get("first_name", ""),
+                        "last_name": contact_data.get("last_name", ""),
+                    }
+                )
             else:
-                properties.update({
-                    "organization_name": contact_data.get("organization_name", ""),
-                })
+                properties.update(
+                    {
+                        "organization_name": contact_data.get("organization_name", ""),
+                    }
+                )
 
-            contact_node = self.graph.create_node(
+            self.graph.create_node(
                 label=label,
                 properties=properties,
                 tenant_id=tenant_id,
@@ -306,7 +310,9 @@ class GraphSyncService:
                         label="Organization",
                         properties={
                             "id": org_id,
-                            "name": contact_data.get("organization_name", "Unknown Org"),
+                            "name": contact_data.get(
+                                "organization_name", "Unknown Org"
+                            ),
                         },
                         tenant_id=tenant_id,
                     )
@@ -354,7 +360,7 @@ class GraphSyncService:
                 return result
 
             # Create lawyer node (Person with lawyer role)
-            lawyer_node = self.graph.create_node(
+            self.graph.create_node(
                 label="Person",
                 properties={
                     "id": lawyer_id,
@@ -432,11 +438,13 @@ class GraphSyncService:
                 return result
 
             # Create document node
-            doc_node = self.graph.create_node(
+            self.graph.create_node(
                 label="Document",
                 properties={
                     "id": document_id,
-                    "name": document_data.get("filename", document_data.get("title", "")),
+                    "name": document_data.get(
+                        "filename", document_data.get("title", "")
+                    ),
                     "document_type": document_data.get("document_type", ""),
                     "file_size": document_data.get("file_size", 0),
                     "uploaded_at": str(document_data.get("uploaded_at", "")),
@@ -452,7 +460,9 @@ class GraphSyncService:
                     from_id=document_id,
                     to_id=case_id,
                     rel_type="ATTACHED_TO",
-                    properties={"uploaded_at": str(document_data.get("uploaded_at", ""))},
+                    properties={
+                        "uploaded_at": str(document_data.get("uploaded_at", ""))
+                    },
                     tenant_id=tenant_id,
                 )
                 result.relationships_affected += 1

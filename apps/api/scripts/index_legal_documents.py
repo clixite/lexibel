@@ -14,11 +14,8 @@ Usage:
 
 import argparse
 import asyncio
-import json
 import os
 import uuid
-from datetime import datetime
-from pathlib import Path
 from typing import Any
 
 from apps.api.services.chunking_service import chunk_text, generate_embeddings
@@ -244,7 +241,7 @@ async def index_all_sources(
     source_filter: str = "all",
 ) -> None:
     """Index all legal documents from specified source."""
-    print(f"🚀 Starting legal document indexing...")
+    print("🚀 Starting legal document indexing...")
     print(f"Collection: {COLLECTION_NAME}")
     print(f"Source filter: {source_filter}")
 
@@ -264,7 +261,7 @@ async def index_all_sources(
         total_chunks += chunks_count
         print(f"   ✓ {chunks_count} chunks indexed")
 
-    print(f"\n✅ Indexing complete!")
+    print("\n✅ Indexing complete!")
     print(f"   Total documents: {len(SAMPLE_DOCUMENTS)}")
     print(f"   Total chunks: {total_chunks}")
     print(f"   Collection: {COLLECTION_NAME}")
@@ -282,7 +279,13 @@ async def main() -> None:
         "--source",
         type=str,
         default="all",
-        choices=["all", "code_civil", "code_judiciaire", "moniteur_belge", "jurisprudence"],
+        choices=[
+            "all",
+            "code_civil",
+            "code_judiciaire",
+            "moniteur_belge",
+            "jurisprudence",
+        ],
         help="Which source to index",
     )
     parser.add_argument(

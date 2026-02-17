@@ -138,6 +138,7 @@ class EntityResponse(BaseModel):
 
 class ConflictPathResponse(BaseModel):
     """A path showing how conflict arises through the graph."""
+
     nodes: list[str] = []
     relationships: list[str] = []
     description: str = ""
@@ -146,6 +147,7 @@ class ConflictPathResponse(BaseModel):
 
 class AdvancedConflictResponse(BaseModel):
     """Enhanced conflict with multi-hop analysis and risk scoring."""
+
     conflict_id: str
     entity_id: str
     entity_name: str
@@ -172,6 +174,7 @@ class AdvancedConflictResponse(BaseModel):
 
 class ConflictReportResponse(BaseModel):
     """Comprehensive conflict analysis report."""
+
     case_id: str
     total_conflicts: int
     by_severity: dict[str, int] = {}
@@ -184,6 +187,7 @@ class ConflictReportResponse(BaseModel):
 
 class ConflictPredictionResponse(BaseModel):
     """Prediction of conflict risk for new entity."""
+
     case_id: str
     entity_id: str
     risk_probability: float
@@ -197,6 +201,7 @@ class ConflictPredictionResponse(BaseModel):
 
 class SyncResultResponse(BaseModel):
     """Result of a graph sync operation."""
+
     success: bool
     entity_id: str
     nodes_affected: int = 0
@@ -206,6 +211,7 @@ class SyncResultResponse(BaseModel):
 
 class NetworkStatsResponse(BaseModel):
     """Network-wide graph statistics."""
+
     tenant_id: str
     total_nodes: int
     total_relationships: int

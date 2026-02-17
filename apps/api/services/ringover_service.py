@@ -10,7 +10,7 @@ Handles:
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import and_, select
@@ -92,7 +92,9 @@ async def create_call_event(
     - Call type (answered/missed/voicemail)
     """
     # Build event title based on call context
-    direction_label = "📞 Appel entrant" if direction == "inbound" else "📞 Appel sortant"
+    direction_label = (
+        "📞 Appel entrant" if direction == "inbound" else "📞 Appel sortant"
+    )
 
     if call_type == "missed":
         direction_label = "📵 Appel manqué"

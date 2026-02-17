@@ -11,14 +11,27 @@ from pydantic import BaseModel, Field
 class LegalSearchRequest(BaseModel):
     """Legal search request."""
 
-    query: str = Field(..., min_length=1, max_length=2000, description="Natural language search query")
-    jurisdiction: Optional[str] = Field(None, description="Filter by jurisdiction: federal, wallonie, flandre, bruxelles, eu")
-    document_type: Optional[str] = Field(None, description="Filter by document type: code_civil, jurisprudence, etc.")
-    date_from: Optional[datetime] = Field(None, description="Filter documents published after this date")
-    date_to: Optional[datetime] = Field(None, description="Filter documents published before this date")
+    query: str = Field(
+        ..., min_length=1, max_length=2000, description="Natural language search query"
+    )
+    jurisdiction: Optional[str] = Field(
+        None,
+        description="Filter by jurisdiction: federal, wallonie, flandre, bruxelles, eu",
+    )
+    document_type: Optional[str] = Field(
+        None, description="Filter by document type: code_civil, jurisprudence, etc."
+    )
+    date_from: Optional[datetime] = Field(
+        None, description="Filter documents published after this date"
+    )
+    date_to: Optional[datetime] = Field(
+        None, description="Filter documents published before this date"
+    )
     limit: int = Field(10, ge=1, le=50, description="Maximum results to return")
     enable_reranking: bool = Field(True, description="Enable cross-encoder re-ranking")
-    enable_multilingual: bool = Field(True, description="Enable FR/NL translation search")
+    enable_multilingual: bool = Field(
+        True, description="Enable FR/NL translation search"
+    )
 
 
 class LegalChatRequest(BaseModel):
