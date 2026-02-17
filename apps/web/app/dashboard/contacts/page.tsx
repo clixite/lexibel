@@ -3,9 +3,9 @@
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Loader2, Search, UserX, Mail, Phone, X, Check } from "lucide-react";
+import { Plus, Loader2, Search, Mail, Phone, X, Check, ChevronRight } from "lucide-react";
 import { apiFetch } from "@/lib/api";
-import { LoadingSkeleton, ErrorState, EmptyState, Badge, Modal } from "@/components/ui";
+import { LoadingSkeleton, ErrorState, EmptyState, Badge, Modal, Button, Avatar, Card } from "@/components/ui";
 
 interface Contact {
   id: string;
@@ -130,257 +130,311 @@ export default function ContactsPage() {
   }
 
   return (
-    <div>
+    <div className="space-y-6">
       {/* Success toast */}
       {success && (
-        <div className="fixed top-4 right-4 z-50 bg-success-50 border border-success-200 text-success-700 px-4 py-3 rounded-md text-sm flex items-center gap-2 shadow-lg">
+        <div className="fixed top-4 right-4 z-50 bg-success-50 border border-success-200 text-success-700 px-4 py-3 rounded-lg text-sm flex items-center gap-2 shadow-lg animate-in fade-in">
           <Check className="w-4 h-4" />
           {success}
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold text-neutral-900">Contacts</h1>
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success-50 text-success-700">
-            {contacts.length}
-          </span>
+      {/* Premium Header Section */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-4xl font-display font-semibold text-neutral-900 mb-2">
+            Contacts
+          </h1>
+          <p className="text-neutral-500 text-sm">
+            Gérez votre réseau de contacts et relations commerciales
+          </p>
         </div>
-        <button
+        <Button
+          variant="primary"
+          size="lg"
+          icon={<Plus className="w-5 h-5" />}
           onClick={() => setShowModal(true)}
-          className="btn-primary flex items-center gap-2"
         >
-          <Plus className="w-4 h-4" />
           Nouveau contact
-        </button>
+        </Button>
       </div>
 
-      {/* Filter bar */}
-      <div className="flex flex-wrap items-center gap-3 mb-6">
-        <div className="flex gap-1 bg-neutral-100 rounded-md p-1">
-          {[
-            { label: "Tous", value: "" },
-            { label: "Personnes physiques", value: "natural" },
-            { label: "Personnes morales", value: "legal" },
-          ].map((f) => (
-            <button
-              key={f.value}
-              onClick={() => setTypeFilter(f.value)}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-150 ${
-                typeFilter === f.value
-                  ? "bg-white text-neutral-900 shadow-subtle"
-                  : "text-neutral-500 hover:text-neutral-700"
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-        <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+      {/* Premium Search & Filter Section */}
+      <div className="bg-white rounded-xl shadow-subtle border border-neutral-100 p-6 space-y-4">
+        {/* Prominent Search */}
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
           <input
             type="text"
-            placeholder="Rechercher un contact..."
+            placeholder="Chercher par nom, email, téléphone..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="input pl-9"
+            className="w-full pl-12 py-3 text-base border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-200 focus:border-accent transition-all"
           />
+        </div>
+
+        {/* Type Filter Chips */}
+        <div className="flex flex-wrap gap-2 items-center border-t border-neutral-100 pt-4">
+          <span className="text-xs text-neutral-500 uppercase tracking-wider font-semibold">
+            Filtrer par type:
+          </span>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { label: "Tous", value: "" },
+              { label: "Personnes physiques", value: "natural" },
+              { label: "Personnes morales", value: "legal" },
+            ].map((f) => (
+              <button
+                key={f.value}
+                onClick={() => setTypeFilter(f.value)}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-150 ${
+                  typeFilter === f.value
+                    ? "bg-accent text-white shadow-md hover:shadow-lg"
+                    : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex-1" />
+          <span className="text-xs text-neutral-500">
+            {filtered.length} contact{filtered.length !== 1 ? "s" : ""}
+          </span>
         </div>
       </div>
 
-      {/* Create Modal */}
+      {/* Premium Create Modal */}
       <Modal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
-        title="Nouveau contact"
+        title="Ajouter un nouveau contact"
+        size="lg"
         footer={
           <div className="flex justify-end gap-3">
-            <button
+            <Button
+              variant="secondary"
+              size="md"
               onClick={() => setShowModal(false)}
-              className="px-4 py-2 text-sm font-medium text-neutral-600 bg-neutral-100 rounded-md hover:bg-neutral-200 transition-colors"
             >
               Annuler
-            </button>
-            <button
-              onClick={handleCreate}
+            </Button>
+            <Button
+              variant="primary"
+              size="md"
+              loading={creating}
               disabled={creating || !form.full_name.trim()}
-              className="btn-primary flex items-center gap-2 disabled:opacity-50"
+              onClick={handleCreate}
             >
-              {creating && <Loader2 className="w-4 h-4 animate-spin" />}
               Créer le contact
-            </button>
+            </Button>
           </div>
         }
       >
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  Type
-                </label>
-                <div className="flex gap-3">
-                  {[
-                    { value: "natural", label: "Personne physique" },
-                    { value: "legal", label: "Personne morale" },
-                  ].map((t) => (
-                    <button
-                      key={t.value}
-                      onClick={() => setForm((f) => ({ ...f, type: t.value as "natural" | "legal" }))}
-                      className={`flex-1 px-4 py-2 rounded-md text-sm font-medium border transition-all ${
-                        form.type === t.value
-                          ? "border-accent bg-accent-50 text-accent-700"
-                          : "border-neutral-200 text-neutral-600 hover:border-neutral-300"
-                      }`}
-                    >
-                      {t.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  {form.type === "natural" ? "Nom complet" : "Raison sociale"}
-                </label>
-                <input
-                  type="text"
-                  value={form.full_name}
-                  onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))}
-                  placeholder={form.type === "natural" ? "Jean Dupont" : "SA Immobel"}
-                  className="input"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    value={form.email}
-                    onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                    placeholder="contact@example.be"
-                    className="input"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
-                    Téléphone
-                  </label>
-                  <input
-                    type="tel"
-                    value={form.phone_e164}
-                    onChange={(e) => setForm((f) => ({ ...f, phone_e164: e.target.value }))}
-                    placeholder="+32470123456"
-                    className="input"
-                  />
-                </div>
-              </div>
-              {form.type === "legal" && (
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
-                    Numéro BCE
-                  </label>
-                  <input
-                    type="text"
-                    value={form.bce_number}
-                    onChange={(e) => setForm((f) => ({ ...f, bce_number: e.target.value }))}
-                    placeholder="0123.456.789"
-                    className="input"
-                  />
-                </div>
-              )}
+        <div className="space-y-6">
+          {/* Type Selection */}
+          <div>
+            <label className="block text-sm font-semibold text-neutral-900 mb-3">
+              Type de contact
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { value: "natural", label: "Personne physique" },
+                { value: "legal", label: "Personne morale" },
+              ].map((t) => (
+                <button
+                  key={t.value}
+                  onClick={() =>
+                    setForm((f) => ({ ...f, type: t.value as "natural" | "legal" }))
+                  }
+                  className={`px-4 py-3 rounded-lg font-medium text-sm border-2 transition-all ${
+                    form.type === t.value
+                      ? "border-accent bg-accent-50 text-accent-700 shadow-md"
+                      : "border-neutral-200 text-neutral-600 hover:border-neutral-300"
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
             </div>
+          </div>
+
+          {/* Name Field */}
+          <div>
+            <label className="block text-sm font-semibold text-neutral-900 mb-2">
+              {form.type === "natural" ? "Nom complet" : "Raison sociale"}
+            </label>
+            <input
+              type="text"
+              value={form.full_name}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, full_name: e.target.value }))
+              }
+              placeholder={
+                form.type === "natural" ? "Jean Dupont" : "SA Immobel"
+              }
+              className="input"
+            />
+          </div>
+
+          {/* Contact Fields */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-neutral-900 mb-2">
+                Email
+              </label>
+              <input
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                placeholder="contact@example.be"
+                className="input"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-neutral-900 mb-2">
+                Téléphone
+              </label>
+              <input
+                type="tel"
+                value={form.phone_e164}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, phone_e164: e.target.value }))
+                }
+                placeholder="+32470123456"
+                className="input"
+              />
+            </div>
+          </div>
+
+          {/* BCE Number for Legal */}
+          {form.type === "legal" && (
+            <div>
+              <label className="block text-sm font-semibold text-neutral-900 mb-2">
+                Numéro BCE
+              </label>
+              <input
+                type="text"
+                value={form.bce_number}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, bce_number: e.target.value }))
+                }
+                placeholder="0123.456.789"
+                className="input"
+              />
+            </div>
+          )}
+        </div>
       </Modal>
 
-      {/* Table */}
-      <div className="bg-white rounded-lg shadow-subtle overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-neutral-200">
-              <th className="text-left px-6 py-3 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
-                Nom
-              </th>
-              <th className="text-left px-6 py-3 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
-                Type
-              </th>
-              <th className="text-left px-6 py-3 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
-                Email
-              </th>
-              <th className="text-left px-6 py-3 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
-                Téléphone
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-neutral-100">
-            {filtered.length === 0 ? (
+      {/* DataTable with Premium Styling */}
+      {filtered.length === 0 ? (
+        <div className="bg-white rounded-xl shadow-subtle border border-neutral-100 p-12 text-center">
+          <EmptyState title="Aucun contact trouvé" />
+          {!searchQuery && !typeFilter && (
+            <Button
+              variant="primary"
+              size="lg"
+              icon={<Plus className="w-5 h-5" />}
+              onClick={() => setShowModal(true)}
+              className="mt-6"
+            >
+              Ajouter votre premier contact
+            </Button>
+          )}
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl shadow-subtle border border-neutral-100 overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-neutral-50 border-b border-neutral-200">
               <tr>
-                <td colSpan={4}>
-                  <div className="px-6 py-16 text-center">
-                    <EmptyState title="Aucun contact trouvé" />
-                    {!searchQuery && !typeFilter && (
-                      <button
-                        onClick={() => setShowModal(true)}
-                        className="btn-primary mt-4"
-                      >
-                        <Plus className="w-4 h-4 inline mr-1.5" />
-                        Nouveau contact
-                      </button>
-                    )}
-                  </div>
-                </td>
+                <th className="text-left px-6 py-4 text-xs font-semibold text-neutral-600 uppercase tracking-wider">
+                  Contact
+                </th>
+                <th className="text-left px-6 py-4 text-xs font-semibold text-neutral-600 uppercase tracking-wider">
+                  Type
+                </th>
+                <th className="text-left px-6 py-4 text-xs font-semibold text-neutral-600 uppercase tracking-wider">
+                  Email
+                </th>
+                <th className="text-left px-6 py-4 text-xs font-semibold text-neutral-600 uppercase tracking-wider">
+                  Téléphone
+                </th>
+                <th className="text-center px-6 py-4 text-xs font-semibold text-neutral-600 uppercase tracking-wider">
+                  Action
+                </th>
               </tr>
-            ) : (
-              filtered.map((c) => (
+            </thead>
+            <tbody className="divide-y divide-neutral-100">
+              {filtered.map((c) => (
                 <tr
                   key={c.id}
-                  onClick={() => router.push(`/dashboard/contacts/${c.id}`)}
-                  className="hover:bg-neutral-50 transition-colors duration-150 cursor-pointer"
+                  className="hover:bg-neutral-50 transition-all duration-150 cursor-pointer group"
                 >
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-accent-50 flex items-center justify-center text-xs font-semibold text-accent flex-shrink-0">
-                        {getInitials(c.full_name)}
+                      <Avatar
+                        fallback={getInitials(c.full_name)}
+                        size="md"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-neutral-900 group-hover:text-accent truncate">
+                          {c.full_name}
+                        </p>
                       </div>
-                      <span className="text-sm font-medium text-neutral-900">
-                        {c.full_name}
-                      </span>
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        TYPE_STYLES[c.type] || "bg-neutral-100 text-neutral-600"
-                      }`}
+                    <Badge
+                      variant={c.type === "natural" ? "accent" : "neutral"}
+                      size="sm"
                     >
                       {TYPE_LABELS[c.type] || c.type}
-                    </span>
+                    </Badge>
                   </td>
                   <td className="px-6 py-4">
                     {c.email ? (
-                      <span className="flex items-center gap-1.5 text-sm text-accent">
-                        <Mail className="w-3.5 h-3.5" />
-                        {c.email}
-                      </span>
+                      <a
+                        href={`mailto:${c.email}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex items-center gap-1.5 text-sm text-accent hover:text-accent-700 transition-colors group-hover:underline"
+                      >
+                        <Mail className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span className="truncate">{c.email}</span>
+                      </a>
                     ) : (
-                      <span className="text-sm text-neutral-400">&mdash;</span>
+                      <span className="text-sm text-neutral-400">—</span>
                     )}
                   </td>
                   <td className="px-6 py-4">
                     {c.phone_e164 ? (
-                      <span className="flex items-center gap-1.5 text-sm text-accent">
-                        <Phone className="w-3.5 h-3.5" />
+                      <a
+                        href={`tel:${c.phone_e164}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex items-center gap-1.5 text-sm text-accent hover:text-accent-700 transition-colors group-hover:underline"
+                      >
+                        <Phone className="w-3.5 h-3.5 flex-shrink-0" />
                         {c.phone_e164}
-                      </span>
+                      </a>
                     ) : (
-                      <span className="text-sm text-neutral-400">&mdash;</span>
+                      <span className="text-sm text-neutral-400">—</span>
                     )}
                   </td>
+                  <td className="px-6 py-4 text-center">
+                    <button
+                      onClick={() => router.push(`/dashboard/contacts/${c.id}`)}
+                      className="p-2 rounded-lg hover:bg-accent hover:text-white transition-all opacity-0 group-hover:opacity-100"
+                      title="Voir le contact"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
