@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { apiFetch } from "@/lib/api";
+import DocumentPreview from "@/components/DocumentPreview";
 import {
   Loader2,
   ArrowLeft,
@@ -26,6 +27,8 @@ import {
   ChevronDown,
   AlertCircle,
 } from "lucide-react";
+import SkeletonCard from "@/components/skeletons/SkeletonCard";
+import TimerWidget from "@/components/TimerWidget";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -64,6 +67,7 @@ interface SearchContact {
 }
 
 interface EvidenceLink {
+  id: string;
   file_name: string;
   mime_type: string;
   file_size_bytes: number;
@@ -297,6 +301,13 @@ export default function CaseDetailPage() {
     occurred_at: new Date().toISOString().slice(0, 16),
   });
   const [eventSubmitting, setEventSubmitting] = useState(false);
+
+  /* ---------- document preview ---------- */
+  const [previewDocument, setPreviewDocument] = useState<{
+    id: string;
+    fileName: string;
+    mimeType: string;
+  } | null>(null);
 
   /* ---------------------------------------------------------------- */
   /*  Data fetching                                                    */
@@ -596,13 +607,28 @@ export default function CaseDetailPage() {
   };
 
   /* ---------------------------------------------------------------- */
+  /*  Document preview handler                                         */
+  /* ---------------------------------------------------------------- */
+
+  const openDocumentPreview = (id: string, fileName: string, mimeType: string) => {
+    setPreviewDocument({ id, fileName, mimeType });
+  };
+
+  const closeDocumentPreview = () => {
+    setPreviewDocument(null);
+  };
+
+  /* ---------------------------------------------------------------- */
   /*  Derived data                                                     */
   /* ---------------------------------------------------------------- */
 
   const allDocuments: (EvidenceLink & { eventTitle: string; eventDate: string })[] =
     timeline.flatMap((ev) =>
       ev.evidence_links.map((link) => ({
-        ...link,
+        id: link.id,
+        file_name: link.file_name,
+        mime_type: link.mime_type,
+        file_size_bytes: link.file_size_bytes,
         eventTitle: ev.title,
         eventDate: ev.occurred_at,
       })),
@@ -614,8 +640,8 @@ export default function CaseDetailPage() {
 
   if (sessionStatus === "loading" || loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-accent" />
+      <div className="p-6 max-w-7xl mx-auto space-y-6">
+        <SkeletonCard />
       </div>
     );
   }
@@ -1180,9 +1206,12 @@ export default function CaseDetailPage() {
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-3">
                               <Icon className="w-5 h-5 text-accent flex-shrink-0" />
-                              <span className="text-sm font-medium text-neutral-900 truncate max-w-xs">
+                              <button
+                                onClick={() => openDocumentPreview(doc.id, doc.file_name, doc.mime_type)}
+                                className="text-sm font-medium text-accent-700 hover:text-accent-900 truncate max-w-xs underline-offset-2 hover:underline text-left"
+                              >
                                 {doc.file_name}
-                              </span>
+                              </button>
                             </div>
                           </td>
                           <td className="px-6 py-4 text-sm text-neutral-600">
@@ -1212,10 +1241,20 @@ export default function CaseDetailPage() {
         {/* ---------------------------------------------------------- */}
         {activeTab === "prestations" && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-neutral-900">
-                Prestations
-              </h2>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-4">
+                <h2 className="text-lg font-semibold text-neutral-900">
+                  Prestations
+                </h2>
+                <TimerWidget
+                  variant="inline"
+                  onTimeUpdate={(seconds) => {
+                    // Optional: Update prestation form with elapsed time
+                    const minutes = Math.floor(seconds / 60);
+                    setTimeForm((f) => ({ ...f, duration_minutes: minutes }));
+                  }}
+                />
+              </div>
               <button
                 onClick={() => setShowTimeForm(true)}
                 className="btn-primary flex items-center gap-2"
@@ -1603,16 +1642,19 @@ export default function CaseDetailPage() {
                                 {ev.evidence_links.map((link, li) => {
                                   const FIcon = fileIcon(link.mime_type);
                                   return (
-                                    <span
+                                    <button
                                       key={li}
-                                      className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-neutral-50 border border-neutral-200 text-xs text-neutral-600"
+                                      onClick={() => openDocumentPreview(link.id, link.file_name, link.mime_type)}
+                                      className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-neutral-50 border border-neutral-200 hover:border-accent-300 hover:bg-accent-50 text-xs text-neutral-600 hover:text-accent-700 transition-colors"
                                     >
                                       <FIcon className="w-3.5 h-3.5 text-accent" />
-                                      {link.file_name}
+                                      <span className="underline-offset-2 hover:underline">
+                                        {link.file_name}
+                                      </span>
                                       <span className="text-neutral-400">
                                         ({fmtFileSize(link.file_size_bytes)})
                                       </span>
-                                    </span>
+                                    </button>
                                   );
                                 })}
                               </div>
@@ -1634,6 +1676,20 @@ export default function CaseDetailPage() {
           </div>
         )}
       </div>
+
+      {/* ============================================================ */}
+      {/*  DOCUMENT PREVIEW MODAL                                      */}
+      {/* ============================================================ */}
+      {previewDocument && token && (
+        <DocumentPreview
+          isOpen={true}
+          onClose={closeDocumentPreview}
+          fileId={previewDocument.id}
+          fileName={previewDocument.fileName}
+          mimeType={previewDocument.mimeType}
+          accessToken={token}
+        />
+      )}
     </div>
   );
 }

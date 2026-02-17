@@ -12,6 +12,7 @@ import {
   FileSearch,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import SkeletonList from "@/components/skeletons/SkeletonList";
 
 interface CaseResult {
   id: string;
@@ -357,11 +358,7 @@ export default function SearchPage() {
       )}
 
       {/* Loading state */}
-      {loading && hasSearched && (
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="w-8 h-8 animate-spin text-accent" />
-        </div>
-      )}
+      {loading && hasSearched && <SkeletonList />}
 
       {/* Initial empty state (before any search) */}
       {!hasSearched && !loading && (

@@ -5,6 +5,7 @@ import { FileText, Clock, Landmark } from "lucide-react";
 import TimesheetView from "./TimesheetView";
 import InvoiceList from "./InvoiceList";
 import ThirdPartyView from "./ThirdPartyView";
+import TimerWidget from "@/components/TimerWidget";
 
 const TABS = [
   { id: "timesheet", label: "Timesheet", icon: Clock },
@@ -16,6 +17,11 @@ type TabId = (typeof TABS)[number]["id"];
 
 export default function BillingPage() {
   const [activeTab, setActiveTab] = useState<TabId>("timesheet");
+
+  const handleTimeUpdate = (seconds: number) => {
+    // Optional: Log time updates or sync with parent state
+    console.log("Timer updated:", seconds);
+  };
 
   return (
     <div>
@@ -45,6 +51,9 @@ export default function BillingPage() {
       {activeTab === "timesheet" && <TimesheetView />}
       {activeTab === "invoices" && <InvoiceList />}
       {activeTab === "third-party" && <ThirdPartyView />}
+
+      {/* Floating Timer Widget */}
+      <TimerWidget variant="floating" onTimeUpdate={handleTimeUpdate} />
     </div>
   );
 }

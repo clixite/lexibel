@@ -7,13 +7,13 @@ import {
   Users,
   Clock,
   FileText,
-  Loader2,
   Mail,
   Phone,
   FileCheck,
   CalendarDays,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import SkeletonCard from "@/components/skeletons/SkeletonCard";
 
 interface DashboardStats {
   cases: number;
@@ -59,8 +59,9 @@ export default function DashboardPage() {
 
   if (status === "loading") {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-accent" />
+      <div className="space-y-6">
+        <SkeletonCard />
+        <SkeletonCard />
       </div>
     );
   }
@@ -234,13 +235,18 @@ export default function DashboardPage() {
             </div>
             <div className="mt-4">
               {statsLoading ? (
-                <Loader2 className="w-5 h-5 animate-spin text-neutral-300" />
+                <>
+                  <div className="h-7 w-16 bg-neutral-100 rounded mb-2 animate-pulse" />
+                  <div className="h-4 w-24 bg-neutral-100 rounded animate-pulse" />
+                </>
               ) : (
-                <p className="text-2xl font-bold text-neutral-900">
-                  {card.value}
-                </p>
+                <>
+                  <p className="text-2xl font-bold text-neutral-900">
+                    {card.value}
+                  </p>
+                  <p className="text-sm text-neutral-500 mt-0.5">{card.label}</p>
+                </>
               )}
-              <p className="text-sm text-neutral-500 mt-0.5">{card.label}</p>
             </div>
           </div>
         ))}

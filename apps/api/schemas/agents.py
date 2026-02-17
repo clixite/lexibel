@@ -113,3 +113,87 @@ class LoRAAdapterResponse(BaseModel):
     base_model: str = ""
     priority: int = 0
     enabled: bool = True
+
+
+# ── Audio Transcription ──
+
+
+class TranscribeAudioRequest(BaseModel):
+    language: str | None = Field(None, description="ISO 639-1 code: fr, nl, en")
+    enable_diarization: bool = Field(True, description="Enable speaker detection")
+    extract_insights: bool = Field(True, description="Extract action items and insights")
+    case_id: str | None = Field(None, description="Link transcript to case")
+
+
+class SpeakerSegmentResponse(BaseModel):
+    speaker_id: str
+    start_time: float
+    end_time: float
+    text: str
+    confidence: float = 0.0
+
+
+class TranscriptWordResponse(BaseModel):
+    word: str
+    start_time: float
+    end_time: float
+    confidence: float = 0.0
+
+
+class TranscriptionResponse(BaseModel):
+    transcript_id: str
+    full_text: str
+    language: str
+    duration_seconds: float
+    segments: list[SpeakerSegmentResponse] = []
+    confidence_score: float = 0.0
+    processing_time_seconds: float = 0.0
+    model: str = "whisper-1"
+
+
+class ActionItemResponse(BaseModel):
+    action_id: str
+    text: str
+    assignee: str | None = None
+    deadline: str | None = None
+    priority: str = "medium"
+    status: str = "pending"
+    confidence: float = 0.0
+    source_timestamp: float | None = None
+
+
+class ExtractedDecisionResponse(BaseModel):
+    decision_id: str
+    text: str
+    decided_by: str | None = None
+    timestamp: float | None = None
+    confidence: float = 0.0
+
+
+class ExtractedReferenceResponse(BaseModel):
+    ref_id: str
+    ref_type: str
+    text: str
+    context: str = ""
+    confidence: float = 0.0
+    timestamp: float | None = None
+
+
+class TranscriptInsightsResponse(BaseModel):
+    transcript_id: str
+    summary: str
+    action_items: list[ActionItemResponse] = []
+    decisions: list[ExtractedDecisionResponse] = []
+    references: list[ExtractedReferenceResponse] = []
+    key_topics: list[str] = []
+    sentiment_score: float = 0.0
+    urgency_level: str = "normal"
+    suggested_next_actions: list[str] = []
+    extracted_dates: list[dict] = []
+
+
+class CompleteTranscriptionResponse(BaseModel):
+    """Complete response with transcript + insights."""
+
+    transcription: TranscriptionResponse
+    insights: TranscriptInsightsResponse | None = None

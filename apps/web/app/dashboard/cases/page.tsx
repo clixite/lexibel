@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Loader2, Search, Folder, X, Check } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import SkeletonTable from "@/components/skeletons/SkeletonTable";
 
 interface Case {
   id: string;
@@ -150,8 +151,13 @@ export default function CasesPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-accent" />
+      <div>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-neutral-900">Dossiers</h1>
+          </div>
+        </div>
+        <SkeletonTable />
       </div>
     );
   }

@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import { Fragment, useEffect, useState } from "react";
 import { Plus, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import SkeletonList from "@/components/skeletons/SkeletonList";
 
 interface InvoiceLine {
   id: string;
@@ -87,11 +88,7 @@ export default function InvoiceList() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-accent" />
-      </div>
-    );
+    return <SkeletonList />;
   }
 
   return (

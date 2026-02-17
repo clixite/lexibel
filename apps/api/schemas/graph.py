@@ -1,6 +1,6 @@
 """Pydantic schemas for Knowledge Graph endpoints."""
 
-from typing import Optional
+from typing import Optional, Literal
 
 from pydantic import BaseModel, Field
 
@@ -131,3 +131,86 @@ class EntityResponse(BaseModel):
     end: int
     confidence: float
     metadata: dict = {}
+
+
+# ── Advanced Conflict Detection (2026) ──
+
+
+class ConflictPathResponse(BaseModel):
+    """A path showing how conflict arises through the graph."""
+    nodes: list[str] = []
+    relationships: list[str] = []
+    description: str = ""
+    hops: int = 0
+
+
+class AdvancedConflictResponse(BaseModel):
+    """Enhanced conflict with multi-hop analysis and risk scoring."""
+    conflict_id: str
+    entity_id: str
+    entity_name: str
+    entity_type: str
+    conflict_type: Literal[
+        "direct_opposition",
+        "dual_representation",
+        "former_client",
+        "associate_conflict",
+        "organizational",
+        "familial",
+        "business_interest",
+    ]
+    severity: Literal["critical", "high", "medium", "low", "info"]
+    confidence: float
+    risk_score: float
+    hop_distance: int
+    description: str
+    paths: list[ConflictPathResponse] = []
+    network_centrality: float = 0.0
+    recommendations: list[str] = []
+    related_cases: list[str] = []
+
+
+class ConflictReportResponse(BaseModel):
+    """Comprehensive conflict analysis report."""
+    case_id: str
+    total_conflicts: int
+    by_severity: dict[str, int] = {}
+    by_type: dict[str, int] = {}
+    conflicts: list[AdvancedConflictResponse] = []
+    network_analysis: dict = {}
+    recommendations: list[str] = []
+    report_generated_at: str
+
+
+class ConflictPredictionResponse(BaseModel):
+    """Prediction of conflict risk for new entity."""
+    case_id: str
+    entity_id: str
+    risk_probability: float
+    risk_level: Literal["critical", "high", "medium", "low", "minimal"]
+    recommendations: list[str] = []
+    analysis_timestamp: str
+
+
+# ── Graph Sync ──
+
+
+class SyncResultResponse(BaseModel):
+    """Result of a graph sync operation."""
+    success: bool
+    entity_id: str
+    nodes_affected: int = 0
+    relationships_affected: int = 0
+    error: Optional[str] = None
+
+
+class NetworkStatsResponse(BaseModel):
+    """Network-wide graph statistics."""
+    tenant_id: str
+    total_nodes: int
+    total_relationships: int
+    nodes_by_type: dict[str, int]
+    relationships_by_type: dict[str, int]
+    network_density: float
+    most_connected_entities: list[dict] = []
+    stats_generated_at: str

@@ -38,6 +38,7 @@ from apps.api.routers.graph import router as graph_router
 from apps.api.routers.agents import router as agents_router
 from apps.api.routers.admin import router as admin_router
 from apps.api.routers.mobile import router as mobile_router
+from apps.api.routers.ringover import router as ringover_router
 
 logger = logging.getLogger(__name__)
 
@@ -140,6 +141,7 @@ def create_app() -> FastAPI:
     app.include_router(agents_router)
     app.include_router(admin_router)
     app.include_router(mobile_router)
+    app.include_router(ringover_router)
 
     # ── Health check ──
     @app.get("/api/v1/health")

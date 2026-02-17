@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { Check, X, Loader2 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import SkeletonTable from "@/components/skeletons/SkeletonTable";
 
 interface TimeEntry {
   id: string;
@@ -80,11 +81,7 @@ export default function TimeEntryApproval() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-accent" />
-      </div>
-    );
+    return <SkeletonTable />;
   }
 
   return (

@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { Plus, Loader2, X } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import SkeletonCard from "@/components/skeletons/SkeletonCard";
 
 interface ThirdPartyEntry {
   id: string;
@@ -130,11 +131,7 @@ export default function ThirdPartyView() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-accent" />
-      </div>
-    );
+    return <SkeletonCard />;
   }
 
   return (

@@ -10,28 +10,35 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "next": "14.2.20",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "next-auth": "5.0.0-beta.25",
     "@auth/core": "^0.35.0",
-    "zustand": "^4.5.0",
     "@tanstack/react-query": "^5.20.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
+    "cytoscape": "^3.33.1",
+    "cytoscape-cola": "^2.5.1",
+    "d3-scale": "^4.0.2",
+    "lucide-react": "^0.330.0",
+    "next": "14.2.20",
+    "next-auth": "5.0.0-beta.25",
+    "pdfjs-dist": "^5.4.624",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-pdf": "^10.3.0",
+    "sonner": "^2.0.7",
     "tailwind-merge": "^2.2.0",
-    "lucide-react": "^0.330.0"
+    "zustand": "^4.5.0"
   },
   "devDependencies": {
+    "@types/cytoscape": "^3.31.0",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
-    "typescript": "^5",
-    "vitest": "^1.2.0",
+    "autoprefixer": "^10",
     "eslint": "^8",
     "eslint-config-next": "14.2.20",
-    "tailwindcss": "^3.4.0",
     "postcss": "^8",
-    "autoprefixer": "^10"
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5",
+    "vitest": "^1.2.0"
   }
 }

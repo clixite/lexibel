@@ -14,6 +14,7 @@ import {
   MessageSquare,
   Check,
 } from "lucide-react";
+import SkeletonCard from "@/components/skeletons/SkeletonCard";
 
 interface Contact {
   id: string;
@@ -195,8 +196,8 @@ export default function ContactDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-accent" />
+      <div className="p-6 max-w-7xl mx-auto">
+        <SkeletonCard />
       </div>
     );
   }
