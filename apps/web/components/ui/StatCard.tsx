@@ -29,10 +29,10 @@ export default function StatCard({ title, value, icon, trend, color = 'accent' }
   const isPositive = trend && trend.value >= 0;
 
   return (
-    <div className="bg-white rounded-lg shadow-subtle p-6">
+    <div className="bg-white rounded shadow-sm p-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-medium text-neutral-700">{title}</h3>
-        <div className={`p-2 rounded-lg ${colorClasses[color]}`}>
+        <div className={`p-2 rounded ${colorClasses[color]}`}>
           {icon}
         </div>
       </div>

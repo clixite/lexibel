@@ -170,13 +170,13 @@ export default function CasesPage() {
         </div>
       )}
 
-      {/* Premium Header Section */}
+      {/* Header Section - Corporate */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-display font-semibold text-neutral-900 mb-2">
+          <h1 className="text-3xl font-display font-bold text-neutral-900 mb-2">
             Dossiers
           </h1>
-          <p className="text-neutral-500 text-sm">
+          <p className="text-neutral-600 text-sm">
             Gérez et suivez tous vos dossiers clients
           </p>
         </div>
@@ -190,20 +190,20 @@ export default function CasesPage() {
         </Button>
       </div>
 
-      {/* Premium Filter & View Section */}
-      <div className="bg-white rounded-xl shadow-subtle border border-neutral-100 p-6 space-y-4">
+      {/* Filter & View Section - Corporate */}
+      <div className="bg-white rounded shadow-sm border border-neutral-200 p-6 space-y-4">
         {/* Inline Filters */}
         <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-          {/* Status Chips */}
+          {/* Status Chips - Corporate */}
           <div className="flex flex-wrap gap-2">
             {STATUS_FILTERS.map((f) => (
               <button
                 key={f.value}
                 onClick={() => setStatusFilter(f.value)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-150 ${
+                className={`px-4 py-2 rounded border text-sm font-medium transition-colors duration-150 ${
                   statusFilter === f.value
-                    ? "bg-accent text-white shadow-md hover:shadow-lg"
-                    : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+                    ? "bg-primary text-white border-primary"
+                    : "bg-white text-neutral-600 border-neutral-300 hover:bg-neutral-50"
                 }`}
               >
                 {f.label}
@@ -247,12 +247,12 @@ export default function CasesPage() {
           <span className="text-sm text-neutral-500">
             {filtered.length} résultats
           </span>
-          <div className="flex gap-2 bg-neutral-100 rounded-lg p-1">
+          <div className="flex gap-2 bg-neutral-100 rounded p-1">
             <button
               onClick={() => setViewMode("table")}
-              className={`p-2 rounded-md transition-all ${
+              className={`p-2 rounded transition-colors duration-150 ${
                 viewMode === "table"
-                  ? "bg-white text-accent shadow-subtle"
+                  ? "bg-white text-primary shadow-sm"
                   : "text-neutral-500 hover:text-neutral-700"
               }`}
               title="Vue tableau"
@@ -261,9 +261,9 @@ export default function CasesPage() {
             </button>
             <button
               onClick={() => setViewMode("grid")}
-              className={`p-2 rounded-md transition-all ${
+              className={`p-2 rounded transition-colors duration-150 ${
                 viewMode === "grid"
-                  ? "bg-white text-accent shadow-subtle"
+                  ? "bg-white text-primary shadow-sm"
                   : "text-neutral-500 hover:text-neutral-700"
               }`}
               title="Vue grille"

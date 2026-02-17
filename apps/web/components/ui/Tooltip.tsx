@@ -39,7 +39,7 @@ export default function Tooltip({
 
       {isVisible && (
         <div
-          className={`absolute z-50 px-2 py-1 bg-neutral-900 text-white text-sm rounded-md whitespace-nowrap animate-fadeIn ${positionClasses[position]}`}
+          className={`absolute z-50 px-2 py-1 bg-neutral-900 text-white text-sm rounded whitespace-nowrap animate-fade ${positionClasses[position]}`}
         >
           {content}
           <div

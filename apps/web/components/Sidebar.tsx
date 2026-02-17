@@ -95,12 +95,12 @@ export default function Sidebar({
           collapsed ? "justify-center px-4" : "px-6"
         } py-6 border-b border-white/10`}
       >
-        <div className="w-10 h-10 rounded-xl bg-accent/20 flex items-center justify-center">
+        <div className="w-10 h-10 rounded bg-primary/10 flex items-center justify-center">
           <Scale className="w-6 h-6 text-accent" />
         </div>
         {!collapsed && (
           <div>
-            <h1 className="text-xl font-display font-semibold text-white">LexiBel</h1>
+            <h1 className="text-xl font-display font-bold text-white">LexiBel</h1>
             <p className="text-xs text-white/60">Legal Management</p>
           </div>
         )}
@@ -111,7 +111,7 @@ export default function Sidebar({
         {NAV_GROUPS.map((group) => (
           <div key={group.label}>
             {!collapsed && (
-              <div className="px-3 mb-2 text-[10px] font-medium text-white/40 tracking-wider">
+              <div className="px-3 mb-2 text-[10px] font-semibold text-white/40 tracking-wider">
                 {group.label}
               </div>
             )}
@@ -126,19 +126,19 @@ export default function Sidebar({
                     key={item.href}
                     href={item.href}
                     title={collapsed ? item.label : undefined}
-                    className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 group ${
+                    className={`relative flex items-center gap-3 px-3 py-2.5 rounded transition-colors duration-150 group ${
                       isActive
-                        ? "bg-accent/20 text-accent"
-                        : "text-white/70 hover:bg-white/5 hover:text-white"
+                        ? "bg-primary/5 text-primary"
+                        : "text-white/70 hover:bg-primary/5 hover:text-white"
                     }`}
                   >
                     {/* Active indicator */}
                     {isActive && (
-                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-accent rounded-r-full" />
+                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-primary rounded-r" />
                     )}
 
                     <item.icon
-                      className={`w-5 h-5 flex-shrink-0 transition-transform group-hover:scale-110 ${
+                      className={`w-5 h-5 flex-shrink-0 ${
                         collapsed ? "mx-auto" : ""
                       }`}
                     />
@@ -147,7 +147,7 @@ export default function Sidebar({
                       <>
                         <span className="flex-1 text-sm font-medium">{item.label}</span>
                         {item.badge !== undefined && item.badge > 0 && (
-                          <span className="px-1.5 py-0.5 text-xs font-semibold bg-accent text-white rounded-full">
+                          <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-accent text-white rounded">
                             {item.badge}
                           </span>
                         )}
@@ -164,19 +164,19 @@ export default function Sidebar({
         {userRole === "super_admin" && (
           <div>
             {!collapsed && (
-              <div className="px-3 mb-2 text-[10px] font-medium text-white/40 tracking-wider">
+              <div className="px-3 mb-2 text-[10px] font-semibold text-white/40 tracking-wider">
                 ADMINISTRATION
               </div>
             )}
             <Link
               href="/dashboard/admin"
-              className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 group ${
+              className={`relative flex items-center gap-3 px-3 py-2.5 rounded transition-colors duration-150 group ${
                 pathname.startsWith("/dashboard/admin")
-                  ? "bg-accent/20 text-accent"
-                  : "text-white/70 hover:bg-white/5 hover:text-white"
+                  ? "bg-primary/5 text-primary"
+                  : "text-white/70 hover:bg-primary/5 hover:text-white"
               }`}
             >
-              <Shield className="w-5 h-5 flex-shrink-0 group-hover:scale-110" />
+              <Shield className="w-5 h-5 flex-shrink-0" />
               {!collapsed && <span className="text-sm font-medium">Admin</span>}
             </Link>
           </div>
@@ -188,7 +188,7 @@ export default function Sidebar({
         {/* Dark Mode Toggle */}
         <button
           onClick={() => setDarkMode(!darkMode)}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-white/70 hover:bg-white/5 hover:text-white transition-colors"
+          className="w-full flex items-center gap-3 px-3 py-2 rounded text-white/70 hover:bg-white/5 hover:text-white transition-colors duration-150"
         >
           {darkMode ? (
             <Sun className="w-4 h-4" />
@@ -200,13 +200,13 @@ export default function Sidebar({
 
         {/* User Info */}
         <div className={`flex items-center gap-3 ${collapsed ? "justify-center" : "px-3"} py-2`}>
-          <div className="w-9 h-9 rounded-full bg-accent/20 flex items-center justify-center text-sm font-semibold text-accent flex-shrink-0">
+          <div className="w-9 h-9 rounded bg-primary/10 flex items-center justify-center text-sm font-semibold text-accent flex-shrink-0">
             {initials}
           </div>
           {!collapsed && (
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-white truncate">{userEmail}</p>
-              <p className="text-xs text-white/50">{userRole}</p>
+              <p className="text-[10px] text-white/50">{userRole}</p>
             </div>
           )}
         </div>
@@ -214,7 +214,7 @@ export default function Sidebar({
         {/* Logout */}
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-white/70 hover:bg-white/5 hover:text-red-400 transition-colors"
+          className="w-full flex items-center gap-3 px-3 py-2 rounded text-white/70 hover:bg-white/5 hover:text-red-400 transition-colors duration-150"
         >
           <LogOut className="w-4 h-4" />
           {!collapsed && <span className="text-sm">Déconnexion</span>}
@@ -224,7 +224,7 @@ export default function Sidebar({
       {/* Collapse Toggle */}
       <button
         onClick={onToggle}
-        className="absolute -right-3 top-6 w-6 h-6 bg-white rounded-full shadow-lg flex items-center justify-center text-primary hover:bg-accent hover:text-white transition-colors"
+        className="absolute -right-3 top-6 w-6 h-6 bg-white rounded-full shadow-sm flex items-center justify-center text-primary hover:bg-accent hover:text-white transition-colors duration-150"
       >
         {collapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
       </button>

@@ -698,7 +698,7 @@ export default function InboxPage() {
               <div className="flex items-start gap-4">
                 {/* Source icon */}
                 <div
-                  className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${sourceColor(item.source)}`}
+                  className={`w-10 h-10 rounded flex items-center justify-center flex-shrink-0 ${sourceColor(item.source)}`}
                 >
                   {sourceIcon(item.source)}
                 </div>

@@ -49,7 +49,7 @@ export default function Avatar({
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full bg-accent text-white flex items-center justify-center">
+          <div className="w-full h-full bg-primary text-white flex items-center justify-center">
             {fallback}
           </div>
         )}

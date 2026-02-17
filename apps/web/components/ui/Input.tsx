@@ -37,12 +37,12 @@ export default function Input({
         <input
           className={`
             w-full px-3 py-2
-            border rounded-lg
+            border rounded
             text-neutral-900 placeholder:text-neutral-400
-            transition-all duration-normal
-            focus:outline-none focus:ring-2 focus:ring-accent-200 focus:border-accent-400
+            transition-colors duration-150
+            focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary
             disabled:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50
-            ${hasError ? "border-danger text-danger focus:ring-danger-200 focus:border-danger" : "border-neutral-300"}
+            ${hasError ? "border-danger text-danger focus:ring-danger/20 focus:border-danger" : "border-neutral-300"}
             ${prefixIcon ? "pl-10" : ""}
             ${suffixIcon ? "pr-10" : ""}
             ${className}
@@ -58,7 +58,7 @@ export default function Input({
       </div>
 
       {error && (
-        <p className="mt-1.5 text-sm text-danger animate-slideDown">
+        <p className="mt-1.5 text-sm text-danger animate-fade">
           {error}
         </p>
       )}

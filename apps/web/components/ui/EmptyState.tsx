@@ -15,7 +15,7 @@ export interface EmptyStateProps {
 export default function EmptyState({ title, description, icon, action }: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center justify-center py-12 px-4">
-      <div className="bg-neutral-100 rounded-full p-4 mb-4">
+      <div className="bg-neutral-100 rounded p-4 mb-4">
         {icon || <Inbox className="h-12 w-12 text-neutral-400" />}
       </div>
       <h3 className="text-lg font-medium text-neutral-900 mb-2">{title}</h3>
@@ -25,7 +25,7 @@ export default function EmptyState({ title, description, icon, action }: EmptySt
       {action && (
         <button
           onClick={action.onClick}
-          className="px-4 py-2 bg-accent-500 text-white rounded-lg font-medium text-sm hover:bg-accent-600 transition-colors"
+          className="px-4 py-2 bg-primary text-white rounded font-medium text-sm hover:bg-primary/90 transition-colors duration-150"
         >
           {action.label}
         </button>

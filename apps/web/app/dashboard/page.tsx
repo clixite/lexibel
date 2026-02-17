@@ -255,30 +255,27 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100">
-      {/* Hero Section with Gradient Background */}
-      <div className="mb-8 animate-fadeIn">
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary to-primary-dark p-8 md:p-12">
+    <div className="min-h-screen bg-neutral-50">
+      {/* Hero Section - Corporate */}
+      <div className="mb-8 animate-fade">
+        <div className="relative overflow-hidden bg-white border border-neutral-200 p-8 md:p-12">
           <div className="relative z-10">
-            <h1 className="text-4xl md:text-5xl font-display font-bold text-white mb-2">
-              Bonjour, {displayName} 👋
+            <h1 className="text-4xl font-display font-bold text-primary mb-2">
+              Bonjour, {displayName}
             </h1>
-            <p className="text-lg text-primary-light capitalize">
+            <p className="text-lg text-neutral-600 capitalize">
               {dateStr}
             </p>
           </div>
-          {/* Decorative Elements */}
-          <div className="absolute top-0 right-0 w-96 h-96 bg-accent opacity-10 rounded-full blur-3xl -z-0" />
         </div>
       </div>
 
-      {/* Stats Grid - 6 Cards with Stagger Animation */}
+      {/* Stats Grid - 6 Cards - Corporate */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         {STAT_CARDS.map((card, index) => (
           <div
             key={card.title}
-            className="animate-slideUp"
-            style={{ animationDelay: `${index * 50}ms` }}
+            className="animate-fade"
           >
             <StatCard
               title={card.title}
@@ -312,14 +309,13 @@ export default function DashboardPage() {
               {recentCases.slice(0, 5).map((caseItem, index) => (
                 <div
                   key={caseItem.id}
-                  className="flex items-center gap-3 p-3 hover:bg-neutral-50 rounded-lg transition-colors cursor-pointer group animate-slideUp"
-                  style={{ animationDelay: `${index * 30}ms` }}
+                  className="flex items-center gap-3 p-3 hover:bg-neutral-50 rounded transition-colors duration-150 cursor-pointer group"
                 >
                   <Badge variant={getStatusVariant(caseItem.status)} size="sm">
                     {caseItem.status}
                   </Badge>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm text-neutral-900 group-hover:text-accent transition-colors">
+                    <p className="font-medium text-sm text-neutral-900 group-hover:text-primary transition-colors duration-150">
                       {caseItem.title}
                     </p>
                     <p className="text-xs text-neutral-500 mt-0.5">
@@ -357,14 +353,13 @@ export default function DashboardPage() {
                 return (
                   <div
                     key={item.id}
-                    className="flex items-center gap-3 p-3 hover:bg-neutral-50 rounded-lg transition-colors cursor-pointer group animate-slideUp"
-                    style={{ animationDelay: `${index * 30}ms` }}
+                    className="flex items-center gap-3 p-3 hover:bg-neutral-50 rounded transition-colors duration-150 cursor-pointer group"
                   >
-                    <div className="p-2 bg-accent-50 rounded-lg flex-shrink-0">
-                      <SourceIcon className="w-4 h-4 text-accent-600" />
+                    <div className="p-2 bg-primary/10 rounded flex-shrink-0">
+                      <SourceIcon className="w-4 h-4 text-primary" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-neutral-900 group-hover:text-accent font-medium truncate transition-colors">
+                      <p className="text-sm text-neutral-900 group-hover:text-primary font-medium truncate transition-colors duration-150">
                         {item.subject || "(Sans titre)"}
                       </p>
                       {item.from_name && (
@@ -393,14 +388,13 @@ export default function DashboardPage() {
           {DEADLINES.map((deadline, index) => (
             <div
               key={index}
-              className="flex items-start gap-4 p-4 border border-neutral-200 rounded-lg hover:border-accent hover:bg-accent-50 transition-all cursor-pointer group animate-slideUp"
-              style={{ animationDelay: `${index * 50}ms` }}
+              className="flex items-start gap-4 p-4 border border-neutral-200 rounded hover:shadow-md transition-shadow duration-150 cursor-pointer group"
             >
-              <div className="p-2.5 bg-gradient-to-br from-accent-50 to-accent-100 rounded-lg flex-shrink-0 group-hover:shadow-lg transition-shadow">
-                <CalendarDays className="w-5 h-5 text-accent-600" />
+              <div className="p-2.5 bg-primary/10 rounded flex-shrink-0">
+                <CalendarDays className="w-5 h-5 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-neutral-900 group-hover:text-accent transition-colors">
+                <p className="text-sm font-semibold text-neutral-900 group-hover:text-primary transition-colors duration-150">
                   {deadline.title}
                 </p>
                 <p className="text-xs text-neutral-500 mt-1">
@@ -412,7 +406,6 @@ export default function DashboardPage() {
                   deadline.urgent ? "danger" : "default"
                 }
                 size="sm"
-                pulse={deadline.urgent}
               >
                 {deadline.daysLeft}j
               </Badge>

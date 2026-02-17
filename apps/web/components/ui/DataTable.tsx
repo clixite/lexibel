@@ -31,7 +31,7 @@ export default function DataTable<T extends Record<string, any>>({
   const endItem = pagination ? Math.min(pagination.page * pagination.perPage, pagination.total) : data.length;
 
   return (
-    <div className="bg-white rounded-lg shadow-subtle overflow-hidden">
+    <div className="bg-white rounded shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead className="bg-neutral-50 border-b border-neutral-200">
@@ -75,7 +75,7 @@ export default function DataTable<T extends Record<string, any>>({
             <button
               onClick={() => pagination.onPageChange(pagination.page - 1)}
               disabled={pagination.page === 1}
-              className="p-2 rounded-lg border border-neutral-300 hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="p-2 rounded border border-neutral-300 hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
             >
               <ChevronLeft className="h-4 w-4 text-neutral-700" />
             </button>
@@ -86,7 +86,7 @@ export default function DataTable<T extends Record<string, any>>({
             <button
               onClick={() => pagination.onPageChange(pagination.page + 1)}
               disabled={pagination.page === totalPages}
-              className="p-2 rounded-lg border border-neutral-300 hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="p-2 rounded border border-neutral-300 hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
             >
               <ChevronRight className="h-4 w-4 text-neutral-700" />
             </button>

@@ -139,13 +139,13 @@ export default function ContactsPage() {
         </div>
       )}
 
-      {/* Premium Header Section */}
+      {/* Header Section - Corporate */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-display font-semibold text-neutral-900 mb-2">
+          <h1 className="text-3xl font-display font-bold text-neutral-900 mb-2">
             Contacts
           </h1>
-          <p className="text-neutral-500 text-sm">
+          <p className="text-neutral-600 text-sm">
             Gérez votre réseau de contacts et relations commerciales
           </p>
         </div>

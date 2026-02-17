@@ -14,24 +14,17 @@ export default function Skeleton({
   className = "",
 }: SkeletonProps) {
   const variantClasses = {
-    text: "h-4 rounded-md",
+    text: "h-4 rounded",
     circle: "rounded-full",
-    rect: "rounded-lg",
-  };
-
-  const shimmerStyle = {
-    backgroundImage:
-      "linear-gradient(90deg, #f5f5f4 0px, #e7e5e4 40px, #f5f5f4 80px)",
-    backgroundSize: "1000px 100%",
+    rect: "rounded",
   };
 
   return (
     <div
-      className={`bg-neutral-200 animate-shimmer ${variantClasses[variant]} ${className}`}
+      className={`bg-neutral-100 animate-pulse ${variantClasses[variant]} ${className}`}
       style={{
         width: width || (variant === "circle" ? height || "40px" : "100%"),
         height: height || (variant === "text" ? "1rem" : "40px"),
-        ...shimmerStyle,
       }}
     />
   );

@@ -42,14 +42,12 @@ export default function Badge({
     md: "px-2.5 py-1 text-sm",
   };
 
-  const pulseClasses = pulse ? "animate-pulse-subtle" : "";
-
   return (
     <span
-      className={`inline-flex items-center gap-1.5 font-medium rounded-full ${variantClasses[variant]} ${sizeClasses[size]} ${pulseClasses} ${className}`}
+      className={`inline-flex items-center gap-1.5 font-medium rounded ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
     >
       {dot && (
-        <span className={`w-1.5 h-1.5 rounded-full ${dotColorClasses[variant]} ${pulse ? "animate-pulse" : ""}`} />
+        <span className={`w-1.5 h-1.5 rounded-full ${dotColorClasses[variant]}`} />
       )}
       {children}
     </span>

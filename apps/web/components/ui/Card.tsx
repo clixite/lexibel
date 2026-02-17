@@ -19,8 +19,8 @@ export default function Card({
   footer,
   onClick,
 }: CardProps) {
-  const baseClasses = "bg-white rounded-lg shadow-md transition-all duration-normal";
-  const hoverClasses = hover ? "hover:-translate-y-1 hover:shadow-xl" : "";
+  const baseClasses = "bg-white rounded shadow-sm transition-shadow duration-150";
+  const hoverClasses = hover ? "hover:shadow-md" : "";
   const clickableClasses = onClick ? "cursor-pointer" : "";
 
   return (
@@ -39,7 +39,7 @@ export default function Card({
       </div>
 
       {footer && (
-        <div className="px-6 py-4 border-t border-neutral-200 bg-neutral-50 rounded-b-lg">
+        <div className="px-6 py-4 border-t border-neutral-200 bg-neutral-50 rounded-b">
           {footer}
         </div>
       )}

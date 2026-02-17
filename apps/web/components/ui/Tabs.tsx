@@ -51,19 +51,19 @@ export default function Tabs({ tabs, defaultTab, onTabChange }: TabsProps) {
               }}
               onClick={() => handleTabClick(tab.id)}
               className={`
-                relative px-4 py-2.5 text-sm font-medium transition-colors duration-normal
+                relative px-4 py-2.5 text-sm transition-colors duration-150
                 flex items-center gap-2
                 ${
                   activeTab === tab.id
-                    ? "text-accent"
-                    : "text-neutral-600 hover:text-neutral-900"
+                    ? "text-primary font-semibold"
+                    : "text-neutral-600 hover:text-neutral-900 font-medium"
                 }
               `}
             >
               {tab.icon && <span className="inline-flex">{tab.icon}</span>}
               {tab.label}
               {tab.badge !== undefined && tab.badge > 0 && (
-                <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-medium bg-accent-100 text-accent-700 rounded-full">
+                <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-medium bg-primary/10 text-primary rounded">
                   {tab.badge}
                 </span>
               )}
@@ -73,7 +73,7 @@ export default function Tabs({ tabs, defaultTab, onTabChange }: TabsProps) {
 
         {/* Animated Indicator */}
         <div
-          className="absolute bottom-0 h-0.5 bg-accent transition-all duration-normal"
+          className="absolute bottom-0 h-[2px] bg-primary transition-all duration-150"
           style={{
             left: `${indicatorStyle.left}px`,
             width: `${indicatorStyle.width}px`,
@@ -83,7 +83,7 @@ export default function Tabs({ tabs, defaultTab, onTabChange }: TabsProps) {
 
       {/* Tab Content */}
       <div className="py-4">
-        <div className="animate-fadeIn">
+        <div className="animate-fade">
           {activeTabData?.content}
         </div>
       </div>

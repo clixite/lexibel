@@ -21,13 +21,13 @@ export default function Button({
   disabled,
   ...props
 }: ButtonProps) {
-  const baseClasses = "inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-all duration-normal focus:outline-none focus:ring-2 focus:ring-accent-300 focus:ring-offset-2";
+  const baseClasses = "inline-flex items-center justify-center gap-2 font-medium rounded transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:ring-offset-2";
 
   const variantClasses = {
-    primary: "bg-accent text-white hover:bg-accent-700 hover:scale-[1.02] active:scale-[0.98] shadow-sm",
-    secondary: "border-2 border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50 hover:border-neutral-400 active:scale-[0.98]",
-    ghost: "bg-transparent text-neutral-700 hover:bg-neutral-100 active:bg-neutral-200",
-    danger: "bg-danger text-white hover:bg-danger-700 hover:scale-[1.02] active:scale-[0.98] shadow-sm",
+    primary: "bg-primary text-white hover:bg-primary/90 shadow-sm",
+    secondary: "border-2 border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50 hover:border-neutral-400",
+    ghost: "bg-transparent text-neutral-700 hover:bg-neutral-100",
+    danger: "bg-danger text-white hover:bg-danger/90 shadow-sm",
   };
 
   const sizeClasses = {
@@ -36,7 +36,7 @@ export default function Button({
     lg: "px-6 py-3 text-lg",
   };
 
-  const disabledClasses = disabled || loading ? "opacity-50 cursor-not-allowed hover:scale-100" : "";
+  const disabledClasses = disabled || loading ? "opacity-50 cursor-not-allowed" : "";
 
   return (
     <button

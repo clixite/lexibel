@@ -31,10 +31,10 @@ export default function TopBar({ sidebarCollapsed }: TopBarProps) {
         <nav className="flex items-center gap-2 text-sm">
           {breadcrumbs.map((crumb, index) => (
             <div key={crumb.href} className="flex items-center gap-2">
-              {index > 0 && <ChevronRight className="w-4 h-4 text-neutral-400" />}
+              {index > 0 && <ChevronRight className="w-3.5 h-3.5 text-neutral-400" />}
               <Link
                 href={crumb.href}
-                className={`${
+                className={`transition-colors duration-150 ${
                   index === breadcrumbs.length - 1
                     ? "font-semibold text-primary"
                     : "text-neutral-600 hover:text-primary"
@@ -51,14 +51,14 @@ export default function TopBar({ sidebarCollapsed }: TopBarProps) {
           {/* Search */}
           <button
             onClick={() => setSearchOpen(!searchOpen)}
-            className="p-2 rounded-lg hover:bg-neutral-100 transition-colors"
+            className="p-2 rounded hover:bg-neutral-100 transition-colors duration-150"
             title="Recherche (Cmd+K)"
           >
             <Search className="w-5 h-5 text-neutral-600" />
           </button>
 
           {/* Notifications */}
-          <button className="relative p-2 rounded-lg hover:bg-neutral-100 transition-colors">
+          <button className="relative p-2 rounded hover:bg-neutral-100 transition-colors duration-150">
             <Bell className="w-5 h-5 text-neutral-600" />
             <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
           </button>
@@ -68,11 +68,11 @@ export default function TopBar({ sidebarCollapsed }: TopBarProps) {
       {/* Search Modal Placeholder */}
       {searchOpen && (
         <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-start justify-center pt-20"
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-start justify-center pt-20 animate-fade"
           onClick={() => setSearchOpen(false)}
         >
           <div
-            className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-4 animate-scaleIn"
+            className="bg-white rounded shadow-lg w-full max-w-2xl p-4 animate-fade"
             onClick={(e) => e.stopPropagation()}
           >
             <input

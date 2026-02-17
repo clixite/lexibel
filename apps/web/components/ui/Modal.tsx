@@ -51,16 +51,16 @@ export default function Modal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-center justify-center animate-fade">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
+        className="absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity"
         onClick={onClose}
       />
 
       {/* Modal Content */}
       <div
-        className={`relative bg-white rounded-xl shadow-2xl w-full ${sizeClasses[size]} mx-4 max-h-[90vh] flex flex-col animate-scaleIn`}
+        className={`relative bg-white rounded shadow-lg w-full ${sizeClasses[size]} mx-4 max-h-[90vh] flex flex-col animate-fade`}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200">
@@ -69,7 +69,7 @@ export default function Modal({
           </h2>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-neutral-100 transition-colors duration-normal focus:outline-none focus:ring-2 focus:ring-accent-300"
+            className="p-1.5 rounded hover:bg-neutral-100 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary/20"
           >
             <X className="h-5 w-5 text-neutral-500" />
           </button>
@@ -82,7 +82,7 @@ export default function Modal({
 
         {/* Footer */}
         {footer && (
-          <div className="px-6 py-4 border-t border-neutral-200 bg-neutral-50 rounded-b-xl">
+          <div className="px-6 py-4 border-t border-neutral-200 bg-neutral-50 rounded-b">
             {footer}
           </div>
         )}

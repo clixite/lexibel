@@ -70,8 +70,8 @@ export default function Toast({
         fixed top-4 right-4 z-50
         min-w-[320px] max-w-md
         ${config.bgColor} ${config.borderColor} ${config.textColor}
-        border rounded-lg shadow-lg
-        animate-slideLeft
+        border rounded shadow-lg
+        animate-fade
         overflow-hidden
       `}
     >
@@ -80,7 +80,7 @@ export default function Toast({
         <div className="flex-1 text-sm font-medium">{message}</div>
         <button
           onClick={onClose}
-          className="flex-shrink-0 p-0.5 rounded hover:bg-black/5 transition-colors"
+          className="flex-shrink-0 p-0.5 rounded hover:bg-black/5 transition-colors duration-150"
         >
           <X className="h-4 w-4" />
         </button>
