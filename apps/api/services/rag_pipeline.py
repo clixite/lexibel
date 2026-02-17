@@ -13,14 +13,12 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 from apps.api.services.chunking_service import (
-    Chunk,
     chunk_document,
     chunk_text,
     generate_embeddings,
 )
 from apps.api.services.vector_service import (
     InMemoryVectorService,
-    VectorSearchResult,
     VectorService,
 )
 from apps.api.services.llm_gateway import (
@@ -365,7 +363,7 @@ class RAGPipeline:
                 reranked=enable_rerank,
             )
 
-        except Exception as e:
+        except Exception:
             return QueryResult(
                 query=question,
                 context_chunks=[],

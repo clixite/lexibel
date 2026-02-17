@@ -334,16 +334,23 @@ class StubLLMGateway(LLMGateway):
         prompt_lower = prompt.lower()
 
         # Detect intent from prompt
-        if any(word in prompt_lower for word in ["rédige", "draft", "brouillon", "mise en demeure"]):
+        if any(
+            word in prompt_lower
+            for word in ["rédige", "draft", "brouillon", "mise en demeure"]
+        ):
             # Drafting request
             return self._draft_template(prompt_lower, context_chunks)
-        elif any(word in prompt_lower for word in ["résume", "résumé", "summary", "synthèse"]):
+        elif any(
+            word in prompt_lower for word in ["résume", "résumé", "summary", "synthèse"]
+        ):
             # Summary request
             return self._summary_template(context_chunks)
         elif any(word in prompt_lower for word in ["analyse", "analyze", "examine"]):
             # Analysis request
             return self._analysis_template(context_chunks)
-        elif any(word in prompt_lower for word in ["article", "code", "loi", "jurisprudence"]):
+        elif any(
+            word in prompt_lower for word in ["article", "code", "loi", "jurisprudence"]
+        ):
             # Legal query
             return self._legal_query_template(prompt_lower)
         else:
@@ -471,7 +478,9 @@ Ces délais sont d'ordre public et doivent être strictement respectés sous pei
         if self._canned:
             text = self._canned
         else:
-            text = self._generate_intelligent_response(prompt, context_chunks, system_prompt)
+            text = self._generate_intelligent_response(
+                prompt, context_chunks, system_prompt
+            )
 
         sources = [
             LLMSource(
