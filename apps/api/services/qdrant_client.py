@@ -1,8 +1,12 @@
 """Qdrant client for BRAIN vector search."""
+import asyncio
+import logging
 import os
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct
 from typing import Optional, Union
+
+logger = logging.getLogger(__name__)
 
 class QdrantVectorStore:
     """Async Qdrant client for embeddings."""
@@ -13,7 +17,17 @@ class QdrantVectorStore:
 
     async def connect(self):
         """Connect to Qdrant."""
-        self._client = AsyncQdrantClient(url=self.url, check_compatibility=False)
+        try:
+            self._client = AsyncQdrantClient(url=self.url, check_compatibility=False)
+            # Test connection
+            await self._client.get_collections()
+        except Exception as e:
+            # Cleanup client on connection failure
+            if self._client:
+                await self._client.close()
+                self._client = None
+            logger.error(f"Failed to connect to Qdrant at {self.url}: {e}")
+            raise
 
     async def close(self):
         """Close connection."""
@@ -22,6 +36,8 @@ class QdrantVectorStore:
 
     async def create_collection(self, name: str, vector_size: int = 1536):
         """Create collection if not exists."""
+        if self._client is None:
+            raise RuntimeError("Qdrant client not connected. Call connect() first.")
         collections = await self._client.get_collections()
         if name not in [c.name for c in collections.collections]:
             await self._client.create_collection(
@@ -34,6 +50,8 @@ class QdrantVectorStore:
 
     async def upsert(self, collection: str, id: Union[str, int], vector: list[float], payload: dict):
         """Insert or update vector."""
+        if self._client is None:
+            raise RuntimeError("Qdrant client not connected. Call connect() first.")
         await self._client.upsert(
             collection_name=collection,
             points=[
@@ -49,6 +67,8 @@ class QdrantVectorStore:
         """Search similar vectors."""
         from qdrant_client.http.models import SearchRequest
 
+        if self._client is None:
+            raise RuntimeError("Qdrant client not connected. Call connect() first.")
         results = await self._client.http.search_api.search_points(
             collection_name=collection,
             search_request=SearchRequest(
@@ -62,19 +82,27 @@ class QdrantVectorStore:
     async def health_check(self) -> bool:
         """Check if Qdrant is reachable."""
         try:
+            if self._client is None:
+                raise RuntimeError("Qdrant client not connected. Call connect() first.")
             await self._client.get_collections()
             return True
-        except Exception:
+        except RuntimeError as e:
+            logger.warning(f"Qdrant health check failed - client not connected: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Qdrant health check failed: {e}")
             return False
 
 
 # Singleton
 _qdrant_client: Optional[QdrantVectorStore] = None
+_lock = asyncio.Lock()
 
 async def get_qdrant_client() -> QdrantVectorStore:
     """Get Qdrant client singleton."""
     global _qdrant_client
-    if _qdrant_client is None:
-        _qdrant_client = QdrantVectorStore()
-        await _qdrant_client.connect()
-    return _qdrant_client
+    async with _lock:
+        if _qdrant_client is None:
+            _qdrant_client = QdrantVectorStore()
+            await _qdrant_client.connect()
+        return _qdrant_client
