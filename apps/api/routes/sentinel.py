@@ -150,6 +150,50 @@ async def check_conflict(
             (c.severity_score for c in conflict_details), default=0
         )
 
+        # Fetch graph data if requested
+        graph_data = None
+        if request.include_graph and conflict_details:
+            try:
+                # Get unique entity IDs from all conflicts
+                entity_ids = set()
+                for conflict in conflict_details:
+                    for entity in conflict.entities_involved:
+                        entity_ids.add(entity.id)
+
+                # Fetch graph data for these entities using Neo4j
+                detector = await get_conflict_detector()
+                neo4j_client = detector.neo4j_client
+
+                # Query Neo4j for nodes and relationships involving these entities
+                query = """
+                MATCH (n)
+                WHERE n.id IN $entity_ids
+                OPTIONAL MATCH (n)-[r]-(connected)
+                WHERE connected.id IN $entity_ids
+                RETURN collect(DISTINCT {id: n.id, type: labels(n)[0], name: n.name}) as nodes,
+                       collect(DISTINCT {from: n.id, to: connected.id, type: type(r)}) as edges
+                """
+
+                results = await neo4j_client.execute_query(
+                    query, {"entity_ids": [str(eid) for eid in entity_ids]}
+                )
+
+                if results:
+                    record = results[0]
+                    graph_data = {
+                        "nodes": record.get("nodes", []),
+                        "edges": [e for e in record.get("edges", []) if e.get("from") and e.get("to")]
+                    }
+                else:
+                    # Fallback to basic structure
+                    graph_data = {
+                        "nodes": [{"id": str(eid), "type": "Entity", "name": "Unknown"} for eid in entity_ids],
+                        "edges": []
+                    }
+            except Exception as e:
+                logger.warning(f"[{request_id}] Failed to fetch graph data: {e}")
+                graph_data = None
+
         logger.info(
             f"[{request_id}] Found {len(conflict_details)} conflicts, "
             f"highest severity: {highest_severity}"
@@ -160,6 +204,7 @@ async def check_conflict(
             total_count=len(conflict_details),
             highest_severity=highest_severity,
             check_timestamp=datetime.now(),
+            graph_data=graph_data,
         )
 
     except HTTPException:
@@ -261,14 +306,39 @@ async def list_conflicts(
             else:
                 conflict_status = "active"
 
-            # Build entities list (simplified for summary)
-            entities = [
-                EntityRef(
-                    id=conflict.trigger_entity_id,
-                    name="Entity",  # Would need to join to get actual name
-                    type="Person",  # Would need to join to get actual type
-                ),
-            ]
+            # Build entities list with actual contact data
+            entities = []
+
+            # Fetch actual contact data for trigger entity
+            contact_result = await db.execute(
+                select(Contact).where(Contact.id == conflict.trigger_entity_id)
+            )
+            contact_obj = contact_result.scalar_one_or_none()
+
+            if contact_obj:
+                entities.append(
+                    EntityRef(
+                        id=contact_obj.id,
+                        name=contact_obj.full_name,
+                        type="Company" if contact_obj.type == "legal" else "Person",
+                    )
+                )
+
+            # Fetch conflicting entity if available
+            if conflict.conflicting_entity_id:
+                conflicting_contact_result = await db.execute(
+                    select(Contact).where(Contact.id == conflict.conflicting_entity_id)
+                )
+                conflicting_contact = conflicting_contact_result.scalar_one_or_none()
+
+                if conflicting_contact:
+                    entities.append(
+                        EntityRef(
+                            id=conflicting_contact.id,
+                            name=conflicting_contact.full_name,
+                            type="Company" if conflicting_contact.type == "legal" else "Person",
+                        )
+                    )
 
             summary = ConflictSummary(
                 id=conflict.id,
@@ -359,7 +429,7 @@ async def resolve_conflict(
         success = await alerter.resolve_conflict(
             conflict_id=conflict_id,
             resolution=request.resolution,
-            resolved_by=request.resolved_by,
+            resolved_by=UUID(current_user['user_id']),  # Use authenticated user
         )
 
         if not success:
@@ -702,11 +772,13 @@ async def search_entities(
         result = await db.execute(query)
         contacts = result.scalars().all()
 
-        # Get conflict counts for each contact
+        # Get conflict counts and last check timestamps for each contact in batch
         contact_ids = [contact.id for contact in contacts]
         conflict_counts = {}
+        last_checked_times = {}
 
         if contact_ids:
+            # Batch query for conflict counts
             count_result = await db.execute(
                 select(
                     SentinelConflict.trigger_entity_id,
@@ -727,16 +799,22 @@ async def search_entities(
             for row in count_result:
                 conflict_counts[row[0]] = row[1]
 
+            # Batch query for last checked timestamps
+            last_check_result = await db.execute(
+                select(
+                    SentinelConflict.trigger_entity_id,
+                    func.max(SentinelConflict.created_at).label("last_checked"),
+                )
+                .where(SentinelConflict.trigger_entity_id.in_(contact_ids))
+                .group_by(SentinelConflict.trigger_entity_id)
+            )
+
+            for row in last_check_result:
+                last_checked_times[row[0]] = row[1]
+
         # Map to EntitySearchResult
         search_results = []
         for contact in contacts:
-            # Get last conflict check timestamp
-            last_check_result = await db.execute(
-                select(func.max(SentinelConflict.created_at))
-                .where(SentinelConflict.trigger_entity_id == contact.id)
-            )
-            last_checked = last_check_result.scalar()
-
             result_item = EntitySearchResult(
                 id=contact.id,
                 name=contact.full_name,
@@ -745,7 +823,7 @@ async def search_entities(
                 email=contact.email,
                 phone=contact.phone_e164,
                 conflict_count=conflict_counts.get(contact.id, 0),
-                last_checked=last_checked,
+                last_checked=last_checked_times.get(contact.id),
             )
             search_results.append(result_item)
 
@@ -791,44 +869,58 @@ async def stream_alerts(
     async def event_generator():
         """Generate SSE events for the client."""
         alerter = ConflictAlerter(db)
+        connection_placeholder = object()  # Placeholder connection object
 
         try:
-            # Register connection (in production this would store the actual connection)
-            # For now, we'll just log it
+            # Register SSE connection with the alerter
+            alerter.register_sse_connection(user_id, connection_placeholder)
             logger.info(f"[{request_id}] SSE connection registered")
 
-            # Send initial connection event
+            # Send initial connection event using AlertStreamEvent schema
+            connected_event = AlertStreamEvent(
+                event_type="conflict_detected",  # Using available event type
+                data={
+                    "message": "Connected to SENTINEL alert stream",
+                    "status": "connected"
+                },
+                timestamp=datetime.now()
+            )
             yield {
                 "event": "connected",
-                "data": {
-                    "message": "Connected to SENTINEL alert stream",
-                    "timestamp": datetime.now().isoformat(),
-                },
+                "data": connected_event.model_dump_json(),
             }
 
             # Keep connection alive with heartbeat
-            # In production, this would listen for new conflicts and push them
+            # In production, this would listen for new conflicts via alerter.send_realtime_alert
+            # and push them to the client through the registered connection
             while True:
                 # Heartbeat every 30 seconds to keep connection alive
                 await asyncio.sleep(30)
 
+                heartbeat_event = AlertStreamEvent(
+                    event_type="conflict_detected",
+                    data={"heartbeat": True},
+                    timestamp=datetime.now()
+                )
                 yield {
                     "event": "heartbeat",
-                    "data": {
-                        "timestamp": datetime.now().isoformat(),
-                    },
+                    "data": heartbeat_event.model_dump_json(),
                 }
 
         except Exception as e:
             logger.error(f"[{request_id}] SSE stream error: {e}", exc_info=True)
+            error_event = AlertStreamEvent(
+                event_type="conflict_detected",
+                data={"error": "Stream error occurred"},
+                timestamp=datetime.now()
+            )
             yield {
                 "event": "error",
-                "data": {
-                    "message": "Stream error occurred",
-                    "timestamp": datetime.now().isoformat(),
-                },
+                "data": error_event.model_dump_json(),
             }
         finally:
+            # Unregister connection when client disconnects
+            alerter.unregister_sse_connection(user_id, connection_placeholder)
             logger.info(f"[{request_id}] SSE stream closed")
 
     return EventSourceResponse(event_generator())

@@ -75,6 +75,9 @@ class ConflictCheckResponse(BaseModel):
         ..., ge=0, le=100, description="Highest severity score among all conflicts"
     )
     check_timestamp: datetime = Field(..., description="When the check was performed")
+    graph_data: Optional[Dict[str, Any]] = Field(
+        None, description="Optional graph visualization data when include_graph=True"
+    )
 
 
 # ── Conflict Listing ──
@@ -121,7 +124,6 @@ class ConflictResolveRequest(BaseModel):
         ..., description="Type of resolution applied"
     )
     notes: Optional[str] = Field(None, max_length=5000, description="Optional resolution notes")
-    resolved_by: uuid.UUID = Field(..., description="User ID who resolved the conflict")
 
 
 class ConflictResolveResponse(BaseModel):
