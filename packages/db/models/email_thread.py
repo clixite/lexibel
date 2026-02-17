@@ -41,9 +41,9 @@ class EmailThread(Base, TenantMixin, TimestampMixin):
     synced_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
-    case = relationship("Case", back_populates="email_threads")
+    case = relationship("Case")
     messages = relationship(
-        "EmailMessage", back_populates="thread", cascade="all, delete-orphan"
+        "EmailMessage", cascade="all, delete-orphan"
     )
 
     __table_args__ = (

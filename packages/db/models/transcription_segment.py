@@ -39,7 +39,7 @@ class TranscriptionSegment(Base, TimestampMixin):
     confidence = Column(Numeric(3, 2), nullable=True)
 
     # Relationships
-    transcription = relationship("Transcription", back_populates="segments")
+    transcription = relationship("Transcription")
 
     __table_args__ = (
         Index(

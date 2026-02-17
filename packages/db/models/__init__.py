@@ -24,6 +24,9 @@ from packages.db.models.email_message import EmailMessage
 from packages.db.models.call_record import CallRecord
 from packages.db.models.transcription import Transcription
 from packages.db.models.transcription_segment import TranscriptionSegment
+from packages.db.models.brain_action import BrainAction
+from packages.db.models.brain_insight import BrainInsight
+from packages.db.models.brain_memory import BrainMemory
 
 __all__ = [
     "Base",
@@ -50,4 +53,7 @@ __all__ = [
     "CallRecord",
     "Transcription",
     "TranscriptionSegment",
+    "BrainAction",
+    "BrainInsight",
+    "BrainMemory",
 ]

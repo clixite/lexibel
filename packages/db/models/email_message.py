@@ -48,7 +48,7 @@ class EmailMessage(Base, TenantMixin, TimestampMixin):
     synced_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
-    thread = relationship("EmailThread", back_populates="messages")
+    thread = relationship("EmailThread")
 
     __table_args__ = (
         Index("idx_email_messages_tenant_thread", "tenant_id", "thread_id"),

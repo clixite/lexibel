@@ -38,7 +38,7 @@ class Chunk(Base, TenantMixin, TimestampMixin):
     )
 
     # Relationships
-    case = relationship("Case", back_populates="chunks")
-    document = relationship("EvidenceLink", back_populates="chunks")
+    # case = relationship("Case")
+    # document = relationship("EvidenceLink")
 
     __table_args__ = (Index("idx_chunks_tenant_case", "tenant_id", "case_id"),)

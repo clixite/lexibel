@@ -62,10 +62,10 @@ class CallRecord(Base, TenantMixin, TimestampMixin):
     synced_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
-    case = relationship("Case", back_populates="call_records")
-    contact = relationship("Contact", back_populates="call_records")
+    case = relationship("Case")
+    contact = relationship("Contact")
     transcription = relationship(
-        "Transcription", back_populates="call_record", uselist=False
+        "Transcription", uselist=False
     )
 
     __table_args__ = (

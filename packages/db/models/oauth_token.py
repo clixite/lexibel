@@ -36,7 +36,7 @@ class OAuthToken(Base, TenantMixin, TimestampMixin):
     scope = Column(Text, nullable=True)
 
     # Relationships
-    user = relationship("User", back_populates="oauth_tokens")
+    user = relationship("User")
 
     __table_args__ = (
         # Unique constraint: one token per user per provider

@@ -57,8 +57,8 @@ class CalendarEvent(Base, TenantMixin, TimestampMixin):
     synced_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
-    user = relationship("User", back_populates="calendar_events")
-    case = relationship("Case", back_populates="calendar_events")
+    user = relationship("User")
+    case = relationship("Case")
 
     __table_args__ = (
         Index("idx_calendar_events_tenant_user", "tenant_id", "user_id"),

@@ -64,15 +64,14 @@ class Transcription(Base, TenantMixin, TimestampMixin):
     completed_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
-    case = relationship("Case", back_populates="transcriptions")
+    case = relationship("Case")
     segments = relationship(
         "TranscriptionSegment",
-        back_populates="transcription",
         cascade="all, delete-orphan",
         order_by="TranscriptionSegment.segment_index",
     )
     call_record = relationship(
-        "CallRecord", back_populates="transcription", uselist=False
+        "CallRecord", uselist=False
     )
 
     __table_args__ = (
