@@ -2,9 +2,23 @@
 
 import uuid
 from datetime import datetime
-from typing import Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
+
+
+# ── Type Aliases ──
+
+ConflictType = Literal[
+    "direct_opposition",
+    "dual_representation",
+    "former_client",
+    "associate_conflict",
+    "organizational",
+    "familial",
+    "business_interest",
+    "financial_interest",
+]
 
 
 # ── Entity Reference ──
@@ -27,16 +41,7 @@ class ConflictDetail(BaseModel):
     """Detailed information about a detected conflict."""
 
     id: uuid.UUID = Field(..., description="Unique conflict identifier")
-    conflict_type: Literal[
-        "direct_opposition",
-        "dual_representation",
-        "former_client",
-        "associate_conflict",
-        "organizational",
-        "familial",
-        "business_interest",
-        "financial_interest",
-    ] = Field(..., description="Type of conflict detected (8 patterns)")
+    conflict_type: ConflictType = Field(..., description="Type of conflict detected (8 patterns)")
     severity_score: int = Field(
         ..., ge=0, le=100, description="Severity score from 0 (low) to 100 (critical)"
     )
@@ -79,7 +84,7 @@ class ConflictSummary(BaseModel):
     """Summary information for a conflict in list views."""
 
     id: uuid.UUID = Field(..., description="Unique conflict identifier")
-    conflict_type: str = Field(..., description="Type of conflict")
+    conflict_type: ConflictType = Field(..., description="Type of conflict")
     severity_score: int = Field(..., ge=0, le=100, description="Severity score")
     description: str = Field(..., description="Brief conflict description")
     entities_involved: List[EntityRef] = Field(..., description="Entities involved")
@@ -115,7 +120,7 @@ class ConflictResolveRequest(BaseModel):
     resolution: Literal["refused", "waiver_obtained", "false_positive"] = Field(
         ..., description="Type of resolution applied"
     )
-    notes: Optional[str] = Field(None, description="Optional resolution notes")
+    notes: Optional[str] = Field(None, max_length=5000, description="Optional resolution notes")
     resolved_by: uuid.UUID = Field(..., description="User ID who resolved the conflict")
 
 
@@ -123,7 +128,7 @@ class ConflictResolveResponse(BaseModel):
     """Response after resolving a conflict."""
 
     id: uuid.UUID = Field(..., description="Conflict identifier")
-    status: str = Field(..., description="New status after resolution")
+    status: Literal["active", "resolved", "dismissed"] = Field(..., description="New status after resolution")
     resolved_at: datetime = Field(..., description="When the conflict was resolved")
     resolved_by: uuid.UUID = Field(..., description="User who resolved it")
 
@@ -135,7 +140,7 @@ class SyncRequest(BaseModel):
     """Request to synchronize entities to the knowledge graph."""
 
     entity_ids: Optional[List[uuid.UUID]] = Field(
-        None, description="Specific entities to sync (if not syncing all)"
+        None, max_length=10000, description="Specific entities to sync (if not syncing all)"
     )
     sync_all: bool = Field(False, description="Sync all entities in tenant")
     limit: int = Field(
@@ -160,7 +165,7 @@ class GraphNode(BaseModel):
     id: str = Field(..., description="Node identifier")
     label: str = Field(..., description="Node type/label")
     name: str = Field(..., description="Display name")
-    properties: Dict = Field(
+    properties: Dict[str, Any] = Field(
         default_factory=dict, description="Additional node properties"
     )
 
@@ -171,10 +176,11 @@ class GraphEdge(BaseModel):
     from_id: str = Field(..., alias="from", description="Source node ID")
     to_id: str = Field(..., alias="to", description="Target node ID")
     type: str = Field(..., description="Relationship type")
-    properties: Dict = Field(
+    properties: Dict[str, Any] = Field(
         default_factory=dict, description="Additional edge properties"
     )
 
+    # Using populate_by_name to handle 'from' field (Python reserved keyword)
     model_config = {"populate_by_name": True}
 
 
@@ -224,5 +230,5 @@ class AlertStreamEvent(BaseModel):
     event_type: Literal["conflict_detected", "conflict_resolved"] = Field(
         ..., description="Type of alert event"
     )
-    data: Dict = Field(..., description="Event-specific data payload")
+    data: Dict[str, Any] = Field(..., description="Event-specific data payload")
     timestamp: datetime = Field(..., description="When the event occurred")
