@@ -1,9 +1,10 @@
 """Calendar event model for Outlook/Google Calendar sync."""
+
+import uuid
 from sqlalchemy import Column, String, Text, ForeignKey, DateTime, Boolean, Index
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
-from packages.db.base import Base
-from packages.db.mixins import TenantMixin, TimestampMixin
+from packages.db.base import Base, TenantMixin, TimestampMixin
 
 
 class CalendarEvent(Base, TenantMixin, TimestampMixin):
@@ -11,8 +12,21 @@ class CalendarEvent(Base, TenantMixin, TimestampMixin):
 
     __tablename__ = "calendar_events"
 
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    case_id = Column(UUID(as_uuid=True), ForeignKey("cases.id", ondelete="SET NULL"), nullable=True, index=True)
+    id = Column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, nullable=False
+    )
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    case_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("cases.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     # External ID from provider
     external_id = Column(String(255), nullable=False, index=True)
@@ -29,13 +43,15 @@ class CalendarEvent(Base, TenantMixin, TimestampMixin):
     location = Column(String(500), nullable=True)
 
     # Attendees: [{email, name, status}]
-    attendees = Column(JSONB, nullable=False, default=list, server_default='[]')
+    attendees = Column(JSONB, nullable=False, default=list, server_default="[]")
 
     # Is all-day event
-    is_all_day = Column(Boolean, default=False, server_default='false')
+    is_all_day = Column(Boolean, default=False, server_default="false")
 
     # Additional metadata
-    metadata = Column(JSONB, nullable=False, default=dict, server_default='{}')
+    metadata_ = Column(
+        "metadata", JSONB, nullable=False, default=dict, server_default="{}"
+    )
 
     # Last sync timestamp
     synced_at = Column(DateTime(timezone=True), nullable=True)
@@ -45,8 +61,8 @@ class CalendarEvent(Base, TenantMixin, TimestampMixin):
     case = relationship("Case", back_populates="calendar_events")
 
     __table_args__ = (
-        Index('idx_calendar_events_tenant_user', 'tenant_id', 'user_id'),
-        Index('idx_calendar_events_start_time', 'start_time'),
+        Index("idx_calendar_events_tenant_user", "tenant_id", "user_id"),
+        Index("idx_calendar_events_start_time", "start_time"),
         # Unique constraint per provider
-        {'unique_constraint': ('external_id', 'provider')},
+        {"unique_constraint": ("external_id", "provider")},
     )

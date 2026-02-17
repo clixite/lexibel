@@ -1,9 +1,10 @@
 """OAuth token model for Google/Microsoft integrations."""
+
+import uuid
 from sqlalchemy import Column, String, Text, ForeignKey, DateTime
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from packages.db.base import Base
-from packages.db.mixins import TenantMixin, TimestampMixin
+from packages.db.base import Base, TenantMixin, TimestampMixin
 
 
 class OAuthToken(Base, TenantMixin, TimestampMixin):
@@ -11,7 +12,15 @@ class OAuthToken(Base, TenantMixin, TimestampMixin):
 
     __tablename__ = "oauth_tokens"
 
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    id = Column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, nullable=False
+    )
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
 
     # Provider: 'google', 'microsoft', 'ringover', 'plaud'
     provider = Column(String(50), nullable=False, index=True)
@@ -31,5 +40,5 @@ class OAuthToken(Base, TenantMixin, TimestampMixin):
 
     __table_args__ = (
         # Unique constraint: one token per user per provider
-        {'unique_constraint': ('user_id', 'provider')},
+        {"unique_constraint": ("user_id", "provider")},
     )

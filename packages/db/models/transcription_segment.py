@@ -1,9 +1,10 @@
 """Transcription segment model for timestamped text."""
+
+import uuid
 from sqlalchemy import Column, String, Text, Integer, Numeric, ForeignKey, Index
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from packages.db.base import Base
-from packages.db.mixins import TimestampMixin
+from packages.db.base import Base, TimestampMixin
 
 
 class TranscriptionSegment(Base, TimestampMixin):
@@ -11,7 +12,15 @@ class TranscriptionSegment(Base, TimestampMixin):
 
     __tablename__ = "transcription_segments"
 
-    transcription_id = Column(UUID(as_uuid=True), ForeignKey("transcriptions.id", ondelete="CASCADE"), nullable=False, index=True)
+    id = Column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, nullable=False
+    )
+    transcription_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("transcriptions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
 
     # Segment order within transcription
     segment_index = Column(Integer, nullable=False)
@@ -33,7 +42,11 @@ class TranscriptionSegment(Base, TimestampMixin):
     transcription = relationship("Transcription", back_populates="segments")
 
     __table_args__ = (
-        Index('idx_transcription_segments_transcription', 'transcription_id', 'segment_index'),
+        Index(
+            "idx_transcription_segments_transcription",
+            "transcription_id",
+            "segment_index",
+        ),
         # Unique constraint: one segment per index per transcription
-        {'unique_constraint': ('transcription_id', 'segment_index')},
+        {"unique_constraint": ("transcription_id", "segment_index")},
     )

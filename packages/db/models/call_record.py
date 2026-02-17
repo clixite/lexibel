@@ -1,9 +1,10 @@
 """Call record model for Ringover telephony integration."""
+
+import uuid
 from sqlalchemy import Column, String, Integer, ForeignKey, DateTime, Index
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
-from packages.db.base import Base
-from packages.db.mixins import TenantMixin, TimestampMixin
+from packages.db.base import Base, TenantMixin, TimestampMixin
 
 
 class CallRecord(Base, TenantMixin, TimestampMixin):
@@ -11,8 +12,21 @@ class CallRecord(Base, TenantMixin, TimestampMixin):
 
     __tablename__ = "call_records"
 
-    case_id = Column(UUID(as_uuid=True), ForeignKey("cases.id", ondelete="SET NULL"), nullable=True, index=True)
-    contact_id = Column(UUID(as_uuid=True), ForeignKey("contacts.id", ondelete="SET NULL"), nullable=True, index=True)
+    id = Column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, nullable=False
+    )
+    case_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("cases.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    contact_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("contacts.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     # External call ID from Ringover
     external_id = Column(String(255), nullable=False, index=True, unique=True)
@@ -32,23 +46,30 @@ class CallRecord(Base, TenantMixin, TimestampMixin):
     recording_url = Column(String(500), nullable=True)
 
     # Link to transcription if available
-    transcription_id = Column(UUID(as_uuid=True), ForeignKey("transcriptions.id", ondelete="SET NULL"), nullable=True, index=True)
+    transcription_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("transcriptions.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     started_at = Column(DateTime(timezone=True), nullable=True, index=True)
     ended_at = Column(DateTime(timezone=True), nullable=True)
 
     # AI insights: {sentiment_score, sentiment_label, ai_summary, extracted_tasks}
-    metadata = Column(JSONB, nullable=False, default=dict, server_default='{}')
+    metadata_ = Column("metadata", JSONB, nullable=False, default=dict, server_default="{}")
 
     synced_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     case = relationship("Case", back_populates="call_records")
     contact = relationship("Contact", back_populates="call_records")
-    transcription = relationship("Transcription", back_populates="call_record", uselist=False)
+    transcription = relationship(
+        "Transcription", back_populates="call_record", uselist=False
+    )
 
     __table_args__ = (
-        Index('idx_call_records_tenant_case', 'tenant_id', 'case_id'),
-        Index('idx_call_records_started', 'started_at'),
-        Index('idx_call_records_direction', 'direction'),
+        Index("idx_call_records_tenant_case", "tenant_id", "case_id"),
+        Index("idx_call_records_started", "started_at"),
+        Index("idx_call_records_direction", "direction"),
     )
