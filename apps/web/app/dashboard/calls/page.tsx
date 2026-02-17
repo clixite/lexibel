@@ -169,7 +169,7 @@ export default function CallsPage() {
           onChange={(e) =>
             setFilters((prev) => ({
               ...prev,
-              direction: e.target.value || undefined,
+              direction: (e.target.value as "inbound" | "outbound") || undefined,
             }))
           }
         >

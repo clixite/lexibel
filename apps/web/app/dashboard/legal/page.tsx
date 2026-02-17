@@ -73,7 +73,7 @@ export default function LegalRAGPage() {
   }, [chatMessages]);
 
   // Hooks
-  const searchQuery = useLegalSearch(searchParams, token, tenantId);
+  const searchResults = useLegalSearch(searchParams, token, tenantId);
   const chatMutation = useLegalChat({
     token,
     tenantId,
@@ -224,11 +224,11 @@ export default function LegalRAGPage() {
                 </div>
                 <button
                   onClick={handleSearch}
-                  disabled={searchQuery.isLoading || !searchQuery}
+                  disabled={searchResults.isLoading || !searchQuery}
                   className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all disabled:opacity-50 font-medium flex items-center gap-2"
                 >
-                  {searchQuery.isLoading && <Loader2 className="h-5 w-5 animate-spin" />}
-                  {searchQuery.isLoading ? "Recherche..." : "Rechercher"}
+                  {searchResults.isLoading && <Loader2 className="h-5 w-5 animate-spin" />}
+                  {searchResults.isLoading ? "Recherche..." : "Rechercher"}
                 </button>
               </div>
 
@@ -321,22 +321,22 @@ export default function LegalRAGPage() {
             </div>
 
             {/* Query expansion info */}
-            {searchQuery.data?.expanded_query && searchQuery.data.expanded_query !== searchQuery.data.query && (
+            {searchResults.data?.expanded_query && searchResults.data.expanded_query !== searchResults.data.query && (
               <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
                 <p className="text-sm text-blue-800">
-                  <strong>Requête étendue:</strong> {searchQuery.data.expanded_query}
+                  <strong>Requête étendue:</strong> {searchResults.data.expanded_query}
                 </p>
               </div>
             )}
 
             {/* Detected entities */}
-            {searchQuery.data?.detected_entities && searchQuery.data.detected_entities.length > 0 && (
+            {searchResults.data?.detected_entities && searchResults.data.detected_entities.length > 0 && (
               <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
                 <p className="text-sm text-purple-800 mb-2">
                   <strong>Entités détectées:</strong>
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {searchQuery.data.detected_entities.map((entity, idx) => (
+                  {searchResults.data.detected_entities.map((entity, idx) => (
                     <span
                       key={idx}
                       className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium"
@@ -349,19 +349,19 @@ export default function LegalRAGPage() {
             )}
 
             {/* Results */}
-            {searchQuery.data && searchQuery.data.results.length > 0 && (
+            {searchResults.data && searchResults.data.results.length > 0 && (
               <div className="bg-white rounded-xl shadow-lg p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl font-bold">
-                    Résultats ({searchQuery.data.total})
+                    Résultats ({searchResults.data.total})
                   </h2>
                   <span className="text-sm text-slate-500">
-                    Temps de recherche: {searchQuery.data.search_time_ms}ms
+                    Temps de recherche: {searchResults.data.search_time_ms}ms
                   </span>
                 </div>
 
                 <div className="space-y-4">
-                  {searchQuery.data.results.map((result, idx) => (
+                  {searchResults.data.results.map((result, idx) => (
                     <div
                       key={idx}
                       className="p-4 border border-slate-200 rounded-lg hover:border-indigo-300 transition-colors"
@@ -443,11 +443,11 @@ export default function LegalRAGPage() {
             )}
 
             {/* Suggested queries */}
-            {searchQuery.data?.suggested_queries && searchQuery.data.suggested_queries.length > 0 && (
+            {searchResults.data?.suggested_queries && searchResults.data.suggested_queries.length > 0 && (
               <div className="bg-white rounded-xl shadow-lg p-6">
                 <h3 className="font-semibold mb-3">Recherches suggérées:</h3>
                 <div className="flex flex-wrap gap-2">
-                  {searchQuery.data.suggested_queries.map((query, idx) => (
+                  {searchResults.data.suggested_queries.map((query, idx) => (
                     <button
                       key={idx}
                       onClick={() => setSearchQuery(query)}
@@ -461,7 +461,7 @@ export default function LegalRAGPage() {
             )}
 
             {/* Error state */}
-            {searchQuery.isError && (
+            {searchResults.isError && (
               <div className="bg-red-50 rounded-xl shadow-lg p-6 border border-red-200">
                 <div className="flex items-center gap-3">
                   <AlertCircle className="h-6 w-6 text-red-600" />
@@ -476,7 +476,7 @@ export default function LegalRAGPage() {
             )}
 
             {/* Empty State */}
-            {!searchQuery.data && !searchQuery.isLoading && !searchQuery.isError && (
+            {!searchResults.data && !searchResults.isLoading && !searchResults.isError && (
               <div className="bg-white rounded-xl shadow-lg p-12 text-center">
                 <Search className="h-16 w-16 text-slate-300 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold text-slate-600 mb-2">
