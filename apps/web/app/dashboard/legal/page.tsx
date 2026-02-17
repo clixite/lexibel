@@ -2,9 +2,9 @@
 
 import { useSession } from "next-auth/react";
 import { useState, useEffect, useRef } from "react";
-import { Search, Loader2, Scale, MessageSquare, BookOpen, Send } from "lucide-react";
+import { Search, Loader2, Scale, MessageSquare, BookOpen, Send, ChevronDown } from "lucide-react";
 import { apiFetch } from "@/lib/api";
-import { LoadingSkeleton, ErrorState, Badge } from "@/components/ui";
+import { LoadingSkeleton, ErrorState, Badge, Card, Button, Input, Tabs } from "@/components/ui";
 
 interface SearchResult {
   source: string;
@@ -37,13 +37,12 @@ export default function LegalRAGPage() {
   const token = user?.accessToken;
   const tenantId = user?.tenantId;
 
-  const [activeTab, setActiveTab] = useState<"search" | "chat" | "explain">("search");
-
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [expandedSource, setExpandedSource] = useState<number | null>(null);
 
   // Chat state
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -144,87 +143,30 @@ export default function LegalRAGPage() {
     }
   };
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-lg bg-accent-50 flex items-center justify-center">
-          <Scale className="w-5 h-5 text-accent" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-neutral-900">
-            Recherche Juridique IA
-          </h1>
-          <p className="text-neutral-500 text-sm">
-            Recherche sémantique dans le droit belge
-          </p>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-2 border-b border-neutral-200">
-        <button
-          onClick={() => setActiveTab("search")}
-          className={`px-4 py-2 font-medium transition-colors border-b-2 ${
-            activeTab === "search"
-              ? "text-accent border-accent"
-              : "text-neutral-600 border-transparent hover:text-neutral-900"
-          }`}
-        >
-          <Search className="w-4 h-4 inline mr-2" />
-          Recherche
-        </button>
-        <button
-          onClick={() => setActiveTab("chat")}
-          className={`px-4 py-2 font-medium transition-colors border-b-2 ${
-            activeTab === "chat"
-              ? "text-accent border-accent"
-              : "text-neutral-600 border-transparent hover:text-neutral-900"
-          }`}
-        >
-          <MessageSquare className="w-4 h-4 inline mr-2" />
-          Chat
-        </button>
-        <button
-          onClick={() => setActiveTab("explain")}
-          className={`px-4 py-2 font-medium transition-colors border-b-2 ${
-            activeTab === "explain"
-              ? "text-accent border-accent"
-              : "text-neutral-600 border-transparent hover:text-neutral-900"
-          }`}
-        >
-          <BookOpen className="w-4 h-4 inline mr-2" />
-          Expliquer
-        </button>
-      </div>
-
-      {/* Search Tab */}
-      {activeTab === "search" && (
+  const tabsContent = [
+    {
+      id: "search",
+      label: "Recherche",
+      icon: <Search className="w-4 h-4" />,
+      content: (
         <div className="space-y-4">
-          <form onSubmit={handleSearch} className="flex gap-2">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Ex: Article 1382, divorce, responsabilité civile..."
-                className="input pl-10 w-full"
-                disabled={searchLoading}
-              />
-            </div>
-            <button
+          <form onSubmit={handleSearch} className="space-y-3">
+            <Input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Ex: Article 1382, divorce, responsabilité civile..."
+              prefixIcon={<Search className="w-5 h-5" />}
+              disabled={searchLoading}
+            />
+            <Button
               type="submit"
               disabled={searchLoading || !searchQuery.trim()}
-              className="btn-primary px-6 flex items-center gap-2"
+              loading={searchLoading}
+              className="w-full"
             >
-              {searchLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Search className="w-4 h-4" />
-              )}
               Rechercher
-            </button>
+            </Button>
           </form>
 
           {searchError && <ErrorState message={searchError} onRetry={() => setSearchError(null)} />}
@@ -234,53 +176,74 @@ export default function LegalRAGPage() {
           {!searchLoading && searchResults.length > 0 && (
             <div className="space-y-3">
               <p className="text-sm text-neutral-600">
-                <span className="font-semibold">{searchResults.length}</span> résultat(s)
+                <span className="font-semibold">{searchResults.length}</span> résultat(s) trouvé(s)
               </p>
               {searchResults.map((result, idx) => (
-                <div
-                  key={idx}
-                  className="bg-white rounded-lg shadow-subtle p-4 hover:shadow-medium transition-shadow"
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="font-semibold text-neutral-900">{result.source}</h3>
-                    <Badge variant="accent" size="sm">
-                      {Math.round(result.score * 100)}%
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-neutral-700 mb-2">{result.content}</p>
-                  <div className="flex gap-2 flex-wrap">
-                    <Badge variant="default" size="sm">
-                      {result.document_type}
-                    </Badge>
-                    {result.article_number && (
+                <Card key={idx} hover className="cursor-pointer">
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-neutral-900">{result.source}</h3>
+                        {result.article_number && (
+                          <Badge variant="accent" size="sm" className="mt-1">
+                            Art. {result.article_number}
+                          </Badge>
+                        )}
+                      </div>
                       <Badge variant="accent" size="sm">
-                        Art. {result.article_number}
+                        {Math.round(result.score * 100)}%
                       </Badge>
+                    </div>
+
+                    <button
+                      onClick={() => setExpandedSource(expandedSource === idx ? null : idx)}
+                      className="w-full text-left"
+                    >
+                      <p className="text-sm text-neutral-600 line-clamp-2">{result.content}</p>
+                      <div className="flex items-center gap-2 mt-2 text-xs text-neutral-500">
+                        <Badge variant="default" size="sm">
+                          {result.document_type}
+                        </Badge>
+                        <span className="flex items-center gap-1 text-accent hover:underline">
+                          Détails <ChevronDown className={`w-3 h-3 transition-transform ${expandedSource === idx ? "rotate-180" : ""}`} />
+                        </span>
+                      </div>
+                    </button>
+
+                    {expandedSource === idx && (
+                      <div className="bg-neutral-50 rounded p-3 border border-neutral-200 mt-2">
+                        <p className="text-sm text-neutral-700 whitespace-pre-wrap">{result.content}</p>
+                      </div>
                     )}
                   </div>
-                </div>
+                </Card>
               ))}
             </div>
           )}
 
           {!searchLoading && searchResults.length === 0 && searchQuery && (
-            <div className="bg-white rounded-lg shadow-subtle p-12 text-center">
+            <div className="text-center py-12">
               <Search className="w-12 h-12 text-neutral-300 mx-auto mb-3" />
               <p className="text-neutral-600">Aucun résultat trouvé</p>
             </div>
           )}
         </div>
-      )}
-
-      {/* Chat Tab */}
-      {activeTab === "chat" && (
-        <div className="bg-white rounded-lg shadow-subtle flex flex-col h-96">
+      ),
+    },
+    {
+      id: "chat",
+      label: "Chat",
+      icon: <MessageSquare className="w-4 h-4" />,
+      content: (
+        <div className="flex flex-col h-96 bg-white rounded-lg border border-neutral-200 overflow-hidden">
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {chatMessages.length === 0 ? (
-              <div className="text-center text-neutral-500 pt-8">
-                <MessageSquare className="w-12 h-12 mx-auto mb-3 text-neutral-300" />
-                <p>Posez vos questions juridiques</p>
+              <div className="text-center text-neutral-500 flex items-center justify-center h-full">
+                <div>
+                  <MessageSquare className="w-12 h-12 mx-auto mb-3 text-neutral-300" />
+                  <p>Posez vos questions juridiques</p>
+                </div>
               </div>
             ) : (
               chatMessages.map((msg, idx) => (
@@ -295,109 +258,142 @@ export default function LegalRAGPage() {
                         : "bg-neutral-100 text-neutral-900"
                     }`}
                   >
-                    <p className="text-sm">{msg.content}</p>
+                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                    {msg.sources && msg.sources.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-neutral-300 space-y-1">
+                        <p className="text-xs font-medium opacity-75">Sources:</p>
+                        {msg.sources.map((source, i) => (
+                          <p key={i} className="text-xs opacity-75">{source.source}</p>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))
             )}
             {chatLoading && (
               <div className="flex justify-start">
-                <Loader2 className="w-4 h-4 animate-spin text-accent" />
+                <div className="bg-neutral-100 text-neutral-900 rounded-lg p-3">
+                  <div className="flex gap-1">
+                    <div className="w-2 h-2 bg-neutral-400 rounded-full animate-bounce" />
+                    <div className="w-2 h-2 bg-neutral-400 rounded-full animate-bounce" style={{ animationDelay: "0.1s" }} />
+                    <div className="w-2 h-2 bg-neutral-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }} />
+                  </div>
+                </div>
               </div>
             )}
             <div ref={chatEndRef} />
           </div>
 
-          {chatError && (
-            <div className="px-4 py-2 bg-red-50 text-red-700 text-sm">
-              {chatError}
-            </div>
-          )}
-
           {/* Input */}
-          <div className="p-4 border-t border-neutral-200 flex gap-2">
-            <input
-              type="text"
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              onKeyPress={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
-              placeholder="Votre question..."
-              className="input flex-1"
-              disabled={chatLoading}
-            />
-            <button
-              onClick={handleSendMessage}
-              disabled={chatLoading || !chatInput.trim()}
-              className="btn-primary px-4 flex items-center gap-2"
-            >
-              {chatLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Send className="w-4 h-4" />
-              )}
-            </button>
+          <div className="border-t border-neutral-200 p-4 bg-neutral-50">
+            {chatError && <p className="text-sm text-danger mb-2">{chatError}</p>}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                placeholder="Votre question..."
+                className="flex-1 px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-200 disabled:opacity-50"
+                disabled={chatLoading}
+              />
+              <Button
+                onClick={handleSendMessage}
+                disabled={chatLoading || !chatInput.trim()}
+                icon={<Send className="w-4 h-4" />}
+              >
+                Envoyer
+              </Button>
+            </div>
           </div>
         </div>
-      )}
-
-      {/* Explain Tab */}
-      {activeTab === "explain" && (
+      ),
+    },
+    {
+      id: "explain",
+      label: "Expliquer",
+      icon: <BookOpen className="w-4 h-4" />,
+      content: (
         <div className="space-y-4">
-          <div className="bg-white rounded-lg shadow-subtle p-4 space-y-3">
-            <label className="block text-sm font-medium text-neutral-700">
-              Article à expliquer
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-2">
+              Texte juridique à expliquer
             </label>
             <textarea
               value={articleText}
               onChange={(e) => setArticleText(e.target.value)}
-              placeholder="Collez l'article de loi ici..."
-              className="input w-full h-32 resize-none"
+              placeholder="Collez un article, une clause ou un texte juridique ici..."
+              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-200 h-24 resize-none"
               disabled={explainLoading}
             />
-            <button
-              onClick={handleExplain}
-              disabled={explainLoading || !articleText.trim()}
-              className="btn-primary w-full flex items-center justify-center gap-2"
-            >
-              {explainLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <BookOpen className="w-4 h-4" />
-              )}
-              Expliquer
-            </button>
           </div>
+
+          <Button
+            onClick={handleExplain}
+            disabled={explainLoading || !articleText.trim()}
+            loading={explainLoading}
+            className="w-full"
+          >
+            Expliquer en simple
+          </Button>
 
           {explainError && <ErrorState message={explainError} onRetry={() => setExplainError(null)} />}
 
-          {explainLoading && <LoadingSkeleton variant="card" />}
-
           {explanation && (
-            <div className="bg-white rounded-lg shadow-subtle p-4 space-y-4">
-              <div>
-                <h3 className="font-semibold text-neutral-900 mb-2">Explication</h3>
-                <p className="text-sm text-neutral-700">
-                  {explanation.simplified_explanation}
-                </p>
-              </div>
+            <div className="space-y-4">
+              <Card>
+                <div className="space-y-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-neutral-700 mb-2">Explication simplifiée</h3>
+                    <p className="text-sm text-neutral-600">{explanation.simplified_explanation}</p>
+                  </div>
+                </div>
+              </Card>
 
               {explanation.key_points && explanation.key_points.length > 0 && (
-                <div>
-                  <h3 className="font-semibold text-neutral-900 mb-2">Points clés</h3>
-                  <ul className="space-y-1">
-                    {explanation.key_points.map((point, idx) => (
-                      <li key={idx} className="text-sm text-neutral-700 flex gap-2">
-                        <span className="text-accent">•</span>
-                        <span>{point}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                <Card>
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-semibold text-neutral-700">Points clés</h3>
+                    <ul className="space-y-2">
+                      {explanation.key_points.map((point, idx) => (
+                        <li key={idx} className="flex gap-2 text-sm text-neutral-600">
+                          <span className="text-accent font-semibold flex-shrink-0">•</span>
+                          <span>{point}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </Card>
               )}
             </div>
           )}
         </div>
-      )}
+      ),
+    },
+  ];
+
+  return (
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="text-center py-8 md:py-12">
+        <h1 className="text-4xl md:text-5xl font-bold text-neutral-900 mb-2">
+          Legal RAG Premium
+        </h1>
+        <p className="text-neutral-500 text-lg">
+          Recherche sémantique avancée, chat juridique et explications simplifiées
+        </p>
+      </div>
+
+      {/* Tabs */}
+      <div className="max-w-4xl mx-auto w-full">
+        <Tabs tabs={tabsContent} defaultTab="search" />
+      </div>
     </div>
   );
 }

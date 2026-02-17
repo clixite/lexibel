@@ -2,9 +2,9 @@
 
 import { useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
-import { Brain, Loader2, FileText, Sparkles } from "lucide-react";
+import { Brain, Loader2, FileText, Sparkles, Zap, BarChart3 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
-import { LoadingSkeleton, ErrorState, Badge } from "@/components/ui";
+import { LoadingSkeleton, ErrorState, Badge, Card, Button, Input } from "@/components/ui";
 
 interface Case {
   id: string;
@@ -25,34 +25,38 @@ const AI_CARDS = [
   {
     id: "draft",
     title: "Brouillon IA",
-    description: "Génère des brouillons de documents juridiques",
+    description: "Génère des brouillons de documents juridiques avec IA avancée",
     icon: FileText,
     color: "text-accent",
     bgColor: "bg-accent-50",
+    placeholder: "Ex: Créer un contrat de service pour un client IT...",
   },
   {
     id: "summary",
-    title: "Résumé",
-    description: "Résume automatiquement les documents complexes",
+    title: "Résumé Intelligent",
+    description: "Résume automatiquement les documents complexes en points clés",
     icon: Sparkles,
     color: "text-warning",
     bgColor: "bg-warning-50",
+    placeholder: "Ex: Résumez ce contrat en 5 points clés...",
   },
   {
     id: "analysis",
-    title: "Analyse",
-    description: "Analyse approfondie des cas et documents",
-    icon: Brain,
-    color: "text-accent",
-    bgColor: "bg-accent-50",
+    title: "Analyse Profonde",
+    description: "Analyse approfondie des cas et identifie les risques",
+    icon: BarChart3,
+    color: "text-success",
+    bgColor: "bg-success-50",
+    placeholder: "Ex: Analysez les risques juridiques de ce contrat...",
   },
   {
     id: "generation",
-    title: "Génération",
-    description: "Génère du contenu juridique personnalisé",
-    icon: Sparkles,
-    color: "text-success",
-    bgColor: "bg-success-50",
+    title: "Génération Premium",
+    description: "Génère du contenu juridique personnalisé et complet",
+    icon: Zap,
+    color: "text-danger",
+    bgColor: "bg-danger-50",
+    placeholder: "Ex: Générer une clause de limitation de responsabilité...",
   },
 ];
 
@@ -114,111 +118,117 @@ export default function AIHubPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-lg bg-accent-50 flex items-center justify-center">
-          <Brain className="w-5 h-5 text-accent" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-neutral-900">Hub IA</h1>
-          <p className="text-neutral-500 text-sm">
-            Outils IA pour votre pratique juridique
-          </p>
-        </div>
+      <div className="text-center py-8 md:py-12">
+        <h1 className="text-4xl md:text-5xl font-bold text-neutral-900 mb-2">
+          Hub IA Juridique
+        </h1>
+        <p className="text-neutral-500 text-lg">
+          Outils IA avancés pour accélérer votre pratique juridique
+        </p>
       </div>
 
       {/* Error */}
       {error && <ErrorState message={error} onRetry={() => setError(null)} />}
 
       {/* AI Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto w-full">
         {AI_CARDS.map((card) => (
-          <div
+          <Card
             key={card.id}
-            className="bg-white rounded-lg shadow-subtle hover:shadow-medium transition-all"
+            hover
+            className={`cursor-pointer transition-all ${expandedCard === card.id ? "ring-2 ring-accent" : ""}`}
+            onClick={() =>
+              setExpandedCard(expandedCard === card.id ? null : card.id)
+            }
           >
-            {/* Card Header - Clickable */}
-            <div
-              onClick={() =>
-                setExpandedCard(expandedCard === card.id ? null : card.id)
-              }
-              className="p-4 cursor-pointer flex items-start gap-4"
-            >
-              <div
-                className={`w-12 h-12 rounded-md ${card.bgColor} flex items-center justify-center flex-shrink-0`}
-              >
-                <card.icon className={`w-6 h-6 ${card.color}`} />
-              </div>
-              <div className="flex-1">
-                <h2 className="text-base font-semibold text-neutral-900">
-                  {card.title}
-                </h2>
-                <p className="text-sm text-neutral-500 mt-1">
-                  {card.description}
-                </p>
-              </div>
-            </div>
-
-            {/* Expanded Form */}
-            {expandedCard === card.id && (
-              <div className="border-t border-neutral-200 p-4 space-y-3">
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
-                    Dossier
-                  </label>
-                  <select
-                    value={selectedCase}
-                    onChange={(e) => setSelectedCase(e.target.value)}
-                    className="input w-full"
-                    disabled={casesLoading || loading}
-                  >
-                    <option value="">Sélectionner un dossier...</option>
-                    {cases.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.title}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
-                    Prompt
-                  </label>
-                  <textarea
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    placeholder="Décrivez ce que vous voulez générer..."
-                    className="input w-full h-24 resize-none"
-                    disabled={loading}
-                  />
-                </div>
-
-                <button
-                  onClick={() => handleGenerate(card.id)}
-                  disabled={loading || !selectedCase || !prompt.trim()}
-                  className="btn-primary w-full flex items-center justify-center gap-2"
+            <div className="space-y-4">
+              {/* Card Header */}
+              <div className="flex items-start gap-4">
+                <div
+                  className={`w-14 h-14 rounded-lg ${card.bgColor} flex items-center justify-center flex-shrink-0`}
                 >
-                  {loading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Sparkles className="w-4 h-4" />
-                  )}
-                  Générer
-                </button>
-
-                {/* Result */}
-                {result && result.task_type === card.id && (
-                  <div className="bg-neutral-50 rounded p-3 max-h-48 overflow-y-auto">
-                    <p className="text-sm text-neutral-700 whitespace-pre-wrap">
-                      {result.result}
-                    </p>
-                  </div>
-                )}
+                  <card.icon className={`w-7 h-7 ${card.color}`} />
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-lg font-semibold text-neutral-900">
+                    {card.title}
+                  </h2>
+                  <p className="text-sm text-neutral-500 mt-1">
+                    {card.description}
+                  </p>
+                </div>
               </div>
-            )}
-          </div>
+
+              {/* Expanded Form */}
+              {expandedCard === card.id && (
+                <div className="space-y-4 pt-4 border-t border-neutral-200">
+                  {/* Case Selector */}
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-2">
+                      Dossier
+                    </label>
+                    <select
+                      value={selectedCase}
+                      onChange={(e) => setSelectedCase(e.target.value)}
+                      className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-200 disabled:opacity-50"
+                      disabled={casesLoading || loading}
+                    >
+                      <option value="">Sélectionner un dossier...</option>
+                      {cases.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Textarea */}
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-2">
+                      Instructions
+                    </label>
+                    <textarea
+                      value={prompt}
+                      onChange={(e) => setPrompt(e.target.value)}
+                      placeholder={card.placeholder}
+                      className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-200 disabled:opacity-50 h-28 resize-none"
+                      disabled={loading}
+                    />
+                  </div>
+
+                  {/* Action Button */}
+                  <Button
+                    onClick={() => handleGenerate(card.id)}
+                    disabled={loading || !selectedCase || !prompt.trim()}
+                    loading={loading}
+                    className="w-full"
+                    icon={<Sparkles className="w-4 h-4" />}
+                  >
+                    Générer avec IA
+                  </Button>
+
+                  {/* Result Display */}
+                  {result && result.task_type === card.id && (
+                    <div className="bg-neutral-50 rounded-lg p-4 max-h-64 overflow-y-auto border border-neutral-200">
+                      <p className="text-sm text-neutral-700 whitespace-pre-wrap">
+                        {result.result}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Loading State */}
+                  {loading && (
+                    <div className="bg-neutral-50 rounded-lg p-4 flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin text-accent" />
+                      <span className="text-sm text-neutral-600">Génération en cours...</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </Card>
         ))}
       </div>
     </div>
