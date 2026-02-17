@@ -47,12 +47,17 @@ class QdrantVectorStore:
 
     async def search(self, collection: str, vector: list[float], limit: int = 10):
         """Search similar vectors."""
-        results = await self._client.query_points(
+        from qdrant_client.http.models import SearchRequest
+
+        results = await self._client.http.search_api.search_points(
             collection_name=collection,
-            query=vector,
-            limit=limit
+            search_request=SearchRequest(
+                vector=vector,
+                limit=limit,
+                with_payload=True
+            )
         )
-        return results.points
+        return results.result
 
     async def health_check(self) -> bool:
         """Check if Qdrant is reachable."""
