@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Loader2, Search, UserX, Mail, Phone, X, Check } from "lucide-react";
 import { apiFetch } from "@/lib/api";
-import SkeletonTable from "@/components/skeletons/SkeletonTable";
+import { LoadingSkeleton, ErrorState, EmptyState, Badge, Modal } from "@/components/ui";
 
 interface Contact {
   id: string;
@@ -122,16 +122,11 @@ export default function ContactsPage() {
   };
 
   if (loading) {
-    return (
-      <div>
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-neutral-900">Contacts</h1>
-          </div>
-        </div>
-        <SkeletonTable />
-      </div>
-    );
+    return <LoadingSkeleton variant="table" />;
+  }
+
+  if (error) {
+    return <ErrorState message={error} onRetry={() => window.location.reload()} />;
   }
 
   return (
@@ -194,27 +189,30 @@ export default function ContactsPage() {
         </div>
       </div>
 
-      {error && (
-        <div className="bg-danger-50 border border-danger-200 text-danger-700 px-4 py-3 rounded-md mb-4 text-sm">
-          {error}
-        </div>
-      )}
-
       {/* Create Modal */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 p-6">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-semibold text-neutral-900">
-                Nouveau contact
-              </h2>
-              <button
-                onClick={() => setShowModal(false)}
-                className="text-neutral-400 hover:text-neutral-600"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      <Modal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title="Nouveau contact"
+        footer={
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => setShowModal(false)}
+              className="px-4 py-2 text-sm font-medium text-neutral-600 bg-neutral-100 rounded-md hover:bg-neutral-200 transition-colors"
+            >
+              Annuler
+            </button>
+            <button
+              onClick={handleCreate}
+              disabled={creating || !form.full_name.trim()}
+              className="btn-primary flex items-center gap-2 disabled:opacity-50"
+            >
+              {creating && <Loader2 className="w-4 h-4 animate-spin" />}
+              Créer le contact
+            </button>
+          </div>
+        }
+      >
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
@@ -292,25 +290,7 @@ export default function ContactsPage() {
                 </div>
               )}
             </div>
-            <div className="flex justify-end gap-3 mt-6">
-              <button
-                onClick={() => setShowModal(false)}
-                className="px-4 py-2 text-sm font-medium text-neutral-600 bg-neutral-100 rounded-md hover:bg-neutral-200 transition-colors"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={handleCreate}
-                disabled={creating || !form.full_name.trim()}
-                className="btn-primary flex items-center gap-2 disabled:opacity-50"
-              >
-                {creating && <Loader2 className="w-4 h-4 animate-spin" />}
-                Créer le contact
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      </Modal>
 
       {/* Table */}
       <div className="bg-white rounded-lg shadow-subtle overflow-hidden">
@@ -334,25 +314,19 @@ export default function ContactsPage() {
           <tbody className="divide-y divide-neutral-100">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-6 py-16 text-center">
-                  <UserX className="w-12 h-12 text-neutral-300 mx-auto mb-3" />
-                  <p className="text-neutral-500 font-medium">
-                    Aucun contact trouvé
-                  </p>
-                  <p className="text-neutral-400 text-sm mt-1">
-                    {searchQuery || typeFilter
-                      ? "Essayez de modifier vos filtres."
-                      : "Ajoutez votre premier contact pour commencer."}
-                  </p>
-                  {!searchQuery && !typeFilter && (
-                    <button
-                      onClick={() => setShowModal(true)}
-                      className="btn-primary mt-4"
-                    >
-                      <Plus className="w-4 h-4 inline mr-1.5" />
-                      Nouveau contact
-                    </button>
-                  )}
+                <td colSpan={4}>
+                  <div className="px-6 py-16 text-center">
+                    <EmptyState title="Aucun contact trouvé" />
+                    {!searchQuery && !typeFilter && (
+                      <button
+                        onClick={() => setShowModal(true)}
+                        className="btn-primary mt-4"
+                      >
+                        <Plus className="w-4 h-4 inline mr-1.5" />
+                        Nouveau contact
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ) : (

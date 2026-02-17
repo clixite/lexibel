@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Loader2, Search, Folder, X, Check } from "lucide-react";
 import { apiFetch } from "@/lib/api";
-import SkeletonTable from "@/components/skeletons/SkeletonTable";
+import { LoadingSkeleton, ErrorState, EmptyState, Badge, Modal } from "@/components/ui";
 
 interface Case {
   id: string;
@@ -150,16 +150,11 @@ export default function CasesPage() {
   });
 
   if (loading) {
-    return (
-      <div>
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-neutral-900">Dossiers</h1>
-          </div>
-        </div>
-        <SkeletonTable />
-      </div>
-    );
+    return <LoadingSkeleton variant="table" />;
+  }
+
+  if (error) {
+    return <ErrorState message={error} onRetry={() => window.location.reload()} />;
   }
 
   return (
@@ -218,109 +213,95 @@ export default function CasesPage() {
         </div>
       </div>
 
-      {error && (
-        <div className="bg-danger-50 border border-danger-200 text-danger-700 px-4 py-3 rounded-md mb-4 text-sm">
-          {error}
-        </div>
-      )}
 
       {/* Create Modal */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 p-6">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-semibold text-neutral-900">
-                Nouveau dossier
-              </h2>
-              <button
-                onClick={() => setShowModal(false)}
-                className="text-neutral-400 hover:text-neutral-600"
-              >
-                <X className="w-5 h-5" />
-              </button>
+      <Modal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title="Nouveau dossier"
+        footer={
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => setShowModal(false)}
+              className="px-4 py-2 text-sm font-medium text-neutral-600 bg-neutral-100 rounded-md hover:bg-neutral-200 transition-colors"
+            >
+              Annuler
+            </button>
+            <button
+              onClick={handleCreate}
+              disabled={creating || !form.title.trim()}
+              className="btn-primary flex items-center gap-2 disabled:opacity-50"
+            >
+              {creating && <Loader2 className="w-4 h-4 animate-spin" />}
+              Créer le dossier
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
+                Référence
+              </label>
+              <input
+                type="text"
+                value={form.reference}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, reference: e.target.value }))
+                }
+                className="input"
+              />
             </div>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
-                    Référence
-                  </label>
-                  <input
-                    type="text"
-                    value={form.reference}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, reference: e.target.value }))
-                    }
-                    className="input"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
-                    Type
-                  </label>
-                  <select
-                    value={form.matter_type}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, matter_type: e.target.value }))
-                    }
-                    className="input"
-                  >
-                    {MATTER_TYPES.map((t) => (
-                      <option key={t.value} value={t.value}>
-                        {t.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  Titre
-                </label>
-                <input
-                  type="text"
-                  value={form.title}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, title: e.target.value }))
-                  }
-                  placeholder="Ex: Dupont c/ SA Immobel"
-                  className="input"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  Description
-                </label>
-                <textarea
-                  value={form.description}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, description: e.target.value }))
-                  }
-                  placeholder="Description du dossier..."
-                  className="input"
-                  rows={3}
-                />
-              </div>
-            </div>
-            <div className="flex justify-end gap-3 mt-6">
-              <button
-                onClick={() => setShowModal(false)}
-                className="px-4 py-2 text-sm font-medium text-neutral-600 bg-neutral-100 rounded-md hover:bg-neutral-200 transition-colors"
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
+                Type
+              </label>
+              <select
+                value={form.matter_type}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, matter_type: e.target.value }))
+                }
+                className="input"
               >
-                Annuler
-              </button>
-              <button
-                onClick={handleCreate}
-                disabled={creating || !form.title.trim()}
-                className="btn-primary flex items-center gap-2 disabled:opacity-50"
-              >
-                {creating && <Loader2 className="w-4 h-4 animate-spin" />}
-                Créer le dossier
-              </button>
+                {MATTER_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">
+              Titre
+            </label>
+            <input
+              type="text"
+              value={form.title}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, title: e.target.value }))
+              }
+              placeholder="Ex: Dupont c/ SA Immobel"
+              className="input"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">
+              Description
+            </label>
+            <textarea
+              value={form.description}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, description: e.target.value }))
+              }
+              placeholder="Description du dossier..."
+              className="input"
+              rows={3}
+            />
+          </div>
         </div>
-      )}
+      </Modal>
 
       {/* Table */}
       <div className="bg-white rounded-lg shadow-subtle overflow-hidden">
@@ -347,25 +328,19 @@ export default function CasesPage() {
           <tbody className="divide-y divide-neutral-100">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-16 text-center">
-                  <Folder className="w-12 h-12 text-neutral-300 mx-auto mb-3" />
-                  <p className="text-neutral-500 font-medium">
-                    Aucun dossier trouvé
-                  </p>
-                  <p className="text-neutral-400 text-sm mt-1">
-                    {searchQuery || statusFilter
-                      ? "Essayez de modifier vos filtres."
-                      : "Créez votre premier dossier pour commencer."}
-                  </p>
-                  {!searchQuery && !statusFilter && (
-                    <button
-                      onClick={() => setShowModal(true)}
-                      className="btn-primary mt-4"
-                    >
-                      <Plus className="w-4 h-4 inline mr-1.5" />
-                      Nouveau dossier
-                    </button>
-                  )}
+                <td colSpan={5}>
+                  <div className="px-6 py-16 text-center">
+                    <EmptyState title="Aucun dossier trouvé" />
+                    {!searchQuery && !statusFilter && (
+                      <button
+                        onClick={() => setShowModal(true)}
+                        className="btn-primary mt-4"
+                      >
+                        <Plus className="w-4 h-4 inline mr-1.5" />
+                        Nouveau dossier
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ) : (

@@ -1,27 +1,34 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Upload,
   FileAudio,
   Clock,
   User,
-  Search,
   Download,
   Loader2,
-  Check,
   X,
-  Play,
-  Pause,
   AlertCircle,
-  Filter,
-  ChevronDown,
 } from "lucide-react";
-import { useTranscriptions } from "@/lib/hooks/useTranscriptions";
-import { useUploadTranscription } from "@/lib/hooks/useUploadTranscription";
+import { apiFetch } from "@/lib/api";
+import { LoadingSkeleton, ErrorState, EmptyState, DataTable, Badge } from "@/components/ui";
 import { toast } from "sonner";
-import type { Transcription, SearchTranscriptionsParams } from "@/lib/types/transcription";
+
+interface Transcription {
+  id: string;
+  created_at: string;
+  source: "PLAUD" | "RINGOVER" | "UPLOAD";
+  duration: number;
+  status: "pending" | "processing" | "completed" | "failed";
+  full_text?: string;
+  segments: Array<{
+    timestamp: string;
+    speaker?: string;
+    text: string;
+  }>;
+}
 
 const STATUS_LABELS = {
   pending: "En attente",
@@ -37,56 +44,41 @@ const STATUS_COLORS = {
   failed: "bg-red-100 text-red-700",
 };
 
-const LANGUAGES = [
-  { value: "fr", label: "Français" },
-  { value: "nl", label: "Néerlandais" },
-  { value: "en", label: "Anglais" },
-  { value: "de", label: "Allemand" },
-];
-
 export default function TranscriptionPage() {
   const { data: session } = useSession();
-  const user = session?.user as any;
-  const token = user?.accessToken;
-  const tenantId = user?.tenantId;
-
-  const [searchParams, setSearchParams] = useState<SearchTranscriptionsParams>({
-    limit: 20,
-  });
-  const [searchQuery, setSearchQuery] = useState("");
-  const [showUploadModal, setShowUploadModal] = useState(false);
-  const [selectedTranscription, setSelectedTranscription] = useState<Transcription | null>(null);
-
-  // Upload state
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [uploadLanguage, setUploadLanguage] = useState("fr");
-  const [uploadDetectSpeakers, setUploadDetectSpeakers] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Hooks
-  const transcriptionsQuery = useTranscriptions(searchParams, token, tenantId);
-  const uploadMutation = useUploadTranscription({
-    token,
-    tenantId,
-    onSuccess: (response) => {
-      toast.success("Transcription démarrée", {
-        description: "Le fichier audio est en cours de traitement.",
-      });
-      setShowUploadModal(false);
-      setUploadFile(null);
-    },
-    onError: (error) => {
-      toast.error("Erreur d'upload", {
-        description: error.message,
-      });
-    },
-  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [transcriptions, setTranscriptions] = useState<Transcription[]>([]);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [selectedTranscription, setSelectedTranscription] = useState<Transcription | null>(null);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        setLoading(true);
+        setError("");
+        const res = await apiFetch<Transcription[]>("/transcriptions", session?.user?.accessToken);
+        setTranscriptions(Array.isArray(res) ? res : res.items || []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Erreur de chargement");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    if (session?.user?.accessToken) {
+      fetchData();
+    }
+  }, [session?.user?.accessToken]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
     const validTypes = ["audio/mpeg", "audio/mp3", "audio/wav", "audio/m4a", "audio/ogg"];
     if (!validTypes.includes(file.type) && !file.name.match(/\.(mp3|wav|m4a|ogg)$/i)) {
       toast.error("Type de fichier non valide", {
@@ -95,7 +87,6 @@ export default function TranscriptionPage() {
       return;
     }
 
-    // Validate file size (max 100MB)
     if (file.size > 100 * 1024 * 1024) {
       toast.error("Fichier trop volumineux", {
         description: "La taille maximale est de 100 MB.",
@@ -106,26 +97,49 @@ export default function TranscriptionPage() {
     setUploadFile(file);
   };
 
-  const handleUpload = () => {
+  const handleUpload = async () => {
     if (!uploadFile) return;
 
-    uploadMutation.mutate({
-      file: uploadFile,
-      language: uploadLanguage,
-      detect_speakers: uploadDetectSpeakers,
-    });
-  };
+    try {
+      setUploading(true);
+      const formData = new FormData();
+      formData.append("file", uploadFile);
 
-  const handleSearch = () => {
-    setSearchParams((prev) => ({ ...prev, query: searchQuery }));
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/transcriptions/upload`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session?.user?.accessToken}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error("Upload failed");
+
+      toast.success("Transcription démarrée", {
+        description: "Le fichier audio est en cours de traitement.",
+      });
+      setShowUploadModal(false);
+      setUploadFile(null);
+
+      // Reload data
+      const res = await apiFetch<Transcription[]>("/transcriptions", session?.user?.accessToken);
+      setTranscriptions(Array.isArray(res) ? res : res.items || []);
+    } catch (err) {
+      toast.error("Erreur d'upload", {
+        description: err instanceof Error ? err.message : "Impossible d'uploader le fichier",
+      });
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleDownloadTranscript = (transcription: Transcription) => {
+    if (!transcription.full_text) return;
     const blob = new Blob([transcription.full_text], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${transcription.file_name.replace(/\.[^.]+$/, "")}_transcript.txt`;
+    a.download = `transcription_${transcription.id}.txt`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success("Transcription téléchargée");
@@ -137,15 +151,8 @@ export default function TranscriptionPage() {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
-
   return (
     <div>
-      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-neutral-900">Transcriptions Audio</h1>
@@ -162,161 +169,71 @@ export default function TranscriptionPage() {
         </button>
       </div>
 
-      {/* Search and filters */}
-      <div className="flex items-center gap-3 mb-6">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
-          <input
-            type="text"
-            placeholder="Rechercher dans les transcriptions..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyPress={(e) => e.key === "Enter" && handleSearch()}
-            className="input pl-9"
-          />
-        </div>
-        <select
-          className="px-4 py-2 border border-neutral-200 rounded-lg text-sm"
-          onChange={(e) =>
-            setSearchParams((prev) => ({ ...prev, status: e.target.value || undefined }))
-          }
-        >
-          <option value="">Tous les statuts</option>
-          <option value="completed">Terminés</option>
-          <option value="processing">En cours</option>
-          <option value="pending">En attente</option>
-          <option value="failed">Échoués</option>
-        </select>
-        <select
-          className="px-4 py-2 border border-neutral-200 rounded-lg text-sm"
-          onChange={(e) =>
-            setSearchParams((prev) => ({ ...prev, language: e.target.value || undefined }))
-          }
-        >
-          <option value="">Toutes les langues</option>
-          {LANGUAGES.map((lang) => (
-            <option key={lang.value} value={lang.value}>
-              {lang.label}
-            </option>
-          ))}
-        </select>
-      </div>
+      {loading && <LoadingSkeleton />}
 
-      {/* Transcriptions list */}
-      {transcriptionsQuery.isLoading && (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-neutral-400" />
-        </div>
+      {error && <ErrorState title="Erreur de chargement" description={error} />}
+
+      {!loading && transcriptions.length === 0 && (
+        <EmptyState
+          icon={<FileAudio className="w-12 h-12" />}
+          title="Aucune transcription"
+          description="Uploadez votre premier fichier audio pour commencer"
+        />
       )}
 
-      {transcriptionsQuery.isError && (
-        <div className="bg-red-50 rounded-lg p-6 border border-red-200">
-          <div className="flex items-center gap-3">
-            <AlertCircle className="h-6 w-6 text-red-600" />
-            <div>
-              <h3 className="font-semibold text-red-900">Erreur de chargement</h3>
-              <p className="text-sm text-red-700 mt-1">
-                Impossible de charger les transcriptions. Veuillez réessayer.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {transcriptionsQuery.data && transcriptionsQuery.data.items.length === 0 && (
-        <div className="bg-white rounded-lg p-12 text-center border border-neutral-200">
-          <FileAudio className="w-16 h-16 text-neutral-300 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-neutral-600 mb-2">
-            Aucune transcription
-          </h3>
-          <p className="text-neutral-500 mb-6">
-            {searchQuery || searchParams.status
-              ? "Essayez de modifier vos filtres."
-              : "Uploadez votre premier fichier audio pour commencer."}
-          </p>
-          {!searchQuery && !searchParams.status && (
-            <button
-              onClick={() => setShowUploadModal(true)}
-              className="btn-primary"
-            >
-              <Upload className="w-4 h-4 inline mr-2" />
-              Uploader un audio
-            </button>
-          )}
-        </div>
-      )}
-
-      {transcriptionsQuery.data && transcriptionsQuery.data.items.length > 0 && (
-        <div className="space-y-4">
-          {transcriptionsQuery.data.items.map((transcription) => (
-            <div
-              key={transcription.id}
-              className="card hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => setSelectedTranscription(transcription)}
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex items-start gap-4 flex-1">
-                  <div className="p-3 bg-accent-50 rounded-lg">
-                    <FileAudio className="w-6 h-6 text-accent-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold text-neutral-900 truncate">
-                        {transcription.file_name}
-                      </h3>
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                          STATUS_COLORS[transcription.status]
-                        }`}
-                      >
-                        {STATUS_LABELS[transcription.status]}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-4 text-sm text-neutral-500">
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3.5 h-3.5" />
-                        {formatDuration(transcription.duration_seconds)}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <User className="w-3.5 h-3.5" />
-                        {transcription.speakers_detected} locuteurs
-                      </span>
-                      <span>{formatFileSize(transcription.file_size)}</span>
-                      <span>{LANGUAGES.find((l) => l.value === transcription.language)?.label}</span>
-                    </div>
-                    {transcription.status === "completed" && (
-                      <p className="text-sm text-neutral-600 mt-2 line-clamp-2">
-                        {transcription.full_text}
-                      </p>
-                    )}
-                    {transcription.status === "failed" && transcription.error_message && (
-                      <p className="text-sm text-red-600 mt-2">
-                        Erreur: {transcription.error_message}
-                      </p>
-                    )}
-                  </div>
-                </div>
+      {!loading && transcriptions.length > 0 && (
+        <DataTable
+          data={transcriptions}
+          columns={[
+            {
+              key: "created_at",
+              label: "Date",
+              render: (trans) => new Date(trans.created_at).toLocaleDateString("fr-FR"),
+            },
+            {
+              key: "source",
+              label: "Source",
+              render: (trans) => <span>{trans.source}</span>,
+            },
+            {
+              key: "duration",
+              label: "Durée",
+              render: (trans) => formatDuration(trans.duration),
+            },
+            {
+              key: "status",
+              label: "Statut",
+              render: (trans) => (
+                <Badge variant="default">
+                  {STATUS_LABELS[trans.status]}
+                </Badge>
+              ),
+            },
+            {
+              key: "actions",
+              label: "Actions",
+              render: (trans) => (
                 <div className="flex items-center gap-2">
-                  {transcription.status === "completed" && (
+                  <button
+                    onClick={() => setSelectedTranscription(trans)}
+                    className="text-accent hover:text-accent-600 text-sm"
+                  >
+                    Voir
+                  </button>
+                  {trans.status === "completed" && (
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDownloadTranscript(transcription);
-                      }}
-                      className="p-2 hover:bg-neutral-100 rounded-md transition-colors"
-                      title="Télécharger"
+                      onClick={() => handleDownloadTranscript(trans)}
+                      className="text-neutral-600 hover:text-neutral-900"
                     >
-                      <Download className="w-4 h-4 text-neutral-600" />
+                      <Download className="w-4 h-4" />
                     </button>
                   )}
-                  {transcription.status === "processing" && (
-                    <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
-                  )}
                 </div>
-              </div>
-            </div>
-          ))}
-        </div>
+              ),
+            },
+          ]}
+          onRowClick={(trans) => setSelectedTranscription(trans)}
+        />
       )}
 
       {/* Upload Modal */}
@@ -339,7 +256,6 @@ export default function TranscriptionPage() {
             </div>
 
             <div className="space-y-4">
-              {/* File input */}
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-2">
                   Fichier audio
@@ -361,7 +277,7 @@ export default function TranscriptionPage() {
                       <div className="text-left">
                         <p className="font-medium text-neutral-900">{uploadFile.name}</p>
                         <p className="text-sm text-neutral-500">
-                          {formatFileSize(uploadFile.size)}
+                          {(uploadFile.size / (1024 * 1024)).toFixed(1)} MB
                         </p>
                       </div>
                     </div>
@@ -379,38 +295,6 @@ export default function TranscriptionPage() {
                 </button>
               </div>
 
-              {/* Language select */}
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-2">
-                  Langue de l'audio
-                </label>
-                <select
-                  value={uploadLanguage}
-                  onChange={(e) => setUploadLanguage(e.target.value)}
-                  className="input"
-                >
-                  {LANGUAGES.map((lang) => (
-                    <option key={lang.value} value={lang.value}>
-                      {lang.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Speaker detection */}
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={uploadDetectSpeakers}
-                  onChange={(e) => setUploadDetectSpeakers(e.target.checked)}
-                  className="rounded"
-                />
-                <span className="text-sm text-neutral-700">
-                  Détecter automatiquement les locuteurs
-                </span>
-              </label>
-
-              {/* Actions */}
               <div className="flex gap-3 pt-4">
                 <button
                   onClick={() => {
@@ -423,11 +307,11 @@ export default function TranscriptionPage() {
                 </button>
                 <button
                   onClick={handleUpload}
-                  disabled={!uploadFile || uploadMutation.isPending}
+                  disabled={!uploadFile || uploading}
                   className="btn-primary flex-1 flex items-center justify-center gap-2"
                 >
-                  {uploadMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-                  {uploadMutation.isPending ? "Upload en cours..." : "Démarrer la transcription"}
+                  {uploading && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {uploading ? "Upload en cours..." : "Démarrer la transcription"}
                 </button>
               </div>
             </div>
@@ -442,24 +326,20 @@ export default function TranscriptionPage() {
             <div className="flex items-center justify-between p-6 border-b border-neutral-200">
               <div className="flex-1 min-w-0">
                 <h2 className="text-lg font-semibold text-neutral-900 truncate">
-                  {selectedTranscription.file_name}
+                  Transcription {selectedTranscription.id}
                 </h2>
                 <div className="flex items-center gap-4 text-sm text-neutral-500 mt-1">
                   <span className="flex items-center gap-1">
                     <Clock className="w-3.5 h-3.5" />
-                    {formatDuration(selectedTranscription.duration_seconds)}
+                    {formatDuration(selectedTranscription.duration)}
                   </span>
                   <span className="flex items-center gap-1">
                     <User className="w-3.5 h-3.5" />
-                    {selectedTranscription.speakers_detected} locuteurs
+                    {selectedTranscription.source}
                   </span>
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                      STATUS_COLORS[selectedTranscription.status]
-                    }`}
-                  >
+                  <Badge variant="default">
                     {STATUS_LABELS[selectedTranscription.status]}
-                  </span>
+                  </Badge>
                 </div>
               </div>
               <button
@@ -473,19 +353,19 @@ export default function TranscriptionPage() {
             <div className="flex-1 overflow-y-auto p-6">
               {selectedTranscription.status === "completed" && (
                 <div className="space-y-6">
-                  {/* Full transcript */}
-                  <div>
-                    <h3 className="font-semibold text-neutral-900 mb-3">
-                      Transcription complète
-                    </h3>
-                    <div className="bg-neutral-50 rounded-lg p-4 border border-neutral-200">
-                      <p className="text-neutral-700 leading-relaxed whitespace-pre-wrap">
-                        {selectedTranscription.full_text}
-                      </p>
+                  {selectedTranscription.full_text && (
+                    <div>
+                      <h3 className="font-semibold text-neutral-900 mb-3">
+                        Transcription complète
+                      </h3>
+                      <div className="bg-neutral-50 rounded-lg p-4 border border-neutral-200">
+                        <p className="text-neutral-700 leading-relaxed whitespace-pre-wrap">
+                          {selectedTranscription.full_text}
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
-                  {/* Segments */}
                   {selectedTranscription.segments.length > 0 && (
                     <div>
                       <h3 className="font-semibold text-neutral-900 mb-3">
@@ -498,7 +378,7 @@ export default function TranscriptionPage() {
                             className="flex gap-4 p-3 bg-white rounded-lg border border-neutral-200"
                           >
                             <div className="text-xs text-neutral-500 font-mono w-24 flex-shrink-0">
-                              {formatDuration(segment.start)} - {formatDuration(segment.end)}
+                              {segment.timestamp}
                             </div>
                             <div className="flex-1">
                               {segment.speaker && (
@@ -507,9 +387,6 @@ export default function TranscriptionPage() {
                                 </span>
                               )}
                               <span className="text-sm text-neutral-700">{segment.text}</span>
-                            </div>
-                            <div className="text-xs text-neutral-400">
-                              {Math.round(segment.confidence * 100)}%
                             </div>
                           </div>
                         ))}
@@ -540,16 +417,11 @@ export default function TranscriptionPage() {
                 <div className="text-center py-12">
                   <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
                   <p className="text-neutral-600 font-medium">Échec de la transcription</p>
-                  {selectedTranscription.error_message && (
-                    <p className="text-sm text-red-600 mt-2">
-                      {selectedTranscription.error_message}
-                    </p>
-                  )}
                 </div>
               )}
             </div>
 
-            {selectedTranscription.status === "completed" && (
+            {selectedTranscription.status === "completed" && selectedTranscription.full_text && (
               <div className="p-6 border-t border-neutral-200">
                 <button
                   onClick={() => handleDownloadTranscript(selectedTranscription)}

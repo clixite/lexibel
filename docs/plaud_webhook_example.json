@@ -1,0 +1,50 @@
+{
+  "transcription_id": "plaud_rec_123456789",
+  "tenant_id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+  "case_id": "d5e6f7a8-b9c0-4d1e-2f3a-4b5c6d7e8f9a",
+  "audio_url": "https://plaud-storage.s3.amazonaws.com/recordings/123456789.mp3",
+  "text": "Bonjour Maître. Je vous appelle au sujet du dossier concernant le litige avec mon employeur. J'ai reçu la lettre de licenciement hier et je souhaiterais connaître mes options. D'accord, nous allons analyser la situation ensemble.",
+  "segments": [
+    {
+      "segment_index": 0,
+      "speaker": "Client",
+      "start_time": 0.0,
+      "end_time": 8.5,
+      "text": "Bonjour Maître. Je vous appelle au sujet du dossier concernant le litige avec mon employeur.",
+      "confidence": 0.95
+    },
+    {
+      "segment_index": 1,
+      "speaker": "Client",
+      "start_time": 8.5,
+      "end_time": 14.2,
+      "text": "J'ai reçu la lettre de licenciement hier et je souhaiterais connaître mes options.",
+      "confidence": 0.93
+    },
+    {
+      "segment_index": 2,
+      "speaker": "Avocat",
+      "start_time": 14.2,
+      "end_time": 18.8,
+      "text": "D'accord, nous allons analyser la situation ensemble.",
+      "confidence": 0.97
+    }
+  ],
+  "speakers": [
+    {
+      "id": "speaker_1",
+      "name": "Client"
+    },
+    {
+      "id": "speaker_2",
+      "name": "Avocat"
+    }
+  ],
+  "duration": 19,
+  "language": "fr",
+  "metadata": {
+    "device": "Plaud Note",
+    "recording_mode": "meeting",
+    "quality": "high"
+  }
+}

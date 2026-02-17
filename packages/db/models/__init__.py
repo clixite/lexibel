@@ -16,6 +16,14 @@ from packages.db.models.invoice_line import InvoiceLine
 from packages.db.models.third_party_entry import ThirdPartyEntry
 from packages.db.models.migration_job import MigrationJob
 from packages.db.models.migration_mapping import MigrationMapping
+from packages.db.models.chunk import Chunk
+from packages.db.models.oauth_token import OAuthToken
+from packages.db.models.calendar_event import CalendarEvent
+from packages.db.models.email_thread import EmailThread
+from packages.db.models.email_message import EmailMessage
+from packages.db.models.call_record import CallRecord
+from packages.db.models.transcription import Transcription
+from packages.db.models.transcription_segment import TranscriptionSegment
 
 __all__ = [
     "Base",
@@ -34,4 +42,12 @@ __all__ = [
     "ThirdPartyEntry",
     "MigrationJob",
     "MigrationMapping",
+    "Chunk",
+    "OAuthToken",
+    "CalendarEvent",
+    "EmailThread",
+    "EmailMessage",
+    "CallRecord",
+    "Transcription",
+    "TranscriptionSegment",
 ]

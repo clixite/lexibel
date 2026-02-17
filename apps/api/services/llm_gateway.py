@@ -312,13 +312,145 @@ class LLMGateway:
 
 
 class StubLLMGateway(LLMGateway):
-    """Stub LLM gateway that returns canned responses for testing."""
+    """Stub LLM gateway that returns intelligent simulated responses.
 
-    def __init__(self, canned_response: str = "Réponse stub.") -> None:
+    Generates realistic Belgian legal content based on prompt analysis.
+    Useful for testing without LLM API key.
+    """
+
+    def __init__(self, canned_response: Optional[str] = None) -> None:
         self._canned = canned_response
-        self._model = "stub"
+        self._model = "stub-intelligent"
         self._base_url = ""
         self._api_key = ""
+
+    def _generate_intelligent_response(
+        self,
+        prompt: str,
+        context_chunks: list[ContextChunk],
+        system_prompt: str,
+    ) -> str:
+        """Generate intelligent response based on prompt keywords."""
+        prompt_lower = prompt.lower()
+
+        # Detect intent from prompt
+        if any(word in prompt_lower for word in ["rédige", "draft", "brouillon", "mise en demeure"]):
+            # Drafting request
+            return self._draft_template(prompt_lower, context_chunks)
+        elif any(word in prompt_lower for word in ["résume", "résumé", "summary", "synthèse"]):
+            # Summary request
+            return self._summary_template(context_chunks)
+        elif any(word in prompt_lower for word in ["analyse", "analyze", "examine"]):
+            # Analysis request
+            return self._analysis_template(context_chunks)
+        elif any(word in prompt_lower for word in ["article", "code", "loi", "jurisprudence"]):
+            # Legal query
+            return self._legal_query_template(prompt_lower)
+        else:
+            # Generic response
+            return self._generic_template(context_chunks)
+
+    def _draft_template(self, prompt: str, chunks: list[ContextChunk]) -> str:
+        """Generate draft document stub."""
+        if "mise en demeure" in prompt:
+            return """Madame, Monsieur,
+
+Par la présente, je me permets de vous mettre en demeure de satisfaire aux obligations suivantes.
+
+FAITS :
+Selon les éléments du dossier [Source: documents fournis], les faits suivants sont établis. Les parties sont en relation contractuelle depuis plusieurs mois. Des obligations ont été prises mais n'ont pas été respectées dans les délais convenus.
+
+MISE EN DEMEURE :
+En conséquence, je vous mets en demeure de procéder au paiement de la somme due et/ou d'exécuter vos obligations contractuelles dans un délai de 8 jours à compter de la réception de la présente.
+
+À défaut, je me verrai contraint de saisir les juridictions compétentes sans autre avis.
+
+Veuillez agréer, Madame, Monsieur, l'expression de mes salutations distinguées."""
+        else:
+            return "Brouillon de document juridique basé sur les éléments du dossier [Source: contexte fourni]."
+
+    def _summary_template(self, chunks: list[ContextChunk]) -> str:
+        """Generate summary stub."""
+        if not chunks:
+            return "Aucun élément à résumer."
+
+        return """RÉSUMÉ DU DOSSIER
+
+1. FAITS PRINCIPAUX
+Selon les documents analysés [Source: documents du dossier], le dossier porte sur une situation juridique impliquant plusieurs parties. Les événements se sont déroulés sur plusieurs mois.
+
+2. PARTIES
+- Partie demanderesse : [identifiée dans les documents]
+- Partie défenderesse : [identifiée dans les documents]
+
+3. POINTS CLÉS
+- Obligation contractuelle non respectée [Source: contrat au dossier]
+- Délais de paiement expirés [Source: factures]
+- Correspondance échangée [Source: emails au dossier]
+
+4. PROCHAINES ÉTAPES
+Selon l'analyse du dossier, les prochaines étapes pourraient inclure une mise en demeure formelle, suivie si nécessaire d'une procédure judiciaire."""
+
+    def _analysis_template(self, chunks: list[ContextChunk]) -> str:
+        """Generate analysis stub."""
+        return """ANALYSE DU DOCUMENT
+
+1. PARTIES IDENTIFIÉES
+Selon le document analysé [Source: document fourni], les parties suivantes sont identifiées dans le cadre de cette relation juridique.
+
+2. OBLIGATIONS
+Les obligations principales comprennent :
+- Obligations de paiement [Source: clauses contractuelles]
+- Obligations de livraison/prestation [Source: document]
+- Délais d'exécution [Source: calendrier contractuel]
+
+3. DÉLAIS
+Les délais suivants s'appliquent conformément au Code Judiciaire :
+- Délai de citation : 8 jours (Art. 707 C.J.)
+- Délai d'appel : 30 jours (Art. 1051 C.J.)
+
+4. RISQUES IDENTIFIÉS
+- Risque de non-exécution dans les délais
+- Risque de pénalités contractuelles
+- Risque de procédure judiciaire si non-résolution amiable
+
+5. RECOMMANDATIONS
+- Mise en demeure formelle dans les meilleurs délais
+- Tentative de négociation amiable
+- Conservation de tous les éléments de preuve"""
+
+    def _legal_query_template(self, prompt: str) -> str:
+        """Generate legal query response stub."""
+        if "1382" in prompt or "responsabilité" in prompt:
+            return """Article 1382 du Code Civil belge — Responsabilité civile
+
+L'article 1382 dispose : "Tout fait quelconque de l'homme, qui cause à autrui un dommage, oblige celui par la faute duquel il est arrivé à le réparer."
+
+Cet article établit le principe de la responsabilité civile extracontractuelle en droit belge. Pour qu'une responsabilité soit engagée, trois conditions doivent être réunies :
+
+1. Une faute
+2. Un dommage
+3. Un lien de causalité entre la faute et le dommage
+
+La jurisprudence belge a considérablement développé l'interprétation de cet article, notamment en matière de faute (critère de l'homme normalement prudent et diligent)."""
+        elif "code judiciaire" in prompt or "procédure" in prompt:
+            return """Code Judiciaire belge — Principales dispositions
+
+Le Code Judiciaire régit la procédure civile en Belgique. Principaux délais :
+
+- Art. 707 : Délai de citation (8 jours minimum)
+- Art. 1051 : Délai d'appel (30 jours)
+- Art. 1073 : Pourvoi en cassation (3 mois)
+
+Ces délais sont d'ordre public et doivent être strictement respectés sous peine de forclusion."""
+        else:
+            return "Réponse basée sur le droit belge et les sources juridiques disponibles."
+
+    def _generic_template(self, chunks: list[ContextChunk]) -> str:
+        """Generate generic response."""
+        if chunks:
+            return f"Selon les {len(chunks)} documents fournis au dossier, voici une synthèse des éléments pertinents. [Source: documents contexte]"
+        return "Réponse générée sans contexte spécifique."
 
     async def generate(
         self,
@@ -335,6 +467,12 @@ class StubLLMGateway(LLMGateway):
                 has_uncited_claims=False,
             )
 
+        # Generate intelligent response or use canned
+        if self._canned:
+            text = self._canned
+        else:
+            text = self._generate_intelligent_response(prompt, context_chunks, system_prompt)
+
         sources = [
             LLMSource(
                 document_id=c.document_id,
@@ -346,13 +484,13 @@ class StubLLMGateway(LLMGateway):
             for c in context_chunks
         ]
 
-        is_valid, uncited = validate_citations(self._canned, sources)
+        is_valid, uncited = validate_citations(text, sources)
 
         return LLMResponse(
-            text=self._canned,
+            text=text,
             sources=sources,
-            model="stub",
-            tokens_used=len(prompt.split()),
+            model=self._model,
+            tokens_used=len(prompt.split()) * 2,  # Simulate token usage
             has_uncited_claims=not is_valid,
             uncited_claims=uncited,
         )

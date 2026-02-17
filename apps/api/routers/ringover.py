@@ -7,6 +7,7 @@ POST   /api/v1/ringover/calls/{id}/summary — regenerate AI summary
 GET    /api/v1/ringover/stats              — call statistics (volume, duration, sentiment)
 """
 
+import os
 import uuid
 from datetime import datetime, timedelta
 from typing import Optional
@@ -19,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from apps.api.dependencies import get_current_tenant, get_db_session
 from apps.api.schemas.ringover import CallEventDetail
 from apps.api.services import ringover_service
+from apps.api.services.ringover_client import RingoverClient, RingoverAPIError
 from packages.db.models.contact import Contact
 from packages.db.models.interaction_event import InteractionEvent
 
@@ -63,6 +65,9 @@ async def list_calls(
 ) -> CallListResponse:
     """List call history with filters and pagination.
 
+    Fetches from Ringover API v2 if configured, then enriches with DB data.
+    Falls back to DB-only if API unavailable.
+
     Supports filtering by:
     - Direction (inbound/outbound)
     - Call type (answered/missed/voicemail)
@@ -70,6 +75,118 @@ async def list_calls(
     - Case
     - Date range
     """
+    items = []
+    total = 0
+
+    # Try Ringover API first
+    if os.getenv("RINGOVER_API_KEY"):
+        try:
+            async with RingoverClient() as client:
+                # Fetch from API
+                api_response = await client.list_calls(
+                    page=page,
+                    per_page=per_page,
+                    date_from=date_from,
+                    date_to=date_to,
+                    direction=direction,
+                    call_type=call_type,
+                )
+
+                # Enrich API data with DB information
+                for call in api_response.calls:
+                    # Find matching InteractionEvent by call_id
+                    event_query = select(InteractionEvent).where(
+                        and_(
+                            InteractionEvent.source == "RINGOVER",
+                            InteractionEvent.metadata_["call_id"].astext == call.id,
+                        )
+                    )
+                    event_result = await session.execute(event_query)
+                    event = event_result.scalar_one_or_none()
+
+                    # Get metadata from event or build from API data
+                    metadata = event.metadata_ if event else {}
+                    if not metadata:
+                        metadata = {
+                            "call_id": call.id,
+                            "direction": call.direction,
+                            "caller_number": call.caller_number,
+                            "callee_number": call.callee_number,
+                            "duration_seconds": call.duration_seconds,
+                            "call_type": call.call_type,
+                            "recording_url": None,
+                            "started_at": call.started_at,
+                            "ended_at": call.ended_at,
+                        }
+
+                    # Get contact details
+                    contact_id_from_event = (
+                        event.metadata_.get("contact_id") if event else None
+                    )
+                    contact = None
+                    if contact_id_from_event:
+                        contact_result = await session.execute(
+                            select(Contact).where(
+                                Contact.id == uuid.UUID(contact_id_from_event)
+                            )
+                        )
+                        contact = contact_result.scalar_one_or_none()
+
+                    # Extract insights
+                    insights = ringover_service.extract_call_insights(metadata)
+
+                    # Apply additional filters (contact_id, case_id) that aren't in API
+                    if contact_id and (not contact or contact.id != contact_id):
+                        continue
+                    if case_id and (not event or event.case_id != case_id):
+                        continue
+
+                    items.append(
+                        CallEventDetail(
+                            id=event.id
+                            if event
+                            else uuid.uuid4(),  # Temp ID if not in DB
+                            case_id=event.case_id if event else None,
+                            contact_id=uuid.UUID(contact_id_from_event)
+                            if contact_id_from_event
+                            else None,
+                            contact_name=contact.full_name if contact else None,
+                            direction=call.direction,
+                            call_type=call.call_type,
+                            duration_formatted=ringover_service.format_call_duration(
+                                call.duration_seconds
+                            ),
+                            phone_number=call.caller_number,
+                            occurred_at=datetime.fromisoformat(
+                                call.started_at.replace("Z", "+00:00")
+                            ),
+                            has_recording=call.recording_available,
+                            has_transcript=metadata.get("transcript_status")
+                            == "completed",
+                            has_summary=metadata.get("summary_status") == "completed",
+                            sentiment=ringover_service._get_sentiment_label(
+                                metadata.get("sentiment_score")
+                            ),
+                            recording_url=metadata.get("recording_url"),
+                            transcript=metadata.get("transcript"),
+                            ai_summary=metadata.get("ai_summary"),
+                            tasks_count=len(metadata.get("extracted_tasks", [])),
+                        )
+                    )
+
+                total = api_response.total
+                return CallListResponse(
+                    items=items,
+                    total=total,
+                    page=page,
+                    per_page=per_page,
+                )
+
+        except RingoverAPIError as e:
+            # Log and fallback to DB
+            print(f"Ringover API error, falling back to DB: {e}")
+
+    # Fallback: DB-only query
     query = select(InteractionEvent).where(
         and_(
             InteractionEvent.source == "RINGOVER",
@@ -164,6 +281,8 @@ async def get_call_details(
 ) -> CallEventDetail:
     """Get detailed call information including AI insights.
 
+    Fetches fresh data from Ringover API if available, then enriches with DB data.
+
     Returns:
     - Call metadata (duration, direction, etc.)
     - Contact information
@@ -173,6 +292,7 @@ async def get_call_details(
     - Sentiment analysis
     - Extracted tasks
     """
+    # Get local event first
     result = await session.execute(
         select(InteractionEvent).where(
             and_(
@@ -190,6 +310,38 @@ async def get_call_details(
         )
 
     metadata = event.metadata_ or {}
+    call_id = metadata.get("call_id")
+
+    # Try to fetch fresh data from Ringover API
+    if call_id and os.getenv("RINGOVER_API_KEY"):
+        try:
+            async with RingoverClient() as client:
+                api_call = await client.get_call(call_id)
+
+                # Update metadata with fresh API data
+                metadata.update(
+                    {
+                        "direction": api_call.direction,
+                        "caller_number": api_call.caller_number,
+                        "callee_number": api_call.callee_number,
+                        "duration_seconds": api_call.duration_seconds,
+                        "call_type": api_call.call_type,
+                        "started_at": api_call.started_at,
+                        "ended_at": api_call.ended_at,
+                    }
+                )
+
+                # Fetch recording URL if available
+                if api_call.recording_available:
+                    try:
+                        recording = await client.get_recording(call_id)
+                        metadata["recording_url"] = recording.url
+                    except RingoverAPIError:
+                        pass  # Recording fetch failed, keep existing URL
+
+        except RingoverAPIError as e:
+            # Log but continue with DB data
+            print(f"Failed to fetch call details from Ringover API: {e}")
 
     # Get contact details
     contact_id_str = metadata.get("contact_id")

@@ -15,7 +15,7 @@ import {
   Link2,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
-import SkeletonList from "@/components/skeletons/SkeletonList";
+import { LoadingSkeleton, ErrorState, EmptyState } from "@/components/ui";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -355,7 +355,7 @@ export default function TimelinePage() {
       )}
 
       {/* Loading */}
-      {loading && <SkeletonList />}
+      {loading && <LoadingSkeleton variant="list" />}
 
       {/* Empty state */}
       {!loading && events.length === 0 && (
@@ -372,17 +372,14 @@ export default function TimelinePage() {
               />
             </div>
             <div className="relative px-6 py-20 text-center">
-              <div className="w-16 h-16 rounded-lg bg-accent-50 flex items-center justify-center mx-auto mb-5">
-                <Clock className="w-8 h-8 text-accent" />
-              </div>
-              <h2 className="text-xl font-semibold text-neutral-900 mb-2">
-                Aucun événement
-              </h2>
-              <p className="text-neutral-500 text-sm max-w-md mx-auto">
-                {cases.length === 0
-                  ? "Créez un dossier pour commencer à visualiser la timeline des interactions."
-                  : "Ce dossier ne contient pas encore d'événements. Les interactions validées depuis l'inbox apparaîtront ici."}
-              </p>
+              <EmptyState
+                title="Aucun événement"
+                description={
+                  cases.length === 0
+                    ? "Créez un dossier pour commencer à visualiser la timeline des interactions."
+                    : "Ce dossier ne contient pas encore d'événements. Les interactions validées depuis l'inbox apparaîtront ici."
+                }
+              />
             </div>
           </div>
         </div>

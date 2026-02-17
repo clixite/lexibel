@@ -18,7 +18,7 @@ import {
   Clock,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
-import SkeletonList from "@/components/skeletons/SkeletonList";
+import { LoadingSkeleton, ErrorState, EmptyState, Badge, Modal } from "@/components/ui";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -369,16 +369,7 @@ export default function InboxPage() {
   /* ---------------------------------------------------------------- */
 
   if (loading) {
-    return (
-      <div>
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-neutral-900">Inbox</h1>
-          </div>
-        </div>
-        <SkeletonList />
-      </div>
-    );
+    return <LoadingSkeleton variant="list" />;
   }
 
   return (
@@ -422,33 +413,42 @@ export default function InboxPage() {
 
       {/* Error */}
       {error && (
-        <div className="bg-danger-50 border border-danger-200 text-danger-700 px-4 py-3 rounded-md mb-4 text-sm flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-          {error}
-          <button
-            onClick={() => setError(null)}
-            className="ml-auto text-danger-400 hover:text-danger-600"
-          >
-            <X className="w-4 h-4" />
-          </button>
+        <div className="mb-4">
+          <ErrorState message={error} onRetry={() => setError(null)} />
         </div>
       )}
 
       {/* ---- Validate Modal ---- */}
-      {validateTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 p-6">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-semibold text-neutral-900">
-                Valider et rattacher à un dossier
-              </h2>
-              <button
-                onClick={() => setValidateTarget(null)}
-                className="text-neutral-400 hover:text-neutral-600"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      <Modal
+        isOpen={!!validateTarget}
+        onClose={() => setValidateTarget(null)}
+        title="Valider et rattacher à un dossier"
+        footer={
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => setValidateTarget(null)}
+              className="btn-secondary"
+            >
+              Annuler
+            </button>
+            <button
+              onClick={handleValidate}
+              disabled={
+                validateTarget && actionLoading === validateTarget.id ||
+                !validateForm.case_id ||
+                !validateForm.title.trim()
+              }
+              className="btn-primary flex items-center gap-2 disabled:opacity-50"
+            >
+              {validateTarget && actionLoading === validateTarget.id && (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              )}
+              <CheckCircle2 className="w-4 h-4" />
+              Valider
+            </button>
+          </div>
+        }
+      >
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
@@ -528,97 +528,85 @@ export default function InboxPage() {
                 />
               </div>
             </div>
-            <div className="flex justify-end gap-3 mt-6">
-              <button
-                onClick={() => setValidateTarget(null)}
-                className="btn-secondary"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={handleValidate}
-                disabled={
-                  actionLoading === validateTarget.id ||
-                  !validateForm.case_id ||
-                  !validateForm.title.trim()
-                }
-                className="btn-primary flex items-center gap-2 disabled:opacity-50"
-              >
-                {actionLoading === validateTarget.id && (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                )}
-                <CheckCircle2 className="w-4 h-4" />
-                Valider
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      </Modal>
 
       {/* ---- Refuse Confirm ---- */}
-      {refuseTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-sm mx-4 p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-danger-50 flex items-center justify-center">
-                <AlertTriangle className="w-5 h-5 text-danger" />
-              </div>
-              <h2 className="text-lg font-semibold text-neutral-900">
-                Confirmer le refus
-              </h2>
-            </div>
+      <Modal
+        isOpen={!!refuseTarget}
+        onClose={() => setRefuseTarget(null)}
+        title="Confirmer le refus"
+        size="sm"
+        footer={
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => setRefuseTarget(null)}
+              className="btn-secondary"
+            >
+              Annuler
+            </button>
+            <button
+              onClick={handleRefuse}
+              disabled={refuseTarget && actionLoading === refuseTarget.id}
+              className="px-4 py-2 text-sm font-medium text-white bg-danger rounded-md hover:bg-danger/90 transition-colors flex items-center gap-2 disabled:opacity-50"
+            >
+              {refuseTarget && actionLoading === refuseTarget.id && (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              )}
+              <XCircle className="w-4 h-4" />
+              Refuser
+            </button>
+          </div>
+        }
+      >
             <p className="text-sm text-neutral-600 mb-6">
               Êtes-vous sûr de vouloir refuser cet élément ? Cette action
               marquera l&apos;entrée comme non pertinente.
             </p>
-            <div className="bg-neutral-50 rounded-md p-3 mb-6">
-              <p className="text-sm font-medium text-neutral-800">
-                {itemTitle(refuseTarget)}
-              </p>
-              {refuseTarget.raw_payload.from && (
-                <p className="text-xs text-neutral-500 mt-1">
-                  De : {refuseTarget.raw_payload.from}
+            {refuseTarget && (
+              <div className="bg-neutral-50 rounded-md p-3 mb-6">
+                <p className="text-sm font-medium text-neutral-800">
+                  {itemTitle(refuseTarget)}
                 </p>
-              )}
-            </div>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setRefuseTarget(null)}
-                className="btn-secondary"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={handleRefuse}
-                disabled={actionLoading === refuseTarget.id}
-                className="px-4 py-2 text-sm font-medium text-white bg-danger rounded-md hover:bg-danger/90 transition-colors flex items-center gap-2 disabled:opacity-50"
-              >
-                {actionLoading === refuseTarget.id && (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                {refuseTarget.raw_payload.from && (
+                  <p className="text-xs text-neutral-500 mt-1">
+                    De : {refuseTarget.raw_payload.from}
+                  </p>
                 )}
-                <XCircle className="w-4 h-4" />
-                Refuser
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+              </div>
+            )}
+      </Modal>
 
       {/* ---- Create Case Modal ---- */}
-      {createCaseTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 p-6">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-semibold text-neutral-900">
-                Créer un nouveau dossier
-              </h2>
-              <button
-                onClick={() => setCreateCaseTarget(null)}
-                className="text-neutral-400 hover:text-neutral-600"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      <Modal
+        isOpen={!!createCaseTarget}
+        onClose={() => setCreateCaseTarget(null)}
+        title="Créer un nouveau dossier"
+        footer={
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => setCreateCaseTarget(null)}
+              className="btn-secondary"
+            >
+              Annuler
+            </button>
+            <button
+              onClick={handleCreateCase}
+              disabled={
+                createCaseTarget && actionLoading === createCaseTarget.id ||
+                !createCaseForm.title.trim() ||
+                !createCaseForm.reference.trim()
+              }
+              className="btn-primary flex items-center gap-2 disabled:opacity-50"
+            >
+              {createCaseTarget && actionLoading === createCaseTarget.id && (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              )}
+              <FolderPlus className="w-4 h-4" />
+              Créer le dossier
+            </button>
+          </div>
+        }
+      >
             <div className="bg-accent-50/50 border border-accent-100 rounded-md p-3 mb-5">
               <p className="text-xs text-accent-600">
                 Un dossier sera créé et cet élément y sera automatiquement
@@ -683,32 +671,7 @@ export default function InboxPage() {
                 />
               </div>
             </div>
-            <div className="flex justify-end gap-3 mt-6">
-              <button
-                onClick={() => setCreateCaseTarget(null)}
-                className="btn-secondary"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={handleCreateCase}
-                disabled={
-                  actionLoading === createCaseTarget.id ||
-                  !createCaseForm.title.trim() ||
-                  !createCaseForm.reference.trim()
-                }
-                className="btn-primary flex items-center gap-2 disabled:opacity-50"
-              >
-                {actionLoading === createCaseTarget.id && (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                )}
-                <FolderPlus className="w-4 h-4" />
-                Créer le dossier
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      </Modal>
 
       {/* ---- Item list ---- */}
       {filteredItems.length === 0 ? (
@@ -725,17 +688,14 @@ export default function InboxPage() {
               />
             </div>
             <div className="relative px-6 py-20 text-center">
-              <div className="w-16 h-16 rounded-lg bg-warning-50 flex items-center justify-center mx-auto mb-5">
-                <Inbox className="w-8 h-8 text-warning" />
-              </div>
-              <h2 className="text-xl font-semibold text-neutral-900 mb-2">
-                Aucun élément
-              </h2>
-              <p className="text-neutral-500 text-sm max-w-md mx-auto">
-                {statusFilter
-                  ? "Aucun élément ne correspond à ce filtre. Essayez un autre statut."
-                  : "Votre inbox est vide. Les nouveaux e-mails, appels et documents apparaîtront ici automatiquement."}
-              </p>
+              <EmptyState
+                title="Aucun élément"
+                description={
+                  statusFilter
+                    ? "Aucun élément ne correspond à ce filtre. Essayez un autre statut."
+                    : "Votre inbox est vide. Les nouveaux e-mails, appels et documents apparaîtront ici automatiquement."
+                }
+              />
             </div>
           </div>
         </div>
