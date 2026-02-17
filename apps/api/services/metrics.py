@@ -1,6 +1,9 @@
 """Prometheus metrics for LexiBel."""
+import logging
 from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
 from fastapi import Response
+
+logger = logging.getLogger(__name__)
 
 # API metrics
 api_requests_total = Counter(
@@ -72,9 +75,15 @@ db_connections_active = Gauge(
 )
 
 
-async def metrics_endpoint():
+async def metrics_endpoint() -> Response:
     """Prometheus metrics endpoint."""
-    return Response(
-        content=generate_latest(),
-        media_type=CONTENT_TYPE_LATEST
-    )
+    try:
+        content = generate_latest()
+        logger.debug("Generated Prometheus metrics successfully")
+        return Response(
+            content=content,
+            media_type=CONTENT_TYPE_LATEST
+        )
+    except Exception as e:
+        logger.error(f"Failed to generate Prometheus metrics: {e}")
+        raise
