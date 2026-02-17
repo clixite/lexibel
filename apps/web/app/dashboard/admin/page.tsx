@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Shield } from "lucide-react";
+import { useRouter } from "next/navigation";
 import UsersManager from "./UsersManager";
 import TenantsManager from "./TenantsManager";
 import SystemHealth from "./SystemHealth";
@@ -9,13 +10,15 @@ import SystemHealth from "./SystemHealth";
 const TABS = [
   { id: "users", label: "Utilisateurs" },
   { id: "tenants", label: "Tenants" },
-  { id: "system", label: "Syst\u00e8me" },
+  { id: "system", label: "Système" },
+  { id: "integrations", label: "Intégrations" },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<TabId>("users");
+  const router = useRouter();
 
   return (
     <div>
@@ -50,6 +53,19 @@ export default function AdminPage() {
       {activeTab === "users" && <UsersManager />}
       {activeTab === "tenants" && <TenantsManager />}
       {activeTab === "system" && <SystemHealth />}
+      {activeTab === "integrations" && (
+        <div className="text-center py-8">
+          <p className="text-neutral-600 mb-4">
+            Gérez vos intégrations OAuth et API
+          </p>
+          <button
+            onClick={() => router.push("/dashboard/admin/integrations")}
+            className="btn-primary"
+          >
+            Ouvrir les intégrations
+          </button>
+        </div>
+      )}
     </div>
   );
 }

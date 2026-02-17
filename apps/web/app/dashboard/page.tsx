@@ -11,6 +11,8 @@ import {
   Phone,
   FileCheck,
   CalendarDays,
+  Folder,
+  Inbox,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import SkeletonCard from "@/components/skeletons/SkeletonCard";
@@ -20,12 +22,29 @@ interface DashboardStats {
   contacts: number;
   hoursThisMonth: number;
   invoices: number;
+  documents: number;
+  inboxPending: number;
+}
+
+interface RecentCase {
+  id: string;
+  title: string;
+  updated_at: string;
+}
+
+interface InboxItem {
+  id: string;
+  subject: string;
+  item_type: string;
+  from_name?: string;
 }
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
+  const [recentCases, setRecentCases] = useState<RecentCase[]>([]);
+  const [inboxItems, setInboxItems] = useState<InboxItem[]>([]);
 
   const user = session?.user as any;
   const token = user?.accessToken;
@@ -33,26 +52,46 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!token) return;
+
+    // Fetch stats and recent data
     Promise.all([
-      apiFetch<{ items: any[] }>("/cases", token, { tenantId }),
-      apiFetch<{ items: any[] }>("/contacts", token, { tenantId }),
-      apiFetch<{ items: any[] }>("/time-entries", token, { tenantId }),
-      apiFetch<{ items: any[] }>("/invoices", token, { tenantId }),
+      apiFetch<{ items: any[] }>("/cases", token, { tenantId }).catch(() => ({ items: [] })),
+      apiFetch<{ items: any[] }>("/contacts", token, { tenantId }).catch(() => ({ items: [] })),
+      apiFetch<{ items: any[] }>("/time-entries", token, { tenantId }).catch(() => ({ items: [] })),
+      apiFetch<{ items: any[] }>("/invoices", token, { tenantId }).catch(() => ({ items: [] })),
+      apiFetch<{ items: any[] }>("/inbox?status=pending", token, { tenantId }).catch(() => ({ items: [] })),
+      apiFetch<{ items: any[] }>("/cases?per_page=5&sort=-updated_at", token, { tenantId }).catch(() => ({ items: [] })),
+      apiFetch<{ items: any[] }>("/inbox?status=pending&per_page=5", token, { tenantId }).catch(() => ({ items: [] })),
     ])
-      .then(([casesData, contactsData, timeData, invoicesData]) => {
+      .then(([
+        casesData,
+        contactsData,
+        timeData,
+        invoicesData,
+        inboxData,
+        recentCasesData,
+        inboxItemsData,
+      ]) => {
         const totalMinutes = timeData.items.reduce(
           (sum: number, e: any) => sum + (e.duration_minutes || 0),
           0,
         );
+
         setStats({
           cases: casesData.items.length,
           contacts: contactsData.items.length,
           hoursThisMonth: Math.round((totalMinutes / 60) * 10) / 10,
-          invoices: invoicesData.items.length,
+          invoices: invoicesData.items.filter((inv: any) => inv.status !== "paid").length,
+          documents: 0, // TODO: Add documents endpoint
+          inboxPending: inboxData.items.length,
         });
+
+        setRecentCases(recentCasesData.items.slice(0, 5));
+        setInboxItems(inboxItemsData.items);
       })
-      .catch(() => {
-        setStats({ cases: 0, contacts: 0, hoursThisMonth: 0, invoices: 0 });
+      .catch((error) => {
+        console.error("Error fetching dashboard data:", error);
+        setStats({ cases: 0, contacts: 0, hoursThisMonth: 0, invoices: 0, documents: 0, inboxPending: 0 });
       })
       .finally(() => setStatsLoading(false));
   }, [token, tenantId]);
@@ -81,86 +120,61 @@ export default function DashboardPage() {
   const STAT_CARDS = [
     {
       label: "Dossiers ouverts",
-      value: stats?.cases ?? "\u2014",
+      value: stats?.cases ?? "—",
       icon: Briefcase,
       iconBg: "bg-accent-50",
       iconColor: "text-accent",
     },
     {
       label: "Contacts",
-      value: stats?.contacts ?? "\u2014",
+      value: stats?.contacts ?? "—",
       icon: Users,
       iconBg: "bg-success-50",
       iconColor: "text-success",
     },
     {
       label: "Heures ce mois",
-      value: stats?.hoursThisMonth ?? "\u2014",
+      value: stats?.hoursThisMonth ?? "—",
       icon: Clock,
       iconBg: "bg-warning-50",
       iconColor: "text-warning",
     },
     {
       label: "Factures en attente",
-      value: stats?.invoices ?? "\u2014",
+      value: stats?.invoices ?? "—",
       icon: FileText,
       iconBg: "bg-danger-50",
       iconColor: "text-danger",
     },
-  ];
-
-  // TODO: fetch from API when endpoints exist
-  const RECENT_ACTIVITY = [
     {
-      color: "bg-accent",
-      text: 'Dossier "Dupont c/ SA Immobel" mis \u00e0 jour',
-      time: "Il y a 25 min",
+      label: "Inbox en attente",
+      value: stats?.inboxPending ?? "—",
+      icon: Inbox,
+      iconBg: "bg-purple-50",
+      iconColor: "text-purple-600",
     },
     {
-      color: "bg-success",
-      text: "Nouveau contact ajout\u00e9 : Me Laurent Verhaegen",
-      time: "Il y a 1h",
-    },
-    {
-      color: "bg-warning",
-      text: "Conclusions d\u00e9pos\u00e9es \u2014 Tribunal de commerce Bruxelles",
-      time: "Il y a 2h",
-    },
-    {
-      color: "bg-neutral-400",
-      text: "Facture #2024-089 envoy\u00e9e \u00e0 SA Immobel",
-      time: "Il y a 3h",
-    },
-    {
-      color: "bg-accent",
-      text: 'Dossier "H\u00e9ritage Janssens" cr\u00e9\u00e9',
-      time: "Hier, 17h30",
+      label: "Documents",
+      value: stats?.documents ?? "—",
+      icon: Folder,
+      iconBg: "bg-teal-50",
+      iconColor: "text-teal-600",
     },
   ];
 
-  // TODO: fetch from API when endpoints exist
-  const INBOX_ITEMS = [
-    {
-      title: "Email de Me Verhaegen \u2014 Pi\u00e8ces manquantes",
-      source: "email" as const,
-      priority: "high" as const,
-    },
-    {
-      title: "Appel entrant \u2014 SA Construct Plus",
-      source: "phone" as const,
-      priority: "medium" as const,
-    },
-    {
-      title: "Document re\u00e7u \u2014 Jugement TPI Li\u00e8ge",
-      source: "document" as const,
-      priority: "low" as const,
-    },
-    {
-      title: "Email de Mme Dupont \u2014 Question honoraires",
-      source: "email" as const,
-      priority: "medium" as const,
-    },
-  ];
+  const getTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMins < 60) return `Il y a ${diffMins}min`;
+    if (diffHours < 24) return `Il y a ${diffHours}h`;
+    if (diffDays === 1) return "Hier";
+    return `Il y a ${diffDays}j`;
+  };
 
   // TODO: fetch from API when endpoints exist
   const DEADLINES = [
@@ -222,7 +236,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
         {STAT_CARDS.map((card) => (
           <div
             key={card.label}
@@ -257,55 +271,63 @@ export default function DashboardPage() {
         {/* Activity */}
         <div className="card">
           <h3 className="text-base font-semibold text-neutral-900 mb-5">
-            Activit&eacute; r&eacute;cente
+            Activité récente
           </h3>
           <div className="space-y-4">
-            {RECENT_ACTIVITY.map((item, i) => (
-              <div key={i} className="flex items-start gap-3">
-                <div className="relative mt-1.5">
-                  <div
-                    className={`w-2.5 h-2.5 rounded-full ${item.color}`}
-                  />
-                  {i < RECENT_ACTIVITY.length - 1 && (
-                    <div className="absolute top-3 left-1/2 -translate-x-1/2 w-px h-6 bg-neutral-200" />
-                  )}
+            {recentCases.length > 0 ? (
+              recentCases.map((caseItem, i) => (
+                <div key={caseItem.id} className="flex items-start gap-3">
+                  <div className="relative mt-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-accent" />
+                    {i < recentCases.length - 1 && (
+                      <div className="absolute top-3 left-1/2 -translate-x-1/2 w-px h-6 bg-neutral-200" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-neutral-700 leading-snug">
+                      Dossier "{caseItem.title}" mis à jour
+                    </p>
+                    <p className="text-xs text-neutral-400 mt-0.5">
+                      {getTimeAgo(caseItem.updated_at)}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-neutral-700 leading-snug">
-                    {item.text}
-                  </p>
-                  <p className="text-xs text-neutral-400 mt-0.5">{item.time}</p>
-                </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-sm text-neutral-500 text-center py-4">
+                Aucune activité récente
+              </p>
+            )}
           </div>
         </div>
 
         {/* Inbox */}
         <div className="card">
           <h3 className="text-base font-semibold text-neutral-900 mb-5">
-            Inbox &mdash; &Agrave; traiter
+            Inbox — À traiter
           </h3>
           <div className="space-y-3">
-            {INBOX_ITEMS.map((item, i) => {
-              const SourceIcon = sourceIcons[item.source];
-              return (
-                <div
-                  key={i}
-                  className="flex items-center gap-3 p-2.5 rounded-md hover:bg-neutral-50 transition-colors duration-150 cursor-pointer"
-                >
-                  <SourceIcon className="w-4 h-4 text-neutral-400 flex-shrink-0" />
-                  <span className="flex-1 text-sm text-neutral-700 truncate">
-                    {item.title}
-                  </span>
-                  <span
-                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${priorityStyles[item.priority]}`}
+            {inboxItems.length > 0 ? (
+              inboxItems.map((item) => {
+                const SourceIcon = sourceIcons[item.item_type as keyof typeof sourceIcons] || Mail;
+                return (
+                  <div
+                    key={item.id}
+                    className="flex items-center gap-3 p-2.5 rounded-md hover:bg-neutral-50 transition-colors duration-150 cursor-pointer"
                   >
-                    {priorityLabels[item.priority]}
-                  </span>
-                </div>
-              );
-            })}
+                    <SourceIcon className="w-4 h-4 text-neutral-400 flex-shrink-0" />
+                    <span className="flex-1 text-sm text-neutral-700 truncate">
+                      {item.subject || "(Sans titre)"}
+                      {item.from_name && ` — ${item.from_name}`}
+                    </span>
+                  </div>
+                );
+              })
+            ) : (
+              <p className="text-sm text-neutral-500 text-center py-4">
+                Aucun élément en attente
+              </p>
+            )}
           </div>
         </div>
 
