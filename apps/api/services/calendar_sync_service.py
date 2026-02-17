@@ -4,11 +4,9 @@ Syncs calendar events to calendar_events table.
 """
 
 from datetime import datetime
-from typing import List
 from uuid import UUID, uuid4
 
 import httpx
-from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -41,7 +39,9 @@ class CalendarSyncService:
         """
         # Get valid credentials
         google_oauth = get_google_oauth_service()
-        credentials = await google_oauth.get_valid_credentials(session, tenant_id, user_id)
+        credentials = await google_oauth.get_valid_credentials(
+            session, tenant_id, user_id
+        )
 
         if not credentials:
             raise ValueError("No Google OAuth token found")
@@ -51,13 +51,17 @@ class CalendarSyncService:
 
         # Fetch events
         now = datetime.utcnow().isoformat() + "Z"
-        events_result = service.events().list(
-            calendarId="primary",
-            timeMin=now,
-            maxResults=max_results,
-            singleEvents=True,
-            orderBy="startTime",
-        ).execute()
+        events_result = (
+            service.events()
+            .list(
+                calendarId="primary",
+                timeMin=now,
+                maxResults=max_results,
+                singleEvents=True,
+                orderBy="startTime",
+            )
+            .execute()
+        )
 
         events = events_result.get("items", [])
         events_created = 0
@@ -126,7 +130,9 @@ class CalendarSyncService:
         """
         # Get valid access token
         microsoft_oauth = get_microsoft_oauth_service()
-        access_token = await microsoft_oauth.get_valid_access_token(session, tenant_id, user_id)
+        access_token = await microsoft_oauth.get_valid_access_token(
+            session, tenant_id, user_id
+        )
 
         if not access_token:
             raise ValueError("No Microsoft OAuth token found")
@@ -222,13 +228,17 @@ class CalendarSyncService:
 
         # Try Google
         try:
-            results["google"] = await self.sync_google_calendar(session, tenant_id, user_id)
+            results["google"] = await self.sync_google_calendar(
+                session, tenant_id, user_id
+            )
         except Exception as e:
             results["google"] = {"error": str(e)}
 
         # Try Outlook
         try:
-            results["outlook"] = await self.sync_outlook_calendar(session, tenant_id, user_id)
+            results["outlook"] = await self.sync_outlook_calendar(
+                session, tenant_id, user_id
+            )
         except Exception as e:
             results["outlook"] = {"error": str(e)}
 

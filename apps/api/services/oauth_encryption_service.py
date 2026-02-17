@@ -17,7 +17,7 @@ class OAuthEncryptionService:
         if not key:
             raise ValueError(
                 "OAUTH_ENCRYPTION_KEY not set. Generate with: "
-                "python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+                'python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"'
             )
 
         try:

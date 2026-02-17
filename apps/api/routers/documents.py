@@ -9,7 +9,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, Query, status
 from fastapi.responses import Response
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api.dependencies import get_current_tenant, get_db_session
@@ -44,9 +44,15 @@ async def list_documents(
     documents = result.scalars().all()
 
     # Count total
-    count_query = select(func.count()).select_from(EvidenceLink).where(EvidenceLink.tenant_id == tenant_id)
+    count_query = (
+        select(func.count())
+        .select_from(EvidenceLink)
+        .where(EvidenceLink.tenant_id == tenant_id)
+    )
     if case_id:
-        count_query = count_query.join(InteractionEvent).where(InteractionEvent.case_id == case_id)
+        count_query = count_query.join(InteractionEvent).where(
+            InteractionEvent.case_id == case_id
+        )
 
     total_result = await session.execute(count_query)
     total = total_result.scalar()

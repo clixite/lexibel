@@ -32,11 +32,13 @@ class MicrosoftOAuthService:
         self.tenant_id = os.getenv("MICROSOFT_TENANT_ID", "common")
         self.redirect_uri = os.getenv(
             "MICROSOFT_REDIRECT_URI",
-            "http://localhost:3000/api/auth/callback/microsoft"
+            "http://localhost:3000/api/auth/callback/microsoft",
         )
 
         if not self.client_id or not self.client_secret:
-            raise ValueError("MICROSOFT_CLIENT_ID and MICROSOFT_CLIENT_SECRET must be set")
+            raise ValueError(
+                "MICROSOFT_CLIENT_ID and MICROSOFT_CLIENT_SECRET must be set"
+            )
 
         self.encryption_service = get_oauth_encryption_service()
 
@@ -192,7 +194,9 @@ class MicrosoftOAuthService:
         # Update stored token
         oauth_token.access_token = self.encryption_service.encrypt(access_token)
         if new_refresh_token != refresh_token:
-            oauth_token.refresh_token = self.encryption_service.encrypt(new_refresh_token)
+            oauth_token.refresh_token = self.encryption_service.encrypt(
+                new_refresh_token
+            )
         oauth_token.expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
         oauth_token.updated_at = datetime.utcnow()
 

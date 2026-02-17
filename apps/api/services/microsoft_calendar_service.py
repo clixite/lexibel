@@ -141,11 +141,13 @@ class MicrosoftCalendarService:
             attendees = []
             for attendee in event.get("attendees", []):
                 email_address = attendee.get("emailAddress", {})
-                attendees.append({
-                    "email": email_address.get("address"),
-                    "name": email_address.get("name"),
-                    "status": attendee.get("status", {}).get("response", "none"),
-                })
+                attendees.append(
+                    {
+                        "email": email_address.get("address"),
+                        "name": email_address.get("name"),
+                        "status": attendee.get("status", {}).get("response", "none"),
+                    }
+                )
 
             # Parse location
             location = None

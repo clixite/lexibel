@@ -35,7 +35,9 @@ from apps.api.services.google_oauth_service import get_google_oauth_service
 from apps.api.services.microsoft_oauth_service import get_microsoft_oauth_service
 from apps.api.services.gmail_sync_service import get_gmail_sync_service
 from apps.api.services.calendar_sync_service import get_calendar_sync_service
-from apps.api.services.microsoft_outlook_sync_service import get_microsoft_outlook_sync_service
+from apps.api.services.microsoft_outlook_sync_service import (
+    get_microsoft_outlook_sync_service,
+)
 from apps.api.services.microsoft_calendar_service import get_microsoft_calendar_service
 from packages.db.models.oauth_token import OAuthToken
 
@@ -99,7 +101,9 @@ class MicrosoftAuthUrlResponse(BaseModel):
 
 
 class MicrosoftCallbackRequest(BaseModel):
-    code: str = Field(..., description="Authorization code from Microsoft OAuth callback")
+    code: str = Field(
+        ..., description="Authorization code from Microsoft OAuth callback"
+    )
 
 
 class MicrosoftCallbackResponse(BaseModel):
@@ -151,7 +155,9 @@ async def get_integration_status(
     # Check Microsoft integration
     microsoft_token = token_map.get("microsoft")
     microsoft_status = "connected" if microsoft_token else "disconnected"
-    microsoft_last_sync = microsoft_token.updated_at.isoformat() if microsoft_token else None
+    microsoft_last_sync = (
+        microsoft_token.updated_at.isoformat() if microsoft_token else None
+    )
 
     integrations = [
         IntegrationStatus(
@@ -475,7 +481,9 @@ async def disconnect_microsoft(
 
 @router.post("/microsoft/sync/outlook", response_model=OutlookEmailSyncResponse)
 async def sync_microsoft_outlook(
-    since_date: Optional[datetime] = Query(None, description="Only sync emails after this date"),
+    since_date: Optional[datetime] = Query(
+        None, description="Only sync emails after this date"
+    ),
     max_results: int = Query(50, ge=1, le=500, description="Maximum emails to sync"),
     tenant_id: uuid.UUID = Depends(get_current_tenant),
     user: dict = Depends(get_current_user),
@@ -520,8 +528,12 @@ async def sync_microsoft_outlook(
 
 @router.post("/microsoft/sync/calendar", response_model=MicrosoftCalendarSyncResponse)
 async def sync_microsoft_calendar(
-    start_time: Optional[datetime] = Query(None, description="Filter events starting after this time"),
-    end_time: Optional[datetime] = Query(None, description="Filter events ending before this time"),
+    start_time: Optional[datetime] = Query(
+        None, description="Filter events starting after this time"
+    ),
+    end_time: Optional[datetime] = Query(
+        None, description="Filter events ending before this time"
+    ),
     max_results: int = Query(100, ge=1, le=500, description="Maximum events to sync"),
     tenant_id: uuid.UUID = Depends(get_current_tenant),
     user: dict = Depends(get_current_user),

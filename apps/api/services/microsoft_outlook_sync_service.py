@@ -189,15 +189,24 @@ class MicrosoftOutlookSyncService:
                 "name": from_info.get("name"),
             },
             "to": [
-                {"email": r.get("emailAddress", {}).get("address"), "name": r.get("emailAddress", {}).get("name")}
+                {
+                    "email": r.get("emailAddress", {}).get("address"),
+                    "name": r.get("emailAddress", {}).get("name"),
+                }
                 for r in to_recipients
             ],
             "cc": [
-                {"email": r.get("emailAddress", {}).get("address"), "name": r.get("emailAddress", {}).get("name")}
+                {
+                    "email": r.get("emailAddress", {}).get("address"),
+                    "name": r.get("emailAddress", {}).get("name"),
+                }
                 for r in cc_recipients
             ],
             "bcc": [
-                {"email": r.get("emailAddress", {}).get("address"), "name": r.get("emailAddress", {}).get("name")}
+                {
+                    "email": r.get("emailAddress", {}).get("address"),
+                    "name": r.get("emailAddress", {}).get("name"),
+                }
                 for r in bcc_recipients
             ],
         }

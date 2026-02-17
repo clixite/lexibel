@@ -22,7 +22,9 @@ class RingoverIntegrationService:
     def __init__(self):
         """Initialize Ringover integration."""
         self.api_key = os.getenv("RINGOVER_API_KEY")
-        self.base_url = os.getenv("RINGOVER_API_BASE_URL", "https://public-api.ringover.com/v2")
+        self.base_url = os.getenv(
+            "RINGOVER_API_BASE_URL", "https://public-api.ringover.com/v2"
+        )
 
         if not self.api_key:
             raise ValueError("RINGOVER_API_KEY must be set")
@@ -117,8 +119,12 @@ class RingoverIntegrationService:
                 duration_seconds=call_data.get("duration"),
                 call_type=call_data.get("type", "answered"),
                 recording_url=call_data.get("recording_url"),
-                started_at=datetime.fromisoformat(call_data["started_at"]) if call_data.get("started_at") else None,
-                ended_at=datetime.fromisoformat(call_data["ended_at"]) if call_data.get("ended_at") else None,
+                started_at=datetime.fromisoformat(call_data["started_at"])
+                if call_data.get("started_at")
+                else None,
+                ended_at=datetime.fromisoformat(call_data["ended_at"])
+                if call_data.get("ended_at")
+                else None,
                 metadata_=call_data.get("metadata", {}),
             )
 

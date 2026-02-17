@@ -23,7 +23,7 @@ import asyncio
 import sys
 from datetime import datetime, timedelta, date
 from pathlib import Path
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
@@ -124,7 +124,12 @@ async def seed_data():
                 email=email,
                 phone_e164=phone,
                 language="fr",
-                address={"street": "Rue Example 123", "city": "Bruxelles", "zip": "1000", "country": "BE"},
+                address={
+                    "street": "Rue Example 123",
+                    "city": "Bruxelles",
+                    "zip": "1000",
+                    "country": "BE",
+                },
             )
             contacts.append(contact)
             session.add(contact)
@@ -147,7 +152,12 @@ async def seed_data():
                 bce_number=bce,
                 email=email,
                 language="fr",
-                address={"street": "Avenue Louise 250", "city": "Bruxelles", "zip": "1050", "country": "BE"},
+                address={
+                    "street": "Avenue Louise 250",
+                    "city": "Bruxelles",
+                    "zip": "1050",
+                    "country": "BE",
+                },
             )
             contacts.append(contact)
             session.add(contact)
@@ -159,11 +169,41 @@ async def seed_data():
         print("\n📂 Creating 5 cases...")
         cases = []
         case_data = [
-            ("2026/001", "Dupont c/ Immobel - Dommages et intérêts", "civil", "open", "Tribunal de première instance de Bruxelles"),
-            ("2026/002", "Martin - Divorce par consentement mutuel", "family", "in_progress", "Tribunal de la famille de Bruxelles"),
-            ("2026/003", "TechStart SPRL - Recouvrement créances", "commercial", "pending", None),
-            ("2026/004", "Dubois - Licenciement abusif", "social", "in_progress", "Tribunal du travail de Bruxelles"),
-            ("2026/005", "Invest Group - Contrôle fiscal TVA", "fiscal", "closed", None),
+            (
+                "2026/001",
+                "Dupont c/ Immobel - Dommages et intérêts",
+                "civil",
+                "open",
+                "Tribunal de première instance de Bruxelles",
+            ),
+            (
+                "2026/002",
+                "Martin - Divorce par consentement mutuel",
+                "family",
+                "in_progress",
+                "Tribunal de la famille de Bruxelles",
+            ),
+            (
+                "2026/003",
+                "TechStart SPRL - Recouvrement créances",
+                "commercial",
+                "pending",
+                None,
+            ),
+            (
+                "2026/004",
+                "Dubois - Licenciement abusif",
+                "social",
+                "in_progress",
+                "Tribunal du travail de Bruxelles",
+            ),
+            (
+                "2026/005",
+                "Invest Group - Contrôle fiscal TVA",
+                "fiscal",
+                "closed",
+                None,
+            ),
         ]
 
         for ref, title, matter_type, status, jurisdiction in case_data:
@@ -177,7 +217,9 @@ async def seed_data():
                 jurisdiction=jurisdiction,
                 responsible_user_id=admin_user.id,
                 opened_at=date.today() - timedelta(days=30),
-                closed_at=date.today() - timedelta(days=5) if status == "closed" else None,
+                closed_at=date.today() - timedelta(days=5)
+                if status == "closed"
+                else None,
                 metadata_={"tags": ["demo"], "priority": "medium"},
             )
             cases.append(case)
@@ -213,11 +255,27 @@ async def seed_data():
         # ── 6. Timeline Events ──
         print("\n📅 Creating 20 timeline events...")
         event_templates = [
-            ("EMAIL", "📧 Email reçu de {contact}", "Le client a envoyé un email concernant le dossier."),
-            ("CALL", "📞 Appel téléphonique avec {contact}", "Discussion téléphonique de 15 minutes."),
+            (
+                "EMAIL",
+                "📧 Email reçu de {contact}",
+                "Le client a envoyé un email concernant le dossier.",
+            ),
+            (
+                "CALL",
+                "📞 Appel téléphonique avec {contact}",
+                "Discussion téléphonique de 15 minutes.",
+            ),
             ("MEETING", "🤝 Réunion avec {contact}", "Réunion au cabinet, durée 1h30."),
-            ("DPA", "⚖️ Dépôt JBox - Nouvelle communication", "Communication judiciaire reçue via e-Deposit."),
-            ("MANUAL", "📝 Note interne", "Avancement du dossier et prochaines étapes."),
+            (
+                "DPA",
+                "⚖️ Dépôt JBox - Nouvelle communication",
+                "Communication judiciaire reçue via e-Deposit.",
+            ),
+            (
+                "MANUAL",
+                "📝 Note interne",
+                "Avancement du dossier et prochaines étapes.",
+            ),
         ]
 
         for i in range(20):
@@ -260,7 +318,7 @@ async def seed_data():
                 case_id=case.id,
                 user_id=admin_user.id,
                 date=date.today() - timedelta(days=10 - i),
-                description=f"Travail sur dossier {case.reference} - Phase {i+1}",
+                description=f"Travail sur dossier {case.reference} - Phase {i + 1}",
                 duration_minutes=90 + (i * 15),  # 90 to 225 minutes
                 hourly_rate_cents=25000,
                 status=status,
@@ -370,10 +428,13 @@ async def seed_data():
                 tenant_id=tenant.id,
                 case_id=cases[i].id if status == "validated" else None,
                 source="OUTLOOK",
-                title=f"Email #{i+1} - Nouveau message",
-                preview=f"Contenu de l'email #{i+1} en attente de validation...",
+                title=f"Email #{i + 1} - Nouveau message",
+                preview=f"Contenu de l'email #{i + 1} en attente de validation...",
                 status=status,
-                metadata_={"from": f"sender{i+1}@example.com", "subject": f"Sujet #{i+1}"},
+                metadata_={
+                    "from": f"sender{i + 1}@example.com",
+                    "subject": f"Sujet #{i + 1}",
+                },
             )
             session.add(item)
 
@@ -395,8 +456,11 @@ async def seed_data():
                 provider="google",
                 subject="Demande de rendez-vous - Litige commercial",
                 participants={
-                    "from": {"email": "pierre.dubois@email.be", "name": "Pierre Dubois"},
-                    "to": [{"email": admin_user.email, "name": admin_user.full_name}]
+                    "from": {
+                        "email": "pierre.dubois@email.be",
+                        "name": "Pierre Dubois",
+                    },
+                    "to": [{"email": admin_user.email, "name": admin_user.full_name}],
                 },
                 message_count=3,
                 has_attachments=False,
@@ -415,7 +479,9 @@ async def seed_data():
                 provider="google",
                 subject="Demande de rendez-vous - Litige commercial",
                 from_address="pierre.dubois@email.be",
-                to_addresses=[{"email": admin_user.email, "name": admin_user.full_name}],
+                to_addresses=[
+                    {"email": admin_user.email, "name": admin_user.full_name}
+                ],
                 body_text="Bonjour Maître,\n\nJe souhaiterais prendre rendez-vous avec vous concernant un litige commercial avec un de mes fournisseurs. Seriez-vous disponible cette semaine?\n\nBien cordialement,\nPierre Dubois",
                 body_html="<p>Bonjour Maître,</p><p>Je souhaiterais prendre rendez-vous avec vous concernant un litige commercial avec un de mes fournisseurs. Seriez-vous disponible cette semaine?</p><p>Bien cordialement,<br>Pierre Dubois</p>",
                 is_read=True,
@@ -432,7 +498,9 @@ async def seed_data():
                 provider="google",
                 subject="RE: Demande de rendez-vous - Litige commercial",
                 from_address=admin_user.email,
-                to_addresses=[{"email": "pierre.dubois@email.be", "name": "Pierre Dubois"}],
+                to_addresses=[
+                    {"email": "pierre.dubois@email.be", "name": "Pierre Dubois"}
+                ],
                 body_text="Bonjour Monsieur Dubois,\n\nJe peux vous recevoir jeudi à 14h ou vendredi à 10h. Qu'en pensez-vous?\n\nCordialement,\nMaître Nicolas Simon",
                 body_html="<p>Bonjour Monsieur Dubois,</p><p>Je peux vous recevoir jeudi à 14h ou vendredi à 10h. Qu'en pensez-vous?</p><p>Cordialement,<br>Maître Nicolas Simon</p>",
                 is_read=True,
@@ -449,7 +517,9 @@ async def seed_data():
                 provider="google",
                 subject="RE: Demande de rendez-vous - Litige commercial",
                 from_address="pierre.dubois@email.be",
-                to_addresses=[{"email": admin_user.email, "name": admin_user.full_name}],
+                to_addresses=[
+                    {"email": admin_user.email, "name": admin_user.full_name}
+                ],
                 body_text="Parfait, jeudi à 14h me convient. À jeudi!\n\nPierre",
                 body_html="<p>Parfait, jeudi à 14h me convient. À jeudi!</p><p>Pierre</p>",
                 is_read=False,
@@ -469,7 +539,7 @@ async def seed_data():
                 subject="Documents manquants - Dossier 2026/001",
                 participants={
                     "from": {"email": "jean.dupont@email.be", "name": "Jean Dupont"},
-                    "to": [{"email": admin_user.email, "name": admin_user.full_name}]
+                    "to": [{"email": admin_user.email, "name": admin_user.full_name}],
                 },
                 message_count=2,
                 has_attachments=True,
@@ -487,14 +557,24 @@ async def seed_data():
                 provider="outlook",
                 subject="Documents manquants - Dossier 2026/001",
                 from_address="jean.dupont@email.be",
-                to_addresses=[{"email": admin_user.email, "name": admin_user.full_name}],
+                to_addresses=[
+                    {"email": admin_user.email, "name": admin_user.full_name}
+                ],
                 body_text="Bonjour Maître,\n\nVoici les documents que vous m'aviez demandés: le rapport d'expertise et les photos des dommages.\n\nCordialement,\nJean Dupont",
                 body_html="<p>Bonjour Maître,</p><p>Voici les documents que vous m'aviez demandés: le rapport d'expertise et les photos des dommages.</p><p>Cordialement,<br>Jean Dupont</p>",
                 is_read=True,
                 has_attachments=True,
                 attachments=[
-                    {"filename": "rapport_expertise_immobel.pdf", "size_bytes": 2458621, "mime_type": "application/pdf"},
-                    {"filename": "photos_dommages.zip", "size_bytes": 8945123, "mime_type": "application/zip"}
+                    {
+                        "filename": "rapport_expertise_immobel.pdf",
+                        "size_bytes": 2458621,
+                        "mime_type": "application/pdf",
+                    },
+                    {
+                        "filename": "photos_dommages.zip",
+                        "size_bytes": 8945123,
+                        "mime_type": "application/zip",
+                    },
                 ],
                 received_at=datetime.now() - timedelta(days=1, hours=8),
             )
@@ -528,7 +608,7 @@ async def seed_data():
                 subject="Question sur vos honoraires",
                 participants={
                     "from": {"email": "marie.martin@email.be", "name": "Marie Martin"},
-                    "to": [{"email": admin_user.email, "name": admin_user.full_name}]
+                    "to": [{"email": admin_user.email, "name": admin_user.full_name}],
                 },
                 message_count=4,
                 has_attachments=False,
@@ -546,7 +626,9 @@ async def seed_data():
                 provider="google",
                 subject="Question sur vos honoraires",
                 from_address="marie.martin@email.be",
-                to_addresses=[{"email": admin_user.email, "name": admin_user.full_name}],
+                to_addresses=[
+                    {"email": admin_user.email, "name": admin_user.full_name}
+                ],
                 body_text="Bonjour Maître,\n\nPourriez-vous me donner une estimation des honoraires pour notre divorce par consentement mutuel?\n\nMerci,\nMarie Martin",
                 body_html="<p>Bonjour Maître,</p><p>Pourriez-vous me donner une estimation des honoraires pour notre divorce par consentement mutuel?</p><p>Merci,<br>Marie Martin</p>",
                 is_read=True,
@@ -563,7 +645,9 @@ async def seed_data():
                 provider="google",
                 subject="RE: Question sur vos honoraires",
                 from_address=admin_user.email,
-                to_addresses=[{"email": "marie.martin@email.be", "name": "Marie Martin"}],
+                to_addresses=[
+                    {"email": "marie.martin@email.be", "name": "Marie Martin"}
+                ],
                 body_text="Bonjour Madame Martin,\n\nPour un divorce par consentement mutuel, mes honoraires sont de 1.500€ HTVA. Cela inclut la rédaction de la convention, les démarches administratives et la représentation.\n\nCordialement,\nMaître Simon",
                 body_html="<p>Bonjour Madame Martin,</p><p>Pour un divorce par consentement mutuel, mes honoraires sont de 1.500€ HTVA. Cela inclut la rédaction de la convention, les démarches administratives et la représentation.</p><p>Cordialement,<br>Maître Simon</p>",
                 is_read=True,
@@ -580,7 +664,9 @@ async def seed_data():
                 provider="google",
                 subject="RE: Question sur vos honoraires",
                 from_address="marie.martin@email.be",
-                to_addresses=[{"email": admin_user.email, "name": admin_user.full_name}],
+                to_addresses=[
+                    {"email": admin_user.email, "name": admin_user.full_name}
+                ],
                 body_text="Merci pour votre réponse. Cela me semble correct. Les frais de notaire sont en plus je suppose?\n\nMarie",
                 body_html="<p>Merci pour votre réponse. Cela me semble correct. Les frais de notaire sont en plus je suppose?</p><p>Marie</p>",
                 is_read=True,
@@ -597,7 +683,9 @@ async def seed_data():
                 provider="google",
                 subject="RE: Question sur vos honoraires",
                 from_address=admin_user.email,
-                to_addresses=[{"email": "marie.martin@email.be", "name": "Marie Martin"}],
+                to_addresses=[
+                    {"email": "marie.martin@email.be", "name": "Marie Martin"}
+                ],
                 body_text="Oui exactement, les frais de notaire pour le partage des biens sont distincts et à prévoir en plus (environ 1.000-1.500€).\n\nMaître Simon",
                 body_html="<p>Oui exactement, les frais de notaire pour le partage des biens sont distincts et à prévoir en plus (environ 1.000-1.500€).</p><p>Maître Simon</p>",
                 is_read=True,
@@ -615,8 +703,11 @@ async def seed_data():
                 provider="outlook",
                 subject="URGENT - Confirmation audience Tribunal du Travail",
                 participants={
-                    "from": {"email": "greffe.travail@just.fgov.be", "name": "Greffe Tribunal du Travail"},
-                    "to": [{"email": admin_user.email, "name": admin_user.full_name}]
+                    "from": {
+                        "email": "greffe.travail@just.fgov.be",
+                        "name": "Greffe Tribunal du Travail",
+                    },
+                    "to": [{"email": admin_user.email, "name": admin_user.full_name}],
                 },
                 message_count=2,
                 has_attachments=False,
@@ -635,7 +726,9 @@ async def seed_data():
                 provider="outlook",
                 subject="URGENT - Confirmation audience Tribunal du Travail",
                 from_address="greffe.travail@just.fgov.be",
-                to_addresses=[{"email": admin_user.email, "name": admin_user.full_name}],
+                to_addresses=[
+                    {"email": admin_user.email, "name": admin_user.full_name}
+                ],
                 body_text="Maître,\n\nNous vous confirmons l'audience dans le dossier DUBOIS Pierre c/ ACME SPRL fixée au 28 février 2026 à 14h00, salle 3.\n\nVeuillez confirmer votre présence.\n\nLe Greffe",
                 body_html="<p>Maître,</p><p>Nous vous confirmons l'audience dans le dossier <strong>DUBOIS Pierre c/ ACME SPRL</strong> fixée au <strong>28 février 2026 à 14h00</strong>, salle 3.</p><p>Veuillez confirmer votre présence.</p><p>Le Greffe</p>",
                 is_read=True,
@@ -653,7 +746,12 @@ async def seed_data():
                 provider="outlook",
                 subject="RE: URGENT - Confirmation audience Tribunal du Travail",
                 from_address=admin_user.email,
-                to_addresses=[{"email": "greffe.travail@just.fgov.be", "name": "Greffe Tribunal du Travail"}],
+                to_addresses=[
+                    {
+                        "email": "greffe.travail@just.fgov.be",
+                        "name": "Greffe Tribunal du Travail",
+                    }
+                ],
                 body_text="Madame, Monsieur,\n\nJe confirme ma présence à l'audience du 28 février 2026 à 14h00.\n\nCordialement,\nMaître Nicolas Simon",
                 body_html="<p>Madame, Monsieur,</p><p>Je confirme ma présence à l'audience du 28 février 2026 à 14h00.</p><p>Cordialement,<br>Maître Nicolas Simon</p>",
                 is_read=True,
@@ -672,7 +770,7 @@ async def seed_data():
                 subject="Accusé de réception - Mise en demeure",
                 participants={
                     "from": {"email": "info@techstart.be", "name": "TechStart SPRL"},
-                    "to": [{"email": admin_user.email, "name": admin_user.full_name}]
+                    "to": [{"email": admin_user.email, "name": admin_user.full_name}],
                 },
                 message_count=4,
                 has_attachments=True,
@@ -690,7 +788,9 @@ async def seed_data():
                 provider="google",
                 subject="Accusé de réception - Mise en demeure",
                 from_address="info@techstart.be",
-                to_addresses=[{"email": admin_user.email, "name": admin_user.full_name}],
+                to_addresses=[
+                    {"email": admin_user.email, "name": admin_user.full_name}
+                ],
                 body_text="Maître,\n\nNous avons bien reçu votre mise en demeure concernant notre créance.\n\nNous souhaitons trouver un arrangement.\n\nTechStart SPRL",
                 body_html="<p>Maître,</p><p>Nous avons bien reçu votre mise en demeure concernant notre créance.</p><p>Nous souhaitons trouver un arrangement.</p><p>TechStart SPRL</p>",
                 is_read=True,
@@ -724,13 +824,19 @@ async def seed_data():
                 provider="google",
                 subject="RE: Accusé de réception - Mise en demeure",
                 from_address="info@techstart.be",
-                to_addresses=[{"email": admin_user.email, "name": admin_user.full_name}],
+                to_addresses=[
+                    {"email": admin_user.email, "name": admin_user.full_name}
+                ],
                 body_text="Nous proposons un paiement en 3 échéances mensuelles de 5.000€, première échéance début mars.\n\nVeuillez trouver ci-joint notre proposition formelle.\n\nTechStart",
                 body_html="<p>Nous proposons un paiement en 3 échéances mensuelles de 5.000€, première échéance début mars.</p><p>Veuillez trouver ci-joint notre proposition formelle.</p><p>TechStart</p>",
                 is_read=True,
                 has_attachments=True,
                 attachments=[
-                    {"filename": "proposition_paiement_echelonne.pdf", "size_bytes": 145678, "mime_type": "application/pdf"}
+                    {
+                        "filename": "proposition_paiement_echelonne.pdf",
+                        "size_bytes": 145678,
+                        "mime_type": "application/pdf",
+                    }
                 ],
                 received_at=datetime.now() - timedelta(days=1, hours=10),
             )
@@ -755,7 +861,9 @@ async def seed_data():
             message_count += 1
 
             await session.flush()
-            print(f"✓ {thread_count} email threads with {message_count} messages created")
+            print(
+                f"✓ {thread_count} email threads with {message_count} messages created"
+            )
         except Exception as e:
             print(f"✗ Error creating email threads: {e}")
 
@@ -778,8 +886,16 @@ async def seed_data():
                 end_time=datetime.now() - timedelta(days=15, hours=-16),
                 location="Tribunal de première instance de Bruxelles - Salle 12",
                 attendees=[
-                    {"email": admin_user.email, "name": admin_user.full_name, "response": "accepted"},
-                    {"email": "jean.dupont@email.be", "name": "Jean Dupont", "response": "accepted"}
+                    {
+                        "email": admin_user.email,
+                        "name": admin_user.full_name,
+                        "response": "accepted",
+                    },
+                    {
+                        "email": "jean.dupont@email.be",
+                        "name": "Jean Dupont",
+                        "response": "accepted",
+                    },
                 ],
                 is_all_day=False,
                 status="completed",
@@ -801,8 +917,16 @@ async def seed_data():
                 end_time=datetime.now() - timedelta(days=8, hours=-16, minutes=-30),
                 location="Tribunal du travail de Bruxelles - Salle 3",
                 attendees=[
-                    {"email": admin_user.email, "name": admin_user.full_name, "response": "accepted"},
-                    {"email": "pierre.dubois@email.be", "name": "Pierre Dubois", "response": "accepted"}
+                    {
+                        "email": admin_user.email,
+                        "name": admin_user.full_name,
+                        "response": "accepted",
+                    },
+                    {
+                        "email": "pierre.dubois@email.be",
+                        "name": "Pierre Dubois",
+                        "response": "accepted",
+                    },
                 ],
                 is_all_day=False,
                 status="completed",
@@ -824,8 +948,16 @@ async def seed_data():
                 end_time=datetime.now() + timedelta(days=5, hours=11, minutes=30),
                 location="Cabinet - Bureau Maître Simon",
                 attendees=[
-                    {"email": admin_user.email, "name": admin_user.full_name, "response": "accepted"},
-                    {"email": "marie.martin@email.be", "name": "Marie Martin", "response": "accepted"}
+                    {
+                        "email": admin_user.email,
+                        "name": admin_user.full_name,
+                        "response": "accepted",
+                    },
+                    {
+                        "email": "marie.martin@email.be",
+                        "name": "Marie Martin",
+                        "response": "accepted",
+                    },
                 ],
                 is_all_day=False,
                 status="confirmed",
@@ -847,8 +979,16 @@ async def seed_data():
                 end_time=datetime.now() + timedelta(days=3, hours=15),
                 location="Cabinet - Bureau Maître Simon",
                 attendees=[
-                    {"email": admin_user.email, "name": admin_user.full_name, "response": "accepted"},
-                    {"email": "sophie.laurent@email.be", "name": "Sophie Laurent", "response": "tentative"}
+                    {
+                        "email": admin_user.email,
+                        "name": admin_user.full_name,
+                        "response": "accepted",
+                    },
+                    {
+                        "email": "sophie.laurent@email.be",
+                        "name": "Sophie Laurent",
+                        "response": "tentative",
+                    },
                 ],
                 is_all_day=False,
                 status="tentative",
@@ -866,11 +1006,19 @@ async def seed_data():
                 provider="outlook",
                 title="Réunion équipe - Point hebdomadaire",
                 description="Revue des dossiers en cours et planification de la semaine",
-                start_time=datetime.now().replace(hour=9, minute=0, second=0, microsecond=0),
-                end_time=datetime.now().replace(hour=10, minute=0, second=0, microsecond=0),
+                start_time=datetime.now().replace(
+                    hour=9, minute=0, second=0, microsecond=0
+                ),
+                end_time=datetime.now().replace(
+                    hour=10, minute=0, second=0, microsecond=0
+                ),
                 location="Cabinet - Salle de réunion",
                 attendees=[
-                    {"email": admin_user.email, "name": admin_user.full_name, "response": "accepted"}
+                    {
+                        "email": admin_user.email,
+                        "name": admin_user.full_name,
+                        "response": "accepted",
+                    }
                 ],
                 is_all_day=False,
                 status="confirmed",
@@ -888,11 +1036,17 @@ async def seed_data():
                 provider="google",
                 title="DEADLINE - Dépôt conclusions Dupont",
                 description="Date limite pour déposer nos conclusions écrites au greffe. Dossier 2026/001.",
-                start_time=datetime.now() + timedelta(days=12).replace(hour=23, minute=59),
-                end_time=datetime.now() + timedelta(days=12).replace(hour=23, minute=59),
+                start_time=datetime.now()
+                + timedelta(days=12).replace(hour=23, minute=59),
+                end_time=datetime.now()
+                + timedelta(days=12).replace(hour=23, minute=59),
                 location="e-Deposit JBox",
                 attendees=[
-                    {"email": admin_user.email, "name": admin_user.full_name, "response": "accepted"}
+                    {
+                        "email": admin_user.email,
+                        "name": admin_user.full_name,
+                        "response": "accepted",
+                    }
                 ],
                 is_all_day=True,
                 status="confirmed",
@@ -915,12 +1069,23 @@ async def seed_data():
                 end_time=datetime.now() + timedelta(days=7, hours=16),
                 location="Microsoft Teams",
                 attendees=[
-                    {"email": admin_user.email, "name": admin_user.full_name, "response": "accepted"},
-                    {"email": "info@techstart.be", "name": "TechStart SPRL", "response": "accepted"}
+                    {
+                        "email": admin_user.email,
+                        "name": admin_user.full_name,
+                        "response": "accepted",
+                    },
+                    {
+                        "email": "info@techstart.be",
+                        "name": "TechStart SPRL",
+                        "response": "accepted",
+                    },
                 ],
                 is_all_day=False,
                 status="confirmed",
-                metadata_={"meeting_url": "https://teams.microsoft.com/l/meetup-join/...", "platform": "teams"},
+                metadata_={
+                    "meeting_url": "https://teams.microsoft.com/l/meetup-join/...",
+                    "platform": "teams",
+                },
             )
             session.add(event7)
             calendar_count += 1
@@ -939,8 +1104,16 @@ async def seed_data():
                 end_time=datetime.now() + timedelta(days=10, hours=12),
                 location="Zoom",
                 attendees=[
-                    {"email": admin_user.email, "name": admin_user.full_name, "response": "accepted"},
-                    {"email": "info@investgroup.be", "name": "Invest Group", "response": "tentative"}
+                    {
+                        "email": admin_user.email,
+                        "name": admin_user.full_name,
+                        "response": "accepted",
+                    },
+                    {
+                        "email": "info@investgroup.be",
+                        "name": "Invest Group",
+                        "response": "tentative",
+                    },
                 ],
                 is_all_day=False,
                 status="tentative",
@@ -1061,14 +1234,14 @@ Client: Très bien, je vous remercie pour votre réactivité Maître."""
                         "title": "Rédiger mise en demeure Immobel",
                         "description": "Préparer mise en demeure formelle pour dommages et intérêts",
                         "due_date": str(date.today() + timedelta(days=7)),
-                        "priority": "high"
+                        "priority": "high",
                     },
                     {
                         "title": "Envoyer estimation frais à M. Dupont",
                         "description": "Transmettre estimation détaillée des honoraires par email",
                         "due_date": str(date.today() + timedelta(days=1)),
-                        "priority": "medium"
-                    }
+                        "priority": "medium",
+                    },
                 ],
                 completed_at=datetime.now() - timedelta(days=2, hours=14, minutes=20),
             )
@@ -1078,16 +1251,86 @@ Client: Très bien, je vous remercie pour votre réactivité Maître."""
 
             # Segments pour Transcription 1 (10 segments)
             trans1_segments = [
-                (0, "Avocat", 0.0, 4.2, "Bonjour Monsieur Dupont, Maître Simon à l'appareil.", 0.98),
-                (1, "Client", 4.2, 8.5, "Bonjour Maître, merci de me rappeler si rapidement.", 0.96),
-                (2, "Avocat", 8.5, 18.3, "Je vous en prie. J'ai examiné les nouveaux documents que vous m'avez transmis concernant votre litige avec Immobel.", 0.97),
-                (3, "Client", 18.3, 28.7, "Oui, justement, j'aimerais savoir où nous en sommes. Les dommages au bâtiment sont vraiment importants.", 0.95),
-                (4, "Avocat", 28.7, 42.1, "Effectivement, j'ai bien noté les photos et le rapport d'expertise. Nous avons de solides arguments pour réclamer des dommages et intérêts substantiels.", 0.98),
-                (5, "Client", 42.1, 47.5, "C'est une bonne nouvelle. Quelles sont les prochaines étapes?", 0.97),
-                (6, "Avocat", 47.5, 62.8, "Je vais rédiger une mise en demeure formelle cette semaine. Ensuite, si Immobel ne répond pas favorablement dans les 15 jours, nous introduisons la procédure au tribunal.", 0.96),
-                (7, "Client", 62.8, 68.2, "Parfait. Et concernant les frais d'avocat?", 0.98),
-                (8, "Avocat", 68.2, 80.5, "Nous pourrons les inclure dans notre demande de dommages et intérêts. Je vous enverrai une estimation détaillée par email demain.", 0.97),
-                (9, "Client", 80.5, 87.0, "Très bien, je vous remercie pour votre réactivité Maître.", 0.99),
+                (
+                    0,
+                    "Avocat",
+                    0.0,
+                    4.2,
+                    "Bonjour Monsieur Dupont, Maître Simon à l'appareil.",
+                    0.98,
+                ),
+                (
+                    1,
+                    "Client",
+                    4.2,
+                    8.5,
+                    "Bonjour Maître, merci de me rappeler si rapidement.",
+                    0.96,
+                ),
+                (
+                    2,
+                    "Avocat",
+                    8.5,
+                    18.3,
+                    "Je vous en prie. J'ai examiné les nouveaux documents que vous m'avez transmis concernant votre litige avec Immobel.",
+                    0.97,
+                ),
+                (
+                    3,
+                    "Client",
+                    18.3,
+                    28.7,
+                    "Oui, justement, j'aimerais savoir où nous en sommes. Les dommages au bâtiment sont vraiment importants.",
+                    0.95,
+                ),
+                (
+                    4,
+                    "Avocat",
+                    28.7,
+                    42.1,
+                    "Effectivement, j'ai bien noté les photos et le rapport d'expertise. Nous avons de solides arguments pour réclamer des dommages et intérêts substantiels.",
+                    0.98,
+                ),
+                (
+                    5,
+                    "Client",
+                    42.1,
+                    47.5,
+                    "C'est une bonne nouvelle. Quelles sont les prochaines étapes?",
+                    0.97,
+                ),
+                (
+                    6,
+                    "Avocat",
+                    47.5,
+                    62.8,
+                    "Je vais rédiger une mise en demeure formelle cette semaine. Ensuite, si Immobel ne répond pas favorablement dans les 15 jours, nous introduisons la procédure au tribunal.",
+                    0.96,
+                ),
+                (
+                    7,
+                    "Client",
+                    62.8,
+                    68.2,
+                    "Parfait. Et concernant les frais d'avocat?",
+                    0.98,
+                ),
+                (
+                    8,
+                    "Avocat",
+                    68.2,
+                    80.5,
+                    "Nous pourrons les inclure dans notre demande de dommages et intérêts. Je vous enverrai une estimation détaillée par email demain.",
+                    0.97,
+                ),
+                (
+                    9,
+                    "Client",
+                    80.5,
+                    87.0,
+                    "Très bien, je vous remercie pour votre réactivité Maître.",
+                    0.99,
+                ),
             ]
 
             for idx, speaker, start, end, text, confidence in trans1_segments:
@@ -1133,14 +1376,14 @@ Deadline: signature prévue pour fin mars."""
                         "title": "Rédiger convention divorce Martin",
                         "description": "Préparer la convention de divorce par consentement mutuel avec les modalités convenues",
                         "due_date": str(date.today() + timedelta(days=14)),
-                        "priority": "high"
+                        "priority": "high",
                     },
                     {
                         "title": "Rendez-vous notaire partage Martin",
                         "description": "Organiser RDV avec notaire pour acte de partage maison Uccle",
                         "due_date": str(date.today() + timedelta(days=30)),
-                        "priority": "medium"
-                    }
+                        "priority": "medium",
+                    },
                 ],
                 completed_at=datetime.now() - timedelta(hours=2),
             )
@@ -1150,14 +1393,70 @@ Deadline: signature prévue pour fin mars."""
 
             # Segments pour Transcription 2 (8 segments)
             trans2_segments = [
-                (0, "Avocat", 0.0, 6.5, "Note pour le dossier Martin, divorce par consentement mutuel.", 0.99),
-                (1, "Avocat", 6.5, 12.8, "Suite à la réunion de ce matin avec Madame Martin et son époux.", 0.98),
-                (2, "Avocat", 12.8, 18.2, "Les deux parties sont d'accord sur les modalités suivantes:", 0.97),
-                (3, "Avocat", 18.2, 30.5, "Premièrement, garde alternée des deux enfants, une semaine sur deux, avec changement le vendredi soir.", 0.96),
-                (4, "Avocat", 30.5, 45.8, "Deuxièmement, partage équitable des biens immobiliers. La maison familiale à Uccle sera vendue et le produit partagé à parts égales.", 0.97),
-                (5, "Avocat", 45.8, 56.3, "Troisièmement, pension alimentaire de 800 euros par mois versée par Monsieur pour les enfants.", 0.98),
-                (6, "Avocat", 56.3, 72.1, "Action à prévoir: rédiger la convention de divorce et prendre rendez-vous avec le notaire pour l'acte de partage.", 0.96),
-                (7, "Avocat", 72.1, 78.5, "Deadline: signature prévue pour fin mars.", 0.99),
+                (
+                    0,
+                    "Avocat",
+                    0.0,
+                    6.5,
+                    "Note pour le dossier Martin, divorce par consentement mutuel.",
+                    0.99,
+                ),
+                (
+                    1,
+                    "Avocat",
+                    6.5,
+                    12.8,
+                    "Suite à la réunion de ce matin avec Madame Martin et son époux.",
+                    0.98,
+                ),
+                (
+                    2,
+                    "Avocat",
+                    12.8,
+                    18.2,
+                    "Les deux parties sont d'accord sur les modalités suivantes:",
+                    0.97,
+                ),
+                (
+                    3,
+                    "Avocat",
+                    18.2,
+                    30.5,
+                    "Premièrement, garde alternée des deux enfants, une semaine sur deux, avec changement le vendredi soir.",
+                    0.96,
+                ),
+                (
+                    4,
+                    "Avocat",
+                    30.5,
+                    45.8,
+                    "Deuxièmement, partage équitable des biens immobiliers. La maison familiale à Uccle sera vendue et le produit partagé à parts égales.",
+                    0.97,
+                ),
+                (
+                    5,
+                    "Avocat",
+                    45.8,
+                    56.3,
+                    "Troisièmement, pension alimentaire de 800 euros par mois versée par Monsieur pour les enfants.",
+                    0.98,
+                ),
+                (
+                    6,
+                    "Avocat",
+                    56.3,
+                    72.1,
+                    "Action à prévoir: rédiger la convention de divorce et prendre rendez-vous avec le notaire pour l'acte de partage.",
+                    0.96,
+                ),
+                (
+                    7,
+                    "Avocat",
+                    72.1,
+                    78.5,
+                    "Deadline: signature prévue pour fin mars.",
+                    0.99,
+                ),
             ]
 
             for idx, speaker, start, end, text, confidence in trans2_segments:
@@ -1175,7 +1474,9 @@ Deadline: signature prévue pour fin mars."""
                 segment_count += 1
 
             await session.flush()
-            print(f"✓ {transcription_count} transcriptions with {segment_count} segments created")
+            print(
+                f"✓ {transcription_count} transcriptions with {segment_count} segments created"
+            )
         except Exception as e:
             print(f"✗ Error creating transcriptions: {e}")
 
@@ -1199,7 +1500,7 @@ Deadline: signature prévue pour fin mars."""
                 metadata_={
                     "email": admin_user.email,
                     "last_sync": str(datetime.now() - timedelta(hours=2)),
-                    "sync_status": "success"
+                    "sync_status": "success",
                 },
             )
             session.add(token1)
@@ -1211,7 +1512,8 @@ Deadline: signature prévue pour fin mars."""
                 tenant_id=tenant.id,
                 user_id=admin_user.id,
                 provider="microsoft",
-                access_token="EwBwA8l6BAAUbDba..." + "x" * 200,  # Encrypted token simulé
+                access_token="EwBwA8l6BAAUbDba..."
+                + "x" * 200,  # Encrypted token simulé
                 refresh_token="M.R3_BAY..." + "x" * 150,
                 token_type="Bearer",
                 expires_at=datetime.now() - timedelta(days=5),  # Expiré
@@ -1221,7 +1523,7 @@ Deadline: signature prévue pour fin mars."""
                     "email": admin_user.email,
                     "last_sync": str(datetime.now() - timedelta(days=6)),
                     "sync_status": "expired",
-                    "error": "Token expired - needs re-authentication"
+                    "error": "Token expired - needs re-authentication",
                 },
             )
             session.add(token2)
@@ -1243,7 +1545,7 @@ Deadline: signature prévue pour fin mars."""
                 metadata_={
                     "email": "old.account@gmail.com",
                     "revocation_reason": "User revoked access",
-                    "revoked_by": str(admin_user.id)
+                    "revoked_by": str(admin_user.id),
                 },
             )
             session.add(token3)
@@ -1259,28 +1561,30 @@ Deadline: signature prévue pour fin mars."""
         await session.commit()
         print("✅ All data committed!")
 
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("🎉 Demo data seed completed successfully!")
-        print("="*60)
-        print(f"\n📊 Summary:")
+        print("=" * 60)
+        print("\n📊 Summary:")
         print(f"  • Tenant: {tenant.name}")
         print(f"  • Admin user: {admin_user.email} (password: LexiBel2026!)")
         print(f"  • Cases: {len(cases)}")
         print(f"  • Contacts: {len(contacts)}")
         print(f"  • Case-Contact links: {len(case_contacts)}")
-        print(f"  • Timeline events: 20")
+        print("  • Timeline events: 20")
         print(f"  • Time entries: {len(time_entries)}")
-        print(f"  • Invoices: 2")
-        print(f"  • Third-party entries: 2")
-        print(f"  • Inbox items: 5")
+        print("  • Invoices: 2")
+        print("  • Third-party entries: 2")
+        print("  • Inbox items: 5")
         print(f"  • Email threads: {thread_count} (with {message_count} messages)")
         print(f"  • Calendar events: {calendar_count}")
         print(f"  • Call records: {len(call_records)}")
-        print(f"  • Transcriptions: {transcription_count} (with {segment_count} segments)")
+        print(
+            f"  • Transcriptions: {transcription_count} (with {segment_count} segments)"
+        )
         print(f"  • OAuth tokens: {token_count}")
-        print(f"\n✅ You can now login at https://lexibel.clixite.cloud")
+        print("\n✅ You can now login at https://lexibel.clixite.cloud")
         print(f"   Email: {admin_user.email}")
-        print(f"   Password: LexiBel2026!")
+        print("   Password: LexiBel2026!")
         print()
 
 

@@ -4,7 +4,7 @@ Handles OAuth2 flow, token storage, and refresh.
 """
 
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
@@ -30,7 +30,9 @@ class GoogleOAuthService:
         """Initialize Google OAuth service."""
         self.client_id = os.getenv("GOOGLE_CLIENT_ID")
         self.client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
-        self.redirect_uri = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:3000/api/auth/callback/google")
+        self.redirect_uri = os.getenv(
+            "GOOGLE_REDIRECT_URI", "http://localhost:3000/api/auth/callback/google"
+        )
 
         if not self.client_id or not self.client_secret:
             raise ValueError("GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set")
@@ -109,7 +111,9 @@ class GoogleOAuthService:
         encrypted_access_token = self.encryption_service.encrypt(credentials.token)
         encrypted_refresh_token = None
         if credentials.refresh_token:
-            encrypted_refresh_token = self.encryption_service.encrypt(credentials.refresh_token)
+            encrypted_refresh_token = self.encryption_service.encrypt(
+                credentials.refresh_token
+            )
 
         # Check if token already exists
         stmt = select(OAuthToken).where(
@@ -195,7 +199,9 @@ class GoogleOAuthService:
             credentials.refresh(Request())
 
             # Update stored token
-            oauth_token.access_token = self.encryption_service.encrypt(credentials.token)
+            oauth_token.access_token = self.encryption_service.encrypt(
+                credentials.token
+            )
             oauth_token.expires_at = credentials.expiry
             oauth_token.updated_at = datetime.utcnow()
             await session.commit()

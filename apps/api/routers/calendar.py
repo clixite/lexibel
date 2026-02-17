@@ -44,9 +44,13 @@ async def get_calendar_events(
     events = result.scalars().all()
 
     # Count total
-    count_query = select(func.count()).select_from(CalendarEvent).where(
-        CalendarEvent.tenant_id == tenant_id,
-        CalendarEvent.user_id == user_id,
+    count_query = (
+        select(func.count())
+        .select_from(CalendarEvent)
+        .where(
+            CalendarEvent.tenant_id == tenant_id,
+            CalendarEvent.user_id == user_id,
+        )
     )
     if after:
         count_query = count_query.where(CalendarEvent.start_time >= after)
@@ -62,7 +66,9 @@ async def get_calendar_events(
                 "id": str(event.id),
                 "title": event.title,
                 "description": event.description,
-                "start_time": event.start_time.isoformat() if event.start_time else None,
+                "start_time": event.start_time.isoformat()
+                if event.start_time
+                else None,
                 "end_time": event.end_time.isoformat() if event.end_time else None,
                 "location": event.location,
                 "provider": event.provider,
@@ -86,19 +92,27 @@ async def get_calendar_stats(
     user_id = uuid.UUID(current_user["user_id"])
 
     # Total events
-    total_query = select(func.count()).select_from(CalendarEvent).where(
-        CalendarEvent.tenant_id == tenant_id,
-        CalendarEvent.user_id == user_id,
+    total_query = (
+        select(func.count())
+        .select_from(CalendarEvent)
+        .where(
+            CalendarEvent.tenant_id == tenant_id,
+            CalendarEvent.user_id == user_id,
+        )
     )
     total_result = await session.execute(total_query)
     total = total_result.scalar()
 
     # Upcoming events (after now)
     now = datetime.utcnow()
-    upcoming_query = select(func.count()).select_from(CalendarEvent).where(
-        CalendarEvent.tenant_id == tenant_id,
-        CalendarEvent.user_id == user_id,
-        CalendarEvent.start_time >= now,
+    upcoming_query = (
+        select(func.count())
+        .select_from(CalendarEvent)
+        .where(
+            CalendarEvent.tenant_id == tenant_id,
+            CalendarEvent.user_id == user_id,
+            CalendarEvent.start_time >= now,
+        )
     )
     upcoming_result = await session.execute(upcoming_query)
     upcoming = upcoming_result.scalar()
@@ -109,11 +123,15 @@ async def get_calendar_stats(
     today_start = datetime.combine(date.today(), time.min)
     today_end = datetime.combine(date.today(), time.max)
 
-    today_query = select(func.count()).select_from(CalendarEvent).where(
-        CalendarEvent.tenant_id == tenant_id,
-        CalendarEvent.user_id == user_id,
-        CalendarEvent.start_time >= today_start,
-        CalendarEvent.start_time <= today_end,
+    today_query = (
+        select(func.count())
+        .select_from(CalendarEvent)
+        .where(
+            CalendarEvent.tenant_id == tenant_id,
+            CalendarEvent.user_id == user_id,
+            CalendarEvent.start_time >= today_start,
+            CalendarEvent.start_time <= today_end,
+        )
     )
     today_result = await session.execute(today_query)
     today = today_result.scalar()
