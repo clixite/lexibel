@@ -31,6 +31,7 @@ from packages.db.models.prophet_prediction import ProphetPrediction
 from packages.db.models.prophet_simulation import ProphetSimulation
 from packages.db.models.sentinel_conflict import SentinelConflict
 from packages.db.models.sentinel_entity import SentinelEntity
+from packages.db.models.ai_audit_log import AIAuditLog
 
 __all__ = [
     "Base",
@@ -64,4 +65,5 @@ __all__ = [
     "ProphetSimulation",
     "SentinelConflict",
     "SentinelEntity",
+    "AIAuditLog",
 ]
