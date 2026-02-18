@@ -81,8 +81,8 @@ export default function ThirdPartyView() {
     setError(null);
     try {
       const [balanceData, entriesData] = await Promise.all([
-        apiFetch<Balance>(`/third-party-entries/balance?case_id=${caseId}`, token, { tenantId }),
-        apiFetch<{ items: ThirdPartyEntry[] }>(`/third-party-entries?case_id=${caseId}`, token, { tenantId }),
+        apiFetch<Balance>(`/cases/${caseId}/third-party/balance`, token, { tenantId }),
+        apiFetch<{ items: ThirdPartyEntry[] }>(`/cases/${caseId}/third-party`, token, { tenantId }),
       ]);
       setBalance(balanceData);
       setEntries(entriesData.items);
@@ -108,7 +108,7 @@ export default function ThirdPartyView() {
     setSubmitting(true);
     setError(null);
     try {
-      await apiFetch("/third-party-entries", token, {
+      await apiFetch(`/cases/${formData.case_id}/third-party`, token, {
         tenantId,
         method: "POST",
         body: JSON.stringify(formData),

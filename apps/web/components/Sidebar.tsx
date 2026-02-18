@@ -7,11 +7,12 @@ import { useState } from "react";
 import {
   Scale,
   LogOut,
-  Home,
+  LayoutDashboard,
   Briefcase,
   Users,
   Clock,
   FileText,
+  Receipt,
   Inbox,
   Mail,
   Calendar,
@@ -33,13 +34,13 @@ import {
 // NAV_ITEMS groupés par section
 const NAV_GROUPS = [
   {
-    label: "PRINCIPAL",
+    label: "GESTION",
     items: [
-      { label: "Dashboard", href: "/dashboard", icon: Home },
+      { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
       { label: "Dossiers", href: "/dashboard/cases", icon: Briefcase },
       { label: "Contacts", href: "/dashboard/contacts", icon: Users },
-      { label: "Timeline", href: "/dashboard/timeline", icon: Clock },
-      { label: "Facturation", href: "/dashboard/billing", icon: FileText },
+      { label: "Prestations", href: "/dashboard/billing", icon: Clock },
+      { label: "Factures", href: "/dashboard/billing?tab=invoices", icon: Receipt },
       { label: "Documents", href: "/dashboard/documents", icon: FolderOpen },
     ],
   },

@@ -1627,6 +1627,219 @@ Deadline: signature prévue pour fin mars."""
         except Exception as e:
             print(f"✗ Error creating OAuth tokens: {e}")
 
+        # ── 16. Extended Demo Data — Belgian Legal Realism ──
+        print("\n📂 Creating 5 additional cases (Belgian law)...")
+        extra_cases = []
+        extra_case_data = [
+            (
+                "2026/006",
+                "Divorce Janssens-Peters",
+                "family",
+                "in_progress",
+                "Tribunal de la famille de Namur",
+            ),
+            (
+                "2026/007",
+                "SA BelgaTech — Contentieux fiscal",
+                "fiscal",
+                "open",
+                "Cour d'appel de Bruxelles",
+            ),
+            (
+                "2026/008",
+                "Accident A4 — Indemnisation Maes",
+                "civil",
+                "in_progress",
+                "Tribunal de police de Liège",
+            ),
+            (
+                "2025/042",
+                "Bail commercial Rue Neuve",
+                "commercial",
+                "closed",
+                "Justice de paix de Bruxelles",
+            ),
+            (
+                "2026/009",
+                "ASBL SportPlus — Dissolution",
+                "commercial",
+                "open",
+                None,
+            ),
+        ]
+
+        for ref, title, matter_type, case_status, jurisdiction in extra_case_data:
+            case = Case(
+                id=uuid4(),
+                tenant_id=tenant.id,
+                reference=ref,
+                title=title,
+                matter_type=matter_type,
+                status=case_status,
+                jurisdiction=jurisdiction,
+                responsible_user_id=admin_user.id,
+                opened_at=date.today() - timedelta(days=60),
+                closed_at=date.today() - timedelta(days=10)
+                if case_status == "closed"
+                else None,
+                metadata_={"tags": ["demo", "extended"], "priority": "medium"},
+            )
+            extra_cases.append(case)
+            session.add(case)
+
+        await session.flush()
+        cases.extend(extra_cases)
+        print(f"✅ {len(extra_cases)} additional cases created (total: {len(cases)})")
+
+        # ── 17. Additional contacts ──
+        print("\n📇 Creating 5 additional contacts...")
+        extra_contacts = []
+
+        extra_natural = [
+            ("Anne Janssens", "anne.janssens@email.be", "+32475678901"),
+            ("Thomas Peters", "thomas.peters@email.be", "+32476789012"),
+            ("François Viseur", "francois.viseur@barreau.be", "+32477890123"),
+            ("Karine Lambert", "karine.lambert@notaire.be", "+32478901234"),
+            ("Sophie Maes", "sophie.maes@email.be", "+32479012345"),
+        ]
+
+        for name, email, phone in extra_natural:
+            contact = Contact(
+                id=uuid4(),
+                tenant_id=tenant.id,
+                type="natural",
+                full_name=name,
+                email=email,
+                phone_e164=phone,
+                language="fr",
+                address={
+                    "street": "Avenue de la Toison d'Or 45",
+                    "city": "Bruxelles",
+                    "zip": "1060",
+                    "country": "BE",
+                },
+            )
+            extra_contacts.append(contact)
+            session.add(contact)
+
+        await session.flush()
+        contacts.extend(extra_contacts)
+        print(f"✅ {len(extra_contacts)} additional contacts created (total: {len(contacts)})")
+
+        # ── 18. Extra case-contact links ──
+        print("\n🔗 Linking extra contacts to extra cases...")
+        extra_links = [
+            (extra_cases[0], extra_contacts[0], "client"),  # Janssens → Divorce
+            (extra_cases[0], extra_contacts[1], "client"),  # Peters → Divorce
+            (extra_cases[1], contacts[7], "client"),        # SCS Invest → Fiscal
+            (extra_cases[2], extra_contacts[4], "client"),  # Maes → Accident
+            (extra_cases[3], contacts[5], "client"),        # Immobel → Bail
+            (extra_cases[4], contacts[7], "client"),        # SCS Invest → ASBL
+        ]
+
+        for case, contact, role in extra_links:
+            case_contact = CaseContact(
+                tenant_id=tenant.id,
+                case_id=case.id,
+                contact_id=contact.id,
+                role=role,
+            )
+            session.add(case_contact)
+
+        await session.flush()
+        print(f"✅ {len(extra_links)} additional case-contact links created")
+
+        # ── 19. Additional invoices ──
+        print("\n💰 Creating 2 additional invoices...")
+
+        invoice4 = Invoice(
+            id=uuid4(),
+            tenant_id=tenant.id,
+            case_id=extra_cases[0].id,
+            client_contact_id=extra_contacts[0].id,
+            invoice_number="2026/004",
+            issue_date=date.today() - timedelta(days=60),
+            due_date=date.today() - timedelta(days=30),
+            status="overdue",
+            subtotal_cents=200000,
+            vat_rate=21.0,
+            vat_amount_cents=42000,
+            total_cents=242000,
+        )
+        session.add(invoice4)
+
+        line4 = InvoiceLine(
+            id=uuid4(),
+            tenant_id=tenant.id,
+            invoice_id=invoice4.id,
+            description="Honoraires — Divorce Janssens-Peters — Phase préparatoire",
+            quantity=8.0,
+            unit_price_cents=25000,
+            total_cents=200000,
+        )
+        session.add(line4)
+
+        invoice5 = Invoice(
+            id=uuid4(),
+            tenant_id=tenant.id,
+            case_id=extra_cases[2].id,
+            client_contact_id=extra_contacts[4].id,
+            invoice_number="2026/005",
+            issue_date=date.today() - timedelta(days=3),
+            due_date=date.today() + timedelta(days=27),
+            status="sent",
+            subtotal_cents=75000,
+            vat_rate=21.0,
+            vat_amount_cents=15750,
+            total_cents=90750,
+        )
+        session.add(invoice5)
+
+        line5 = InvoiceLine(
+            id=uuid4(),
+            tenant_id=tenant.id,
+            invoice_id=invoice5.id,
+            description="Honoraires — Accident A4 — Constitution de dossier",
+            quantity=3.0,
+            unit_price_cents=25000,
+            total_cents=75000,
+        )
+        session.add(line5)
+
+        await session.flush()
+        print("✅ 2 additional invoices with lines created (total: 5)")
+
+        # ── 20. Additional inbox items ──
+        print("\n📥 Creating 3 additional inbox items...")
+        extra_inbox = [
+            ("DPA_JBOX", "DRAFT", None, None, "Communication judiciaire — Tribunal de Namur"),
+            ("OUTLOOK", "DRAFT", extra_cases[1].id, 0.88, "Rapport fiscal BelgaTech"),
+            ("RINGOVER", "VALIDATED", extra_cases[2].id, 0.92, "Message vocal — Sophie Maes"),
+        ]
+
+        for i, (source, item_status, suggested_case, confidence, subject) in enumerate(extra_inbox):
+            item = InboxItem(
+                id=uuid4(),
+                tenant_id=tenant.id,
+                source=source,
+                status=item_status,
+                raw_payload={
+                    "id": f"external-extended-{source.lower()}-{i + 1}",
+                    "from": f"sender_ext{i + 1}@example.com",
+                    "subject": subject,
+                    "body": f"Contenu étendu #{i + 1}",
+                    "received_at": str(datetime.now() - timedelta(hours=i + 1)),
+                },
+                suggested_case_id=suggested_case,
+                confidence=confidence,
+                validated_by=admin_user.id if item_status == "VALIDATED" else None,
+                validated_at=datetime.now() - timedelta(hours=i) if item_status == "VALIDATED" else None,
+            )
+            session.add(item)
+
+        await session.flush()
+        print("✅ 3 additional inbox items created (total: 8)")
+
         # ── Commit All ──
         print("\n💾 Committing all changes...")
         await session.commit()
@@ -1640,12 +1853,12 @@ Deadline: signature prévue pour fin mars."""
         print(f"  • Admin user: {admin_user.email} (password: admin123)")
         print(f"  • Cases: {len(cases)}")
         print(f"  • Contacts: {len(contacts)}")
-        print(f"  • Case-Contact links: {len(case_contacts)}")
+        print(f"  • Case-Contact links: {len(case_contacts) + len(extra_links)}")
         print("  • Timeline events: 20")
         print(f"  • Time entries: {len(time_entries)}")
-        print("  • Invoices: 3")
+        print("  • Invoices: 5")
         print("  • Third-party entries: 2")
-        print("  • Inbox items: 5")
+        print("  • Inbox items: 8")
         print(f"  • Email threads: {thread_count} (with {message_count} messages)")
         print(f"  • Calendar events: {calendar_count}")
         print(f"  • Call records: {len(call_records)}")

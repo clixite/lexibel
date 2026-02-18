@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { Clock, FileText, Landmark, Activity } from "lucide-react";
 import TimesheetView from "./TimesheetView";
 import InvoiceList from "./InvoiceList";
@@ -40,7 +41,9 @@ const TABS: Tab[] = [
 type TabId = (typeof TABS)[number]["id"];
 
 export default function BillingPage() {
-  const [activeTab, setActiveTab] = useState<TabId>("timesheet");
+  const searchParams = useSearchParams();
+  const initialTab = searchParams?.get("tab") === "invoices" ? "invoices" : "timesheet";
+  const [activeTab, setActiveTab] = useState<TabId>(initialTab);
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
   const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
   const [timerSeconds, setTimerSeconds] = useState(0);

@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;500;600;700&family=Manrope:wght@300;400;500;600;700;800&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -17,8 +19,8 @@
   --color-border: 226 232 240; /* Steel #E2E8F0 */
 
   /* Typography - Premium Legal */
-  --font-display: var(--font-display), 'Crimson Pro', Georgia, serif;
-  --font-body: var(--font-sans), 'Manrope', -apple-system, sans-serif;
+  --font-display: 'Crimson Pro', Georgia, serif;
+  --font-body: 'Manrope', -apple-system, sans-serif;
   --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
 
   /* Type Scale - Conservative */
