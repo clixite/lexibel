@@ -31,6 +31,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy import text
 
 from packages.db.models import (
     Tenant,
@@ -94,7 +95,7 @@ async def seed_data():
             print(f"✅ Tenant created: {tenant.name} ({tenant.id})")
 
         # Set tenant context for RLS
-        await session.execute(f"SET app.current_tenant_id = '{tenant.id}'")
+        await session.execute(text(f"SET app.current_tenant_id = '{tenant.id}'"))
 
         # ── 2. Admin User ──
         print("\n👤 Creating/updating admin user...")
