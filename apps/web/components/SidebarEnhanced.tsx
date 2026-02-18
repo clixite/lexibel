@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { logout } from "@/lib/auth-core";
 import { useState } from "react";
 import {
   Scale,
@@ -314,7 +314,7 @@ export default function SidebarEnhanced({
 
         {/* Logout */}
         <button
-          onClick={() => signOut({ callbackUrl: "/login" })}
+          onClick={() => logout()}
           className="w-full flex items-center gap-3 px-3 py-2 rounded text-white/70 hover:bg-white/5 hover:text-red-400 transition-colors duration-150"
           title={collapsed ? "Déconnexion" : undefined}
         >

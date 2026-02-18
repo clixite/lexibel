@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/lib/useAuth";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { apiFetch } from "@/lib/api";
@@ -244,13 +244,12 @@ function fileIcon(mime: string) {
 /* ------------------------------------------------------------------ */
 
 export default function CaseDetailPage() {
-  const { data: session, status: sessionStatus } = useSession();
+  const { accessToken, tenantId } = useAuth();
   const params = useParams();
   const router = useRouter();
   const caseId = params.id as string;
 
-  const token = (session?.user as any)?.accessToken;
-  const tenantId = (session?.user as any)?.tenantId;
+  const token = accessToken;
 
   /* ---------- core state ---------- */
   const [caseData, setCaseData] = useState<CaseData | null>(null);
@@ -638,7 +637,7 @@ export default function CaseDetailPage() {
   /*  Loading / error states                                           */
   /* ---------------------------------------------------------------- */
 
-  if (sessionStatus === "loading" || loading) {
+  if (loading) {
     return (
       <div className="p-6 max-w-7xl mx-auto space-y-6">
         <SkeletonCard />

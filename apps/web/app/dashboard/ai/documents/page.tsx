@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/lib/useAuth";
 import { useState } from "react";
 import {
   FileText,
@@ -66,7 +66,7 @@ interface GenerateResponse {
 }
 
 export default function DocumentsPage() {
-  const { data: session } = useSession();
+  const { accessToken } = useAuth();
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [caseId, setCaseId] = useState("");
   const [instructions, setInstructions] = useState("");
@@ -76,8 +76,7 @@ export default function DocumentsPage() {
   const [copied, setCopied] = useState(false);
 
   const handleGenerate = async () => {
-    const token = (session?.user as any)?.accessToken;
-    if (!token || !selectedTemplate) return;
+    if (!accessToken || !selectedTemplate) return;
 
     const template = TEMPLATES.find((t) => t.id === selectedTemplate);
     if (!template) return;
@@ -91,7 +90,7 @@ export default function DocumentsPage() {
     } R\u00e9dige en fran\u00e7ais juridique belge, avec les formules d\u2019usage.`;
 
     try {
-      const data = await apiFetch<GenerateResponse>("/ai/generate", token, {
+      const data = await apiFetch<GenerateResponse>("/ai/generate", accessToken, {
         method: "POST",
         body: JSON.stringify({
           prompt,

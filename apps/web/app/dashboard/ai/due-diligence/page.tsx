@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/lib/useAuth";
 import { Shield, AlertTriangle, CheckCircle, Loader2 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 
@@ -34,18 +34,15 @@ const RISK_COLORS: Record<string, string> = {
 };
 
 export default function DueDiligencePage() {
-  const { data: session } = useSession();
+  const { accessToken, tenantId } = useAuth();
   const [caseId, setCaseId] = useState("");
   const [documentsText, setDocumentsText] = useState("");
   const [result, setResult] = useState<DueDiligenceResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const token = (session?.user as any)?.accessToken;
-  const tenantId = (session?.user as any)?.tenantId;
-
   const runAnalysis = async () => {
-    if (!caseId.trim() || !token) return;
+    if (!caseId.trim() || !accessToken) return;
     setLoading(true);
     setError("");
     setResult(null);
@@ -53,7 +50,7 @@ export default function DueDiligencePage() {
     try {
       const data = await apiFetch<DueDiligenceResult>(
         `/agents/due-diligence/${caseId}`,
-        token,
+        accessToken,
         {
           tenantId,
           method: "POST",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/lib/useAuth";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Phone, PhoneIncoming, PhoneOutgoing, Clock, ChevronDown } from "lucide-react";
@@ -25,7 +25,7 @@ interface CallStats {
 }
 
 export default function CallsPage() {
-  const { data: session } = useSession();
+  const { accessToken } = useAuth();
   const router = useRouter();
 
   const [loading, setLoading] = useState(false);
@@ -36,12 +36,12 @@ export default function CallsPage() {
 
   useEffect(() => {
     async function fetchData() {
-      if (!session?.user?.accessToken) return;
+      if (!accessToken) return;
       try {
         setLoading(true);
         setError("");
         const query = direction !== "ALL" ? `?direction=${direction}` : "";
-        const res = await apiFetch<Call[]>(`/calls${query}`, session.user.accessToken);
+        const res = await apiFetch<Call[]>(`/calls${query}`, accessToken);
         setCalls(res);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Erreur de chargement");
@@ -50,26 +50,26 @@ export default function CallsPage() {
       }
     }
 
-    if (session?.user?.accessToken) {
+    if (accessToken) {
       fetchData();
     }
-  }, [session?.user?.accessToken, direction]);
+  }, [accessToken, direction]);
 
   useEffect(() => {
     async function fetchStats() {
-      if (!session?.user?.accessToken) return;
+      if (!accessToken) return;
       try {
-        const res = await apiFetch<CallStats>("/calls/stats", session.user.accessToken);
+        const res = await apiFetch<CallStats>("/calls/stats", accessToken);
         setStats(res);
       } catch (err) {
         console.error("Erreur stats:", err);
       }
     }
 
-    if (session?.user?.accessToken) {
+    if (accessToken) {
       fetchStats();
     }
-  }, [session?.user?.accessToken]);
+  }, [accessToken]);
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/lib/useAuth";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -1502,16 +1502,12 @@ function ConfigTab({ token, tenantId }: { token: string; tenantId?: string }) {
 // ---------------------------------------------------------------------------
 
 export default function LLMAdminPage() {
-  const { data: session } = useSession();
+  const { accessToken, tenantId, role } = useAuth();
   const [activeTab, setActiveTab] = useState<TabId>("providers");
   const router = useRouter();
 
-  const token = (session?.user as any)?.accessToken;
-  const tenantId = (session?.user as any)?.tenantId;
-  const userRole = (session?.user as any)?.role;
-
   // Protection: only super_admin can access
-  if (session && userRole !== "super_admin") {
+  if (role !== "super_admin") {
     return (
       <div className="bg-danger-50 border border-danger-200 rounded-lg p-6">
         <h2 className="text-lg font-semibold text-danger-900 mb-2">Acces refuse</h2>
@@ -1525,7 +1521,7 @@ export default function LLMAdminPage() {
     );
   }
 
-  if (!session || !token) {
+  if (!accessToken) {
     return <LoadingSpinner message="Chargement de la session..." />;
   }
 
@@ -1590,11 +1586,11 @@ export default function LLMAdminPage() {
 
       {/* Tab Content */}
       <div className="animate-in fade-in duration-200">
-        {activeTab === "providers" && <ProvidersTab token={token} tenantId={tenantId} />}
-        {activeTab === "audit" && <AuditTab token={token} tenantId={tenantId} />}
-        {activeTab === "stats" && <StatsTab token={token} tenantId={tenantId} />}
-        {activeTab === "dpia" && <DPIATab token={token} tenantId={tenantId} />}
-        {activeTab === "config" && <ConfigTab token={token} tenantId={tenantId} />}
+        {activeTab === "providers" && <ProvidersTab token={accessToken} tenantId={tenantId} />}
+        {activeTab === "audit" && <AuditTab token={accessToken} tenantId={tenantId} />}
+        {activeTab === "stats" && <StatsTab token={accessToken} tenantId={tenantId} />}
+        {activeTab === "dpia" && <DPIATab token={accessToken} tenantId={tenantId} />}
+        {activeTab === "config" && <ConfigTab token={accessToken} tenantId={tenantId} />}
       </div>
     </div>
   );

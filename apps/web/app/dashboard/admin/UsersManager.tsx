@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/lib/useAuth";
 import { UserPlus, Loader2, XCircle, Check } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 
@@ -24,7 +24,7 @@ const ROLES = [
 ];
 
 export default function UsersManager() {
-  const { data: session } = useSession();
+  const { accessToken, tenantId } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -34,14 +34,11 @@ export default function UsersManager() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const token = (session?.user as any)?.accessToken;
-  const tenantId = (session?.user as any)?.tenantId;
-
   const fetchUsers = async () => {
-    if (!token) return;
+    if (!accessToken) return;
     setLoading(true);
     try {
-      const data = await apiFetch<{ users: User[] }>("/admin/users", token, { tenantId });
+      const data = await apiFetch<{ users: User[] }>("/admin/users", accessToken, { tenantId });
       setUsers(data.users || []);
     } catch (err: any) {
       setError(err.message);
@@ -53,16 +50,16 @@ export default function UsersManager() {
   useEffect(() => {
     fetchUsers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, [accessToken]);
 
   const inviteUser = async () => {
-    if (!inviteEmail.trim() || !token) return;
+    if (!inviteEmail.trim() || !accessToken) return;
     setInviting(true);
     setError("");
     setSuccess("");
 
     try {
-      await apiFetch("/admin/users/invite", token, {
+      await apiFetch("/admin/users/invite", accessToken, {
         tenantId,
         method: "POST",
         body: JSON.stringify({

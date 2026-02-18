@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/lib/useAuth";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Calendar as CalendarIcon, Clock, MapPin, Users, ChevronLeft, ChevronRight } from "lucide-react";
@@ -24,7 +24,7 @@ interface CalendarStats {
 }
 
 export default function CalendarPage() {
-  const { data: session } = useSession();
+  const { accessToken } = useAuth();
   const router = useRouter();
 
   const [loading, setLoading] = useState(false);
@@ -39,12 +39,12 @@ export default function CalendarPage() {
 
   useEffect(() => {
     async function fetchData() {
-      if (!session?.user?.accessToken) return;
+      if (!accessToken) return;
       try {
         setLoading(true);
         setError("");
         const query = `?after=${encodeURIComponent(dateAfter)}&before=${encodeURIComponent(dateBefore)}`;
-        const res = await apiFetch<CalendarEvent[]>(`/calendar/events${query}`, session.user.accessToken);
+        const res = await apiFetch<CalendarEvent[]>(`/calendar/events${query}`, accessToken);
         setEvents(res);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Erreur de chargement");
@@ -53,32 +53,32 @@ export default function CalendarPage() {
       }
     }
 
-    if (session?.user?.accessToken) {
+    if (accessToken) {
       fetchData();
     }
-  }, [session?.user?.accessToken, dateAfter, dateBefore]);
+  }, [accessToken, dateAfter, dateBefore]);
 
   useEffect(() => {
     async function fetchStats() {
-      if (!session?.user?.accessToken) return;
+      if (!accessToken) return;
       try {
-        const res = await apiFetch<CalendarStats>("/calendar/stats", session.user.accessToken);
+        const res = await apiFetch<CalendarStats>("/calendar/stats", accessToken);
         setStats(res);
       } catch (err) {
         console.error("Erreur stats:", err);
       }
     }
 
-    if (session?.user?.accessToken) {
+    if (accessToken) {
       fetchStats();
     }
-  }, [session?.user?.accessToken]);
+  }, [accessToken]);
 
   const handleSync = async () => {
-    if (!session?.user?.accessToken) return;
+    if (!accessToken) return;
     try {
       setSyncing(true);
-      await apiFetch("/calendar/sync", session.user.accessToken, { method: "POST" });
+      await apiFetch("/calendar/sync", accessToken, { method: "POST" });
     } catch (err) {
       console.error("Erreur sync:", err);
     } finally {

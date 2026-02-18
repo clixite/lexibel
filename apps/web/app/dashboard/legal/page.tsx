@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/lib/useAuth";
 import { useState, useEffect, useRef } from "react";
 import { Search, Loader2, Scale, MessageSquare, BookOpen, Send, ChevronDown } from "lucide-react";
 import { apiFetch } from "@/lib/api";
@@ -32,10 +32,7 @@ interface ExplainResponse {
 }
 
 export default function LegalRAGPage() {
-  const { data: session } = useSession();
-  const user = session?.user as any;
-  const token = user?.accessToken;
-  const tenantId = user?.tenantId;
+  const { accessToken, tenantId } = useAuth();
 
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
@@ -65,7 +62,7 @@ export default function LegalRAGPage() {
   // Search handler
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!searchQuery.trim() || !token) return;
+    if (!searchQuery.trim() || !accessToken) return;
 
     setSearchLoading(true);
     setSearchError(null);
@@ -73,7 +70,7 @@ export default function LegalRAGPage() {
     try {
       const data = await apiFetch<SearchResponse>(
         `/legal/search?q=${encodeURIComponent(searchQuery.trim())}`,
-        token,
+        accessToken,
         { method: "POST", tenantId, body: JSON.stringify({ q: searchQuery.trim() }) }
       );
       setSearchResults(data.results || []);
@@ -87,7 +84,7 @@ export default function LegalRAGPage() {
 
   // Chat handler
   const handleSendMessage = async () => {
-    if (!chatInput.trim() || !token) return;
+    if (!chatInput.trim() || !accessToken) return;
 
     const userMessage: ChatMessage = {
       role: "user",
@@ -102,7 +99,7 @@ export default function LegalRAGPage() {
     try {
       const data = await apiFetch<ChatMessage>(
         "/legal/chat",
-        token,
+        accessToken,
         {
           method: "POST",
           tenantId,
@@ -119,7 +116,7 @@ export default function LegalRAGPage() {
 
   // Explain handler
   const handleExplain = async () => {
-    if (!articleText.trim() || !token) return;
+    if (!articleText.trim() || !accessToken) return;
 
     setExplainLoading(true);
     setExplainError(null);
@@ -127,7 +124,7 @@ export default function LegalRAGPage() {
     try {
       const data = await apiFetch<ExplainResponse>(
         "/legal/explain",
-        token,
+        accessToken,
         {
           method: "POST",
           tenantId,

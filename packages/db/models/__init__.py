@@ -35,6 +35,8 @@ from packages.db.models.ai_audit_log import AIAuditLog
 from packages.db.models.cloud_document import CloudDocument
 from packages.db.models.cloud_sync_job import CloudSyncJob
 from packages.db.models.document_case_link import DocumentCaseLink
+from packages.db.models.timeline_document import TimelineDocument
+from packages.db.models.timeline_event import TimelineEvent
 
 __all__ = [
     "Base",
@@ -72,4 +74,6 @@ __all__ = [
     "CloudDocument",
     "CloudSyncJob",
     "DocumentCaseLink",
+    "TimelineDocument",
+    "TimelineEvent",
 ]

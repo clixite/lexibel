@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/lib/useAuth";
 import { useState, useRef, useEffect } from "react";
 import {
   Upload,
@@ -45,7 +45,7 @@ const STATUS_COLORS = {
 };
 
 export default function TranscriptionPage() {
-  const { data: session } = useSession();
+  const { accessToken } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [loading, setLoading] = useState(false);
@@ -61,7 +61,7 @@ export default function TranscriptionPage() {
       try {
         setLoading(true);
         setError("");
-        const res = await apiFetch<Transcription[]>("/transcriptions", session?.user?.accessToken!);
+        const res = await apiFetch<Transcription[]>("/transcriptions", accessToken);
         setTranscriptions(res);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Erreur de chargement");
@@ -70,10 +70,10 @@ export default function TranscriptionPage() {
       }
     }
 
-    if (session?.user?.accessToken) {
+    if (accessToken) {
       fetchData();
     }
-  }, [session?.user?.accessToken]);
+  }, [accessToken]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -108,7 +108,7 @@ export default function TranscriptionPage() {
       const response = await fetch(`${API_BASE}/transcriptions/upload`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${session?.user?.accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         body: formData,
       });
@@ -122,7 +122,7 @@ export default function TranscriptionPage() {
       setUploadFile(null);
 
       // Reload data
-      const res = await apiFetch<Transcription[]>("/transcriptions", session?.user?.accessToken!);
+      const res = await apiFetch<Transcription[]>("/transcriptions", accessToken);
       setTranscriptions(res);
     } catch (err) {
       toast.error("Erreur d'upload", {

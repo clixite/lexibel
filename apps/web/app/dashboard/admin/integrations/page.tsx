@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/lib/useAuth";
 import { useSearchParams } from "next/navigation";
 import { Mail, Cloud, Shield, Calendar, HardDrive, Check } from "lucide-react";
 import { OAuthWizard } from "@/components/oauth/OAuthWizard";
@@ -138,7 +138,7 @@ interface OAuthToken {
 }
 
 export default function IntegrationsPage() {
-  const { data: session } = useSession();
+  const { accessToken, tenantId } = useAuth();
   const searchParams = useSearchParams();
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedProvider, setSelectedProvider] = useState<"google" | "microsoft" | null>(null);
@@ -146,9 +146,6 @@ export default function IntegrationsPage() {
   const [connectedEmail, setConnectedEmail] = useState<string>("");
   const [connectedTokens, setConnectedTokens] = useState<OAuthToken[]>([]);
   const [loading, setLoading] = useState(false);
-
-  const token = (session?.user as any)?.accessToken;
-  const tenantId = (session?.user as any)?.tenantId;
 
   // Handle OAuth callback
   useEffect(() => {
@@ -163,11 +160,11 @@ export default function IntegrationsPage() {
 
   // Fetch connected tokens
   useEffect(() => {
-    if (!token) return;
+    if (!accessToken) return;
 
     const fetchTokens = async () => {
       try {
-        const tokens = await apiFetch<OAuthToken[]>("/oauth/tokens", token, {
+        const tokens = await apiFetch<OAuthToken[]>("/oauth/tokens", accessToken, {
           tenantId,
         });
         setConnectedTokens(tokens || []);
@@ -177,7 +174,7 @@ export default function IntegrationsPage() {
     };
 
     fetchTokens();
-  }, [token, tenantId]);
+  }, [accessToken, tenantId]);
 
   const handleProviderSelect = (provider: "google" | "microsoft") => {
     setSelectedProvider(provider);
@@ -198,7 +195,7 @@ export default function IntegrationsPage() {
   };
 
   const handleConnect = async () => {
-    if (!selectedProvider || !token) return;
+    if (!selectedProvider || !accessToken) return;
 
     setLoading(true);
     try {
@@ -207,7 +204,7 @@ export default function IntegrationsPage() {
         authorization_url: string;
         state: string;
         code_verifier: string;
-      }>(`/oauth/${selectedProvider}/authorize`, token, {
+      }>(`/oauth/${selectedProvider}/authorize`, accessToken, {
         tenantId,
       });
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/lib/useAuth";
 import { useEffect, useState, useCallback } from "react";
 import {
   Clock,
@@ -180,11 +180,7 @@ function groupEventsByDate(
 /* ------------------------------------------------------------------ */
 
 export default function TimelinePage() {
-  const { data: session } = useSession();
-
-  const token = (session?.user as any)?.accessToken;
-  const tenantId = (session?.user as any)?.tenantId;
-  const userId = (session?.user as any)?.id;
+  const { accessToken, tenantId } = useAuth();
 
   /* --- State --- */
   const [cases, setCases] = useState<CaseOption[]>([]);
@@ -201,8 +197,8 @@ export default function TimelinePage() {
 
   /* --- Data loading --- */
   const loadCases = useCallback(() => {
-    if (!token) return;
-    apiFetch<CaseListResponse>("/cases", token, { tenantId })
+    if (!accessToken) return;
+    apiFetch<CaseListResponse>("/cases", accessToken, { tenantId })
       .then((data) => {
         setCases(data.items);
         if (data.items.length > 0 && !selectedCaseId) {
@@ -214,11 +210,11 @@ export default function TimelinePage() {
         if (!selectedCaseId) setLoading(false);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, tenantId]);
+  }, [accessToken, tenantId]);
 
   const loadTimeline = useCallback(
     (caseId: string, pageNum: number, append: boolean = false) => {
-      if (!token || !caseId) return;
+      if (!accessToken || !caseId) return;
       if (append) {
         setLoadingMore(true);
       } else {
@@ -228,7 +224,7 @@ export default function TimelinePage() {
 
       apiFetch<TimelineResponse>(
         `/cases/${caseId}/timeline?page=${pageNum}&per_page=${perPage}`,
-        token,
+        accessToken,
         { tenantId },
       )
         .then((data) => {
@@ -246,7 +242,7 @@ export default function TimelinePage() {
           setLoadingMore(false);
         });
     },
-    [token, tenantId],
+    [accessToken, tenantId],
   );
 
   useEffect(() => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/lib/useAuth";
 import {
   FolderOpen,
   File,
@@ -64,9 +64,9 @@ interface BreadcrumbItem {
 
 function formatBytes(bytes: number | null): string {
   if (!bytes) return "—";
-  if (bytes < 1024) return ;
-  if (bytes < 1024 * 1024) return ;
-  return ;
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function formatDate(iso: string | null): string {
@@ -165,7 +165,7 @@ function LinkCaseModal({ document, token, tenantId, onClose, onLinked }: LinkCas
     setLoading(true);
     setError("");
     try {
-      await apiFetch(, token, {
+      await apiFetch(`/cloud-documents/${document.id}/link-case`, token, {
         method: "POST",
         tenantId,
         body: JSON.stringify({ case_id: selectedCase, link_type: linkType }),
@@ -258,9 +258,7 @@ function LinkCaseModal({ document, token, tenantId, onClose, onLinked }: LinkCas
 }
 
 export default function DocumentsPage() {
-  const { data: session } = useSession();
-  const token = (session?.user as any)?.accessToken;
-  const tenantId = (session?.user as any)?.tenantId;
+  const { accessToken, tenantId } = useAuth();
 
   const [documents, setDocuments] = useState<CloudDocument[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
@@ -279,14 +277,14 @@ export default function DocumentsPage() {
   const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
-    if (\!token) return;
-    apiFetch<Connection[]>("/oauth/tokens", token, { tenantId })
+    if (!accessToken) return;
+    apiFetch<Connection[]>("/oauth/tokens", accessToken, { tenantId })
       .then((data) => setConnections(data || []))
       .catch(() => {});
-  }, [token, tenantId]);
+  }, [accessToken, tenantId]);
 
   const loadDocuments = useCallback(async () => {
-    if (\!token) return;
+    if (!accessToken) return;
     setLoading(true);
     try {
       const params = new URLSearchParams({
@@ -299,8 +297,8 @@ export default function DocumentsPage() {
       if (searchQuery) params.set("search", searchQuery);
 
       const res = await apiFetch<{ documents: CloudDocument[]; total: number }>(
-        \,
-        token,
+        `/cloud-documents?${params.toString()}`,
+        accessToken,
         { tenantId }
       );
       setDocuments(res.documents || []);
@@ -310,14 +308,14 @@ export default function DocumentsPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, tenantId, page, selectedConnection, selectedProvider, currentFolderId, searchQuery]);
+  }, [accessToken, tenantId, page, selectedConnection, selectedProvider, currentFolderId, searchQuery]);
 
   useEffect(() => {
     loadDocuments();
   }, [loadDocuments]);
 
   const handleFolderClick = (doc: CloudDocument) => {
-    if (\!doc.is_folder) return;
+    if (!doc.is_folder) return;
     setCurrentFolderId(doc.external_id);
     setBreadcrumb((prev) => [...prev, { name: doc.name, folderId: doc.external_id }]);
     setPage(1);
@@ -332,7 +330,7 @@ export default function DocumentsPage() {
   const handleSync = async (connectionId: string) => {
     setSyncing(true);
     try {
-      await apiFetch("/sync", token, {
+      await apiFetch("/sync", accessToken, {
         method: "POST",
         tenantId,
         body: JSON.stringify({ connection_id: connectionId, job_type: "incremental" }),
@@ -643,7 +641,7 @@ export default function DocumentsPage() {
       {linkingDoc && (
         <LinkCaseModal
           document={linkingDoc}
-          token={token}
+          token={accessToken}
           tenantId={tenantId}
           onClose={() => setLinkingDoc(null)}
           onLinked={loadDocuments}

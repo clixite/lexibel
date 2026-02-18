@@ -1,23 +1,25 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Check for session cookie (authjs v5 cookie names)
-  const hasSession =
-    request.cookies.has("authjs.session-token") ||
-    request.cookies.has("__Secure-authjs.session-token");
-
-  // Protect dashboard routes — redirect to login if no session cookie
-  if (pathname.startsWith("/dashboard") && !hasSession) {
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("callbackUrl", pathname);
-    return NextResponse.redirect(loginUrl);
+  // Public routes — always allow
+  if (
+    pathname === "/login" ||
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/api") ||
+    pathname === "/favicon.ico"
+  ) {
+    return NextResponse.next();
   }
 
+  // Auth is checked client-side via AuthProvider + dashboard layout guard.
+  // Server middleware cannot read localStorage, so we let through and
+  // the client-side guard handles redirect to /login.
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };

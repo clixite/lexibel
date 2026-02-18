@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/lib/useAuth";
 import { useState } from "react";
 import { Upload, ArrowRight, ArrowLeft, Check, Loader2, AlertCircle, FileUp, Eye, CheckCircle2 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
@@ -16,7 +16,7 @@ const STEP_LABELS = ["Source", "Upload", "Preview", "Confirmation", "Résultats"
 const STEP_ICONS = [Upload, FileUp, Eye, CheckCircle2, Check];
 
 export default function MigrationPage() {
-  const { data: session } = useSession();
+  const { accessToken } = useAuth();
   const [step, setStep] = useState<Step>(1);
   const [source, setSource] = useState<string>("");
   const [jobId, setJobId] = useState<string>("");
@@ -27,17 +27,15 @@ export default function MigrationPage() {
   const [error, setError] = useState<string | null>(null);
   const [importLoading, setImportLoading] = useState(false);
 
-  const token = (session?.user as any)?.accessToken;
-
   // Progress calculation
   const progressPercent = (step / 5) * 100;
 
   const createJob = async () => {
-    if (!token || !source) return;
+    if (!accessToken || !source) return;
     setLoading(true);
     setError(null);
     try {
-      const job = await apiFetch<any>("/api/v1/migration/jobs", token, {
+      const job = await apiFetch<any>("/api/v1/migration/jobs", accessToken, {
         method: "POST",
         body: JSON.stringify({ source_system: source }),
       });
@@ -51,7 +49,7 @@ export default function MigrationPage() {
   };
 
   const uploadAndPreview = async () => {
-    if (!token || !jobId || !csvText.trim()) return;
+    if (!accessToken || !jobId || !csvText.trim()) return;
     setLoading(true);
     setError(null);
     try {
@@ -68,7 +66,7 @@ export default function MigrationPage() {
 
       const previewData = await apiFetch<any>(
         `/api/v1/migration/jobs/${jobId}/preview`,
-        token,
+        accessToken,
         { method: "POST", body: JSON.stringify({ data }) }
       );
       setPreview(previewData);
@@ -85,13 +83,13 @@ export default function MigrationPage() {
   };
 
   const startImport = async () => {
-    if (!token || !jobId) return;
+    if (!accessToken || !jobId) return;
     setImportLoading(true);
     setError(null);
     try {
       const importResult = await apiFetch<any>(
         `/api/v1/migration/import`,
-        token,
+        accessToken,
         { method: "POST", body: JSON.stringify({ job_id: jobId }) }
       );
       setResult(importResult);

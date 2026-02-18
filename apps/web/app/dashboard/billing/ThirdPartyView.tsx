@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/lib/useAuth";
 import { useEffect, useState } from "react";
 import { Plus, Loader2, X, TrendingUp, TrendingDown, Percent } from "lucide-react";
 import { apiFetch } from "@/lib/api";
@@ -47,7 +47,7 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 export default function ThirdPartyView() {
-  const { data: session } = useSession();
+  const { accessToken, tenantId } = useAuth();
   const [balance, setBalance] = useState<Balance | null>(null);
   const [entries, setEntries] = useState<ThirdPartyEntry[]>([]);
   const [cases, setCases] = useState<CaseOption[]>([]);
@@ -65,8 +65,7 @@ export default function ThirdPartyView() {
     entry_date: new Date().toISOString().split("T")[0],
   });
 
-  const token = (session?.user as any)?.accessToken;
-  const tenantId = (session?.user as any)?.tenantId;
+  const token = accessToken;
 
   useEffect(() => {
     if (!token) return;

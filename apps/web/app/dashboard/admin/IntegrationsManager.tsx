@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/lib/useAuth";
 import { useState, useEffect } from "react";
 import { Mail, Cloud, Loader2, Check, AlertCircle } from "lucide-react";
 import { apiFetch } from "@/lib/api";
@@ -44,23 +44,20 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function IntegrationsManager() {
-  const { data: session } = useSession();
+  const { accessToken, tenantId } = useAuth();
   const [integrations, setIntegrations] = useState<OAuthIntegration[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [connectingProvider, setConnectingProvider] = useState<string | null>(null);
 
-  const token = (session?.user as any)?.accessToken;
-  const tenantId = (session?.user as any)?.tenantId;
-
   const fetchIntegrations = async () => {
-    if (!token) return;
+    if (!accessToken) return;
     setLoading(true);
     setError(null);
     try {
       const data = await apiFetch<{ items: OAuthIntegration[] }>(
         "/admin/integrations",
-        token,
+        accessToken,
         { tenantId }
       );
       setIntegrations(data.items || []);
@@ -74,10 +71,10 @@ export default function IntegrationsManager() {
   useEffect(() => {
     fetchIntegrations();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, [accessToken]);
 
   const handleConnect = async (provider: "google" | "microsoft") => {
-    if (!token) return;
+    if (!accessToken) return;
 
     setConnectingProvider(provider);
     setError(null);
@@ -85,7 +82,7 @@ export default function IntegrationsManager() {
     try {
       const response = await apiFetch<{ oauth_url: string }>(
         `/admin/integrations/connect/${provider}`,
-        token,
+        accessToken,
         { tenantId }
       );
 
@@ -100,7 +97,7 @@ export default function IntegrationsManager() {
   };
 
   const handleDisconnect = async (integrationId: string) => {
-    if (!token) return;
+    if (!accessToken) return;
 
     if (!confirm("Êtes-vous sûr de vouloir déconnecter cette intégration?")) {
       return;
@@ -109,7 +106,7 @@ export default function IntegrationsManager() {
     try {
       await apiFetch(
         `/admin/integrations/${integrationId}`,
-        token,
+        accessToken,
         { method: "DELETE", tenantId }
       );
       await fetchIntegrations();

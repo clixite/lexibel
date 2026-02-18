@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/lib/useAuth";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Mail, Paperclip, Clock, RefreshCw } from "lucide-react";
@@ -24,7 +24,7 @@ interface EmailStats {
 }
 
 export default function EmailsPage() {
-  const { data: session } = useSession();
+  const { accessToken } = useAuth();
   const router = useRouter();
 
   const [loading, setLoading] = useState(false);
@@ -35,11 +35,11 @@ export default function EmailsPage() {
 
   useEffect(() => {
     async function fetchData() {
-      if (!session?.user?.accessToken) return;
+      if (!accessToken) return;
       try {
         setLoading(true);
         setError("");
-        const res = await apiFetch<EmailThread[]>("/emails", session.user.accessToken);
+        const res = await apiFetch<EmailThread[]>("/emails", accessToken);
         setThreads(res);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Erreur de chargement");
@@ -48,32 +48,32 @@ export default function EmailsPage() {
       }
     }
 
-    if (session?.user?.accessToken) {
+    if (accessToken) {
       fetchData();
     }
-  }, [session?.user?.accessToken]);
+  }, [accessToken]);
 
   useEffect(() => {
     async function fetchStats() {
-      if (!session?.user?.accessToken) return;
+      if (!accessToken) return;
       try {
-        const res = await apiFetch<EmailStats>("/emails/stats", session.user.accessToken);
+        const res = await apiFetch<EmailStats>("/emails/stats", accessToken);
         setStats(res);
       } catch (err) {
         console.error("Erreur stats:", err);
       }
     }
 
-    if (session?.user?.accessToken) {
+    if (accessToken) {
       fetchStats();
     }
-  }, [session?.user?.accessToken]);
+  }, [accessToken]);
 
   const handleSync = async () => {
-    if (!session?.user?.accessToken) return;
+    if (!accessToken) return;
     try {
       setSyncing(true);
-      await apiFetch("/emails/sync", session.user.accessToken, { method: "POST" });
+      await apiFetch("/emails/sync", accessToken, { method: "POST" });
       toast.success("Synchronisation démarrée");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erreur de synchronisation");

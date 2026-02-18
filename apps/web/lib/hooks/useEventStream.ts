@@ -20,7 +20,7 @@
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/lib/useAuth';
 
 interface EventStreamOptions {
   onCallEvent?: (data: CallEventData) => void;
@@ -72,7 +72,7 @@ export function useEventStream(options: EventStreamOptions = {}): EventStreamSta
     reconnectDelay = 1000,
   } = options;
 
-  const { data: session } = useSession();
+  const { accessToken } = useAuth();
   const [isConnected, setIsConnected] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
   const [events, setEvents] = useState<any[]>([]);
@@ -83,7 +83,7 @@ export function useEventStream(options: EventStreamOptions = {}): EventStreamSta
   const reconnectAttemptsRef = useRef(0);
 
   const connect = useCallback(() => {
-    if (!session?.user?.accessToken) {
+    if (!accessToken) {
       console.warn('EventStream: No access token available');
       return;
     }
@@ -98,7 +98,7 @@ export function useEventStream(options: EventStreamOptions = {}): EventStreamSta
 
       // EventSource doesn't support custom headers directly
       // We append the token as a query parameter (alternative: use fetch-event-source)
-      const urlWithAuth = `${url}?token=${session.user.accessToken}`;
+      const urlWithAuth = `${url}?token=${accessToken}`;
 
       const eventSource = new EventSource(urlWithAuth);
       eventSourceRef.current = eventSource;
@@ -191,10 +191,10 @@ export function useEventStream(options: EventStreamOptions = {}): EventStreamSta
       console.error('EventStream: Failed to create EventSource', err);
       setError(err as Error);
     }
-  }, [session, autoReconnect, reconnectDelay, onCallEvent, onCallAiCompleted, onCaseUpdated, onInboxItem]);
+  }, [accessToken, autoReconnect, reconnectDelay, onCallEvent, onCallAiCompleted, onCaseUpdated, onInboxItem]);
 
   useEffect(() => {
-    if (session?.user?.accessToken) {
+    if (accessToken) {
       connect();
     }
 
@@ -210,7 +210,7 @@ export function useEventStream(options: EventStreamOptions = {}): EventStreamSta
         reconnectTimeoutRef.current = null;
       }
     };
-  }, [session, connect]);
+  }, [accessToken, connect]);
 
   return {
     isConnected,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/lib/useAuth";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Loader2, Search, Mail, Phone, X, Check, ChevronRight } from "lucide-react";
@@ -34,7 +34,7 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 export default function ContactsPage() {
-  const { data: session } = useSession();
+  const { accessToken, tenantId } = useAuth();
   const router = useRouter();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,13 +54,10 @@ export default function ContactsPage() {
     language: "fr",
   });
 
-  const token = (session?.user as any)?.accessToken;
-  const tenantId = (session?.user as any)?.tenantId;
-
   const loadContacts = () => {
-    if (!token) return;
+    if (!accessToken) return;
     setLoading(true);
-    apiFetch<ContactListResponse>("/contacts", token, { tenantId })
+    apiFetch<ContactListResponse>("/contacts", accessToken, { tenantId })
       .then((data) => setContacts(data.items))
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -69,14 +66,14 @@ export default function ContactsPage() {
   useEffect(() => {
     loadContacts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session]);
+  }, [accessToken, tenantId]);
 
   const handleCreate = async () => {
-    if (!token || !form.full_name.trim()) return;
+    if (!accessToken || !form.full_name.trim()) return;
     setCreating(true);
     setError(null);
     try {
-      await apiFetch("/contacts", token, {
+      await apiFetch("/contacts", accessToken, {
         tenantId,
         method: "POST",
         body: JSON.stringify({

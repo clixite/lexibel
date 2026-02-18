@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/lib/useAuth";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
@@ -21,11 +21,9 @@ import { useThreadEmails, useLinkEmailToCase } from "@/lib/hooks/useEmails";
 import { toast } from "sonner";
 
 export default function EmailThreadPage({ params }: { params: { id: string } }) {
-  const { data: session } = useSession();
+  const { accessToken, tenantId } = useAuth();
   const router = useRouter();
-  const user = session?.user as any;
-  const token = user?.accessToken;
-  const tenantId = user?.tenantId;
+  const token = accessToken;
 
   const [expandedMessages, setExpandedMessages] = useState<Set<string>>(new Set());
   const [linkingCaseId, setLinkingCaseId] = useState("");

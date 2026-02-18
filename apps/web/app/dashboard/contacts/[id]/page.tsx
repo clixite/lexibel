@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/lib/useAuth";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
@@ -47,9 +47,8 @@ const LANGUAGE_OPTIONS = [
 ];
 
 export default function ContactDetailPage() {
-  const { data: session } = useSession();
-  const token = (session?.user as any)?.accessToken;
-  const tenantId = (session?.user as any)?.tenantId;
+  const { accessToken, tenantId } = useAuth();
+  const token = accessToken;
   const params = useParams();
   const router = useRouter();
   const contactId = params.id as string;

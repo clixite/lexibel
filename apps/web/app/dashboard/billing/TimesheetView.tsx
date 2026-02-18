@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/lib/useAuth";
 import { useEffect, useState, useRef } from "react";
 import { Plus, Play, Square, Loader2, X, Check } from "lucide-react";
 import { apiFetch } from "@/lib/api";
@@ -41,7 +41,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export default function TimesheetView() {
-  const { data: session } = useSession();
+  const { accessToken, tenantId } = useAuth();
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [cases, setCases] = useState<CaseOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,8 +65,7 @@ export default function TimesheetView() {
     hourly_rate_cents: 15000,
   });
 
-  const token = (session?.user as any)?.accessToken;
-  const tenantId = (session?.user as any)?.tenantId;
+  const token = accessToken;
 
   useEffect(() => {
     if (!token) return;

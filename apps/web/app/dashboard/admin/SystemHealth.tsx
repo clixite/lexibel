@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/lib/useAuth";
 import { Activity, RefreshCw, Loader2 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 
@@ -42,23 +42,20 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export default function SystemHealth() {
-  const { data: session } = useSession();
+  const { accessToken, tenantId } = useAuth();
   const [health, setHealth] = useState<HealthData | null>(null);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<StatsData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const token = (session?.user as any)?.accessToken;
-  const tenantId = (session?.user as any)?.tenantId;
-
   const fetchHealth = async () => {
-    if (!token) return;
+    if (!accessToken) return;
     setLoading(true);
     setError(null);
     try {
       const [healthData, statsData] = await Promise.all([
-        apiFetch<HealthData>("/admin/health", token, { tenantId }),
-        apiFetch<StatsData>("/admin/stats", token, { tenantId }),
+        apiFetch<HealthData>("/admin/health", accessToken, { tenantId }),
+        apiFetch<StatsData>("/admin/stats", accessToken, { tenantId }),
       ]);
       setHealth(healthData);
       setStats(statsData);
@@ -72,7 +69,7 @@ export default function SystemHealth() {
   useEffect(() => {
     fetchHealth();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, [accessToken]);
 
   return (
     <div className="space-y-6">

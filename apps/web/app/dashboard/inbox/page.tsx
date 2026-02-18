@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/lib/useAuth";
 import { useEffect, useState, useCallback } from "react";
 import {
   Inbox,
@@ -177,11 +177,7 @@ function generateReference(): string {
 /* ------------------------------------------------------------------ */
 
 export default function InboxPage() {
-  const { data: session } = useSession();
-
-  const token = (session?.user as any)?.accessToken;
-  const tenantId = (session?.user as any)?.tenantId;
-  const userId = (session?.user as any)?.id;
+  const { accessToken, tenantId, userId } = useAuth();
 
   /* --- State --- */
   const [items, setItems] = useState<InboxItem[]>([]);
@@ -217,26 +213,26 @@ export default function InboxPage() {
 
   /* --- Data loading --- */
   const loadItems = useCallback(() => {
-    if (!token) return;
+    if (!accessToken) return;
     setLoading(true);
     setError(null);
 
     const statusParam = statusFilter ? `?status=${statusFilter}` : "";
-    apiFetch<InboxListResponse>(`/inbox${statusParam}`, token, { tenantId })
+    apiFetch<InboxListResponse>(`/inbox${statusParam}`, accessToken, { tenantId })
       .then((data) => {
         setItems(data.items);
         setTotalCount(data.total);
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
-  }, [token, tenantId, statusFilter]);
+  }, [accessToken, tenantId, statusFilter]);
 
   const loadCases = useCallback(() => {
-    if (!token) return;
-    apiFetch<CaseListResponse>("/cases", token, { tenantId })
+    if (!accessToken) return;
+    apiFetch<CaseListResponse>("/cases", accessToken, { tenantId })
       .then((data) => setCases(data.items))
       .catch(() => {});
-  }, [token, tenantId]);
+  }, [accessToken, tenantId]);
 
   useEffect(() => {
     loadItems();
@@ -248,12 +244,12 @@ export default function InboxPage() {
 
   /* --- Actions --- */
   const handleValidate = async () => {
-    if (!token || !validateTarget || !validateForm.case_id || !validateForm.title.trim())
+    if (!accessToken || !validateTarget || !validateForm.case_id || !validateForm.title.trim())
       return;
     setActionLoading(validateTarget.id);
     setError(null);
     try {
-      await apiFetch(`/inbox/${validateTarget.id}/validate`, token, {
+      await apiFetch(`/inbox/${validateTarget.id}/validate`, accessToken, {
         tenantId,
         method: "POST",
         body: JSON.stringify({
@@ -281,11 +277,11 @@ export default function InboxPage() {
   };
 
   const handleRefuse = async () => {
-    if (!token || !refuseTarget) return;
+    if (!accessToken || !refuseTarget) return;
     setActionLoading(refuseTarget.id);
     setError(null);
     try {
-      await apiFetch(`/inbox/${refuseTarget.id}/refuse`, token, {
+      await apiFetch(`/inbox/${refuseTarget.id}/refuse`, accessToken, {
         tenantId,
         method: "POST",
       });
@@ -302,7 +298,7 @@ export default function InboxPage() {
 
   const handleCreateCase = async () => {
     if (
-      !token ||
+      !accessToken ||
       !createCaseTarget ||
       !createCaseForm.title.trim() ||
       !createCaseForm.reference.trim()
@@ -311,7 +307,7 @@ export default function InboxPage() {
     setActionLoading(createCaseTarget.id);
     setError(null);
     try {
-      await apiFetch(`/inbox/${createCaseTarget.id}/create-case`, token, {
+      await apiFetch(`/inbox/${createCaseTarget.id}/create-case`, accessToken, {
         tenantId,
         method: "POST",
         body: JSON.stringify({

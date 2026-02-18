@@ -2,9 +2,9 @@
  * API Client — Base HTTP client with auth and error handling
  */
 
-import { getSession } from 'next-auth/react';
+import { getAccessToken } from "@/lib/auth-core";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 class ApiClient {
   private baseUrl: string;
@@ -13,23 +13,23 @@ class ApiClient {
     this.baseUrl = baseUrl;
   }
 
-  private async getHeaders(): Promise<HeadersInit> {
-    const session = await getSession();
+  private getHeaders(): HeadersInit {
+    const token = getAccessToken();
     const headers: HeadersInit = {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     };
 
-    if (session?.user?.accessToken) {
-      headers['Authorization'] = `Bearer ${session.user.accessToken}`;
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
     }
 
     return headers;
   }
 
   async get(path: string): Promise<Response> {
-    const headers = await this.getHeaders();
+    const headers = this.getHeaders();
     const response = await fetch(`${this.baseUrl}${path}`, {
-      method: 'GET',
+      method: "GET",
       headers,
     });
 
@@ -41,9 +41,9 @@ class ApiClient {
   }
 
   async post(path: string, data?: any): Promise<Response> {
-    const headers = await this.getHeaders();
+    const headers = this.getHeaders();
     const response = await fetch(`${this.baseUrl}${path}`, {
-      method: 'POST',
+      method: "POST",
       headers,
       body: data ? JSON.stringify(data) : undefined,
     });
@@ -56,9 +56,9 @@ class ApiClient {
   }
 
   async put(path: string, data?: any): Promise<Response> {
-    const headers = await this.getHeaders();
+    const headers = this.getHeaders();
     const response = await fetch(`${this.baseUrl}${path}`, {
-      method: 'PUT',
+      method: "PUT",
       headers,
       body: data ? JSON.stringify(data) : undefined,
     });
@@ -71,9 +71,9 @@ class ApiClient {
   }
 
   async delete(path: string): Promise<Response> {
-    const headers = await this.getHeaders();
+    const headers = this.getHeaders();
     const response = await fetch(`${this.baseUrl}${path}`, {
-      method: 'DELETE',
+      method: "DELETE",
       headers,
     });
 

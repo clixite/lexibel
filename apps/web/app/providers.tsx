@@ -1,6 +1,6 @@
 "use client";
 
-import { SessionProvider } from "next-auth/react";
+import { AuthProvider } from "@/lib/AuthProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import { useState } from "react";
@@ -19,7 +19,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <SessionProvider>
+    <AuthProvider>
       <QueryClientProvider client={queryClient}>
         {children}
         <Toaster
@@ -30,6 +30,6 @@ export default function Providers({ children }: { children: React.ReactNode }) {
           duration={4000}
         />
       </QueryClientProvider>
-    </SessionProvider>
+    </AuthProvider>
   );
 }

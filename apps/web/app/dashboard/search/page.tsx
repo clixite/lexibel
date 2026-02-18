@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/lib/useAuth";
 import { useState } from "react";
 import { Search, Zap, Clock, TrendingUp } from "lucide-react";
 import { apiFetch } from "@/lib/api";
@@ -21,10 +21,7 @@ interface SearchResponse {
 }
 
 export default function SearchPage() {
-  const { data: session } = useSession();
-  const user = session?.user as any;
-  const token = user?.accessToken;
-  const tenantId = user?.tenantId;
+  const { accessToken, tenantId } = useAuth();
 
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -34,7 +31,7 @@ export default function SearchPage() {
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!query.trim() || !token) return;
+    if (!query.trim() || !accessToken) return;
 
     setLoading(true);
     setError(null);
@@ -43,7 +40,7 @@ export default function SearchPage() {
     try {
       const data = await apiFetch<SearchResponse>(
         `/search?q=${encodeURIComponent(query.trim())}&top_k=10`,
-        token,
+        accessToken,
         { method: "POST", tenantId, body: JSON.stringify({ q: query.trim(), top_k: 10 }) }
       );
       setResults(data.results || []);

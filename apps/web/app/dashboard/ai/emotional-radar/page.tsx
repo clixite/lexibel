@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/lib/useAuth";
 import { Activity, AlertTriangle, TrendingDown, TrendingUp, Minus, Loader2 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 
@@ -50,18 +50,15 @@ function TrendIcon({ trend }: { trend: string }) {
 }
 
 export default function EmotionalRadarPage() {
-  const { data: session } = useSession();
+  const { accessToken, tenantId } = useAuth();
   const [caseId, setCaseId] = useState("");
   const [eventsJson, setEventsJson] = useState("");
   const [result, setResult] = useState<EmotionalProfile | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const token = (session?.user as any)?.accessToken;
-  const tenantId = (session?.user as any)?.tenantId;
-
   const runAnalysis = async () => {
-    if (!caseId.trim() || !token) return;
+    if (!caseId.trim() || !accessToken) return;
     setLoading(true);
     setError("");
     setResult(null);
@@ -80,7 +77,7 @@ export default function EmotionalRadarPage() {
     try {
       const data = await apiFetch<EmotionalProfile>(
         `/agents/emotional-radar/${caseId}`,
-        token,
+        accessToken,
         {
           tenantId,
           method: "POST",

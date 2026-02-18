@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/lib/useAuth";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
@@ -33,11 +33,9 @@ export default function CaseConflictsPage({
 }: {
   params: { id: string };
 }) {
-  const { data: session } = useSession();
+  const { accessToken, tenantId } = useAuth();
   const router = useRouter();
-  const user = session?.user as any;
-  const token = user?.accessToken;
-  const tenantId = user?.tenantId;
+  const token = accessToken;
 
   const [selectedNode, setSelectedNode] = useState<any>(null);
   const [selectedConflict, setSelectedConflict] = useState<ConflictDetection | null>(null);

@@ -1,6 +1,8 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useAuthContext } from "./AuthProvider";
+
+export type { AuthUser } from "./auth-core";
 
 export interface AuthContext {
   accessToken: string;
@@ -10,19 +12,10 @@ export interface AuthContext {
   role: string;
   isLoading: boolean;
   isAuthenticated: boolean;
+  logout: () => void;
+  onLoginSuccess: (accessToken: string, refreshToken: string) => void;
 }
 
 export function useAuth(): AuthContext {
-  const { data: session, status } = useSession();
-  const user = session?.user as any;
-
-  return {
-    accessToken: user?.accessToken || "",
-    tenantId: user?.tenantId || "",
-    userId: user?.id || "",
-    email: user?.email || "",
-    role: user?.role || "",
-    isLoading: status === "loading",
-    isAuthenticated: status === "authenticated" && !!user?.accessToken,
-  };
+  return useAuthContext();
 }

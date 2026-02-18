@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/lib/useAuth";
 import { useState } from "react";
 import { Shield, Users, Building2, Activity, Plug } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -19,13 +19,12 @@ const TABS = [
 type TabId = (typeof TABS)[number]["id"];
 
 export default function AdminPage() {
-  const { data: session } = useSession();
+  const { role } = useAuth();
   const [activeTab, setActiveTab] = useState<TabId>("users");
   const router = useRouter();
 
   // Protection: only super_admin can access
-  const userRole = (session?.user as any)?.role;
-  if (session && userRole !== "super_admin") {
+  if (role !== "super_admin") {
     return (
       <div className="bg-danger-50 border border-danger-200 rounded-lg p-6">
         <h2 className="text-lg font-semibold text-danger-900 mb-2">Accès refusé</h2>

@@ -136,6 +136,9 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    # Note: RBAC is enforced via @require_role() decorators (apps/api/middleware/rbac.py),
+    # not as ASGI middleware, since it operates at the route level.
+
     # ── Routers ──
     app.include_router(auth_router)
     app.include_router(mfa_router)

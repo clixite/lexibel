@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/lib/useAuth";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -65,11 +65,9 @@ const SENTIMENT_LABELS = {
 };
 
 export default function CallDetailPage({ params }: { params: { id: string } }) {
-  const { data: session } = useSession();
+  const { accessToken, tenantId } = useAuth();
   const router = useRouter();
-  const user = session?.user as any;
-  const token = user?.accessToken;
-  const tenantId = user?.tenantId;
+  const token = accessToken;
 
   const callQuery = useQuery({
     queryKey: ["ringover-call", params.id, tenantId],

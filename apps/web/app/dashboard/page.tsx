@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/lib/useAuth";
 import { useEffect, useState } from "react";
 import {
   Briefcase,
@@ -54,25 +54,22 @@ interface DashboardResponse {
 }
 
 export default function DashboardPage() {
-  const { data: session } = useSession();
+  const { accessToken, tenantId, email } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [recentCases, setRecentCases] = useState<RecentCase[]>([]);
   const [inboxItems, setInboxItems] = useState<InboxItem[]>([]);
 
-  const token = (session?.user as any)?.accessToken;
-  const tenantId = (session?.user as any)?.tenantId;
-
   useEffect(() => {
     async function fetchData() {
-      if (!token) return;
+      if (!accessToken) return;
       try {
         setLoading(true);
         setError(null);
 
         const [statsRes, recentRes, inboxRes] = await Promise.all([
-          apiFetch<DashboardResponse>("/dashboard/stats", token, { tenantId }).catch(
+          apiFetch<DashboardResponse>("/dashboard/stats", accessToken, { tenantId }).catch(
             (err) => {
               console.error(err);
               return {};
@@ -80,12 +77,12 @@ export default function DashboardPage() {
           ),
           apiFetch<{ items: RecentCase[] }>(
             "/cases?page=1&per_page=5&sort=-updated_at",
-            token,
+            accessToken,
             { tenantId }
           ).catch(() => ({ items: [] })),
           apiFetch<{ items: InboxItem[] }>(
             "/inbox?status=DRAFT&per_page=5",
-            token,
+            accessToken,
             { tenantId }
           ).catch(() => ({ items: [] })),
         ]);
@@ -113,7 +110,7 @@ export default function DashboardPage() {
     }
 
     fetchData();
-  }, [token, tenantId]);
+  }, [accessToken, tenantId]);
 
   if (loading) {
     return <LoadingSkeleton variant="stats" />;
@@ -123,9 +120,8 @@ export default function DashboardPage() {
     return <ErrorState message={error} onRetry={() => window.location.reload()} />;
   }
 
-  const user = session?.user as any;
-  const email = user?.email || "Utilisateur";
-  const firstName = email.split("@")[0].split(".")[0];
+  const displayEmail = email || "Utilisateur";
+  const firstName = displayEmail.split("@")[0].split(".")[0];
   const displayName =
     firstName.charAt(0).toUpperCase() + firstName.slice(1);
 

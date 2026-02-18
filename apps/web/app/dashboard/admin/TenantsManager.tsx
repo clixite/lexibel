@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/lib/useAuth";
 import { Building2, Loader2, Plus, Check } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 
@@ -22,7 +22,7 @@ const PLANS = [
 ];
 
 export default function TenantsManager() {
-  const { data: session } = useSession();
+  const { accessToken, tenantId } = useAuth();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -33,14 +33,11 @@ export default function TenantsManager() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const token = (session?.user as any)?.accessToken;
-  const tenantId = (session?.user as any)?.tenantId;
-
   const fetchTenants = async () => {
-    if (!token) return;
+    if (!accessToken) return;
     setLoading(true);
     try {
-      const data = await apiFetch<{ tenants: Tenant[] }>("/admin/tenants", token, { tenantId });
+      const data = await apiFetch<{ tenants: Tenant[] }>("/admin/tenants", accessToken, { tenantId });
       setTenants(data.tenants || []);
     } catch (err: any) {
       setError(err.message);
@@ -52,15 +49,15 @@ export default function TenantsManager() {
   useEffect(() => {
     fetchTenants();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, [accessToken]);
 
   const createTenant = async () => {
-    if (!name.trim() || !token) return;
+    if (!name.trim() || !accessToken) return;
     setCreating(true);
     setError("");
 
     try {
-      await apiFetch("/admin/tenants", token, {
+      await apiFetch("/admin/tenants", accessToken, {
         tenantId,
         method: "POST",
         body: JSON.stringify({

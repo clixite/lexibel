@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/lib/useAuth";
 import { useState, useEffect } from "react";
 import { Share2, Loader2, RefreshCw, Network, ChevronRight } from "lucide-react";
 import { apiFetch } from "@/lib/api";
@@ -38,10 +38,7 @@ const typeColors: Record<string, "success" | "warning" | "accent" | "danger" | "
 };
 
 export default function GraphPage() {
-  const { data: session } = useSession();
-  const user = session?.user as any;
-  const token = user?.accessToken;
-  const tenantId = user?.tenantId;
+  const { accessToken, tenantId } = useAuth();
 
   const [cases, setCases] = useState<Case[]>([]);
   const [selectedCaseId, setSelectedCaseId] = useState("");
@@ -53,16 +50,16 @@ export default function GraphPage() {
 
   // Load cases on mount
   useEffect(() => {
-    if (!token) return;
+    if (!accessToken) return;
     setCasesLoading(true);
-    apiFetch<CasesResponse>("/cases", token, { tenantId })
+    apiFetch<CasesResponse>("/cases", accessToken, { tenantId })
       .then((data) => setCases(data.items || []))
       .catch((err) => setError(err.message))
       .finally(() => setCasesLoading(false));
-  }, [token, tenantId]);
+  }, [accessToken, tenantId]);
 
   const handleLoadGraph = async () => {
-    if (!selectedCaseId.trim() || !token) return;
+    if (!selectedCaseId.trim() || !accessToken) return;
 
     setLoading(true);
     setError(null);
@@ -70,7 +67,7 @@ export default function GraphPage() {
     try {
       const data = await apiFetch<GraphData>(
         `/graph/case/${selectedCaseId}`,
-        token,
+        accessToken,
         { tenantId }
       );
       setGraphData(data);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/lib/useAuth";
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Search, Grid3x3, List, ChevronRight, Archive, Trash2 } from "lucide-react";
@@ -60,7 +60,7 @@ function generateReference(): string {
 }
 
 export default function CasesPage() {
-  const { data: session } = useSession();
+  const { accessToken, tenantId, userId } = useAuth();
   const router = useRouter();
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -83,10 +83,6 @@ export default function CasesPage() {
     status: "open",
   });
 
-  const token = (session?.user as any)?.accessToken;
-  const tenantId = (session?.user as any)?.tenantId;
-  const userId = (session?.user as any)?.id;
-
   // Keyboard shortcuts
   useKeyboardShortcuts({
     n: () => setShowModal(true),
@@ -94,9 +90,9 @@ export default function CasesPage() {
   });
 
   const loadCases = () => {
-    if (!token) return;
+    if (!accessToken) return;
     setLoading(true);
-    apiFetch<CaseListResponse>("/cases", token, { tenantId })
+    apiFetch<CaseListResponse>("/cases", accessToken, { tenantId })
       .then((data) => setCases(data.items))
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -105,10 +101,10 @@ export default function CasesPage() {
   useEffect(() => {
     loadCases();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session]);
+  }, [accessToken, tenantId]);
 
   const handleCreate = async () => {
-    if (!token || !form.title.trim()) return;
+    if (!accessToken || !form.title.trim()) return;
     setCreating(true);
     setError(null);
 
@@ -126,7 +122,7 @@ export default function CasesPage() {
     setCases([tempCase, ...cases]);
 
     try {
-      const result = await apiFetch<Case>("/cases", token, {
+      const result = await apiFetch<Case>("/cases", accessToken, {
         tenantId,
         method: "POST",
         body: JSON.stringify({

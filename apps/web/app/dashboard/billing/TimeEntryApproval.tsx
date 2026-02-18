@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/lib/useAuth";
 import { useEffect, useState } from "react";
 import { Check, X, Loader2 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
@@ -18,15 +18,14 @@ interface TimeEntry {
 }
 
 export default function TimeEntryApproval() {
-  const { data: session } = useSession();
+  const { accessToken, tenantId } = useAuth();
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [processing, setProcessing] = useState(false);
 
-  const token = (session?.user as any)?.accessToken;
-  const tenantId = (session?.user as any)?.tenantId;
+  const token = accessToken;
 
   useEffect(() => {
     if (!token) return;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/lib/useAuth";
 import { Fragment, useEffect, useState } from "react";
 import { Plus, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
@@ -49,15 +49,14 @@ function formatCents(cents: number): string {
 }
 
 export default function InvoiceList() {
-  const { data: session } = useSession();
+  const { accessToken, tenantId } = useAuth();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [loadingLines, setLoadingLines] = useState<string | null>(null);
 
-  const token = (session?.user as any)?.accessToken;
-  const tenantId = (session?.user as any)?.tenantId;
+  const token = accessToken;
 
   useEffect(() => {
     if (!token) return;

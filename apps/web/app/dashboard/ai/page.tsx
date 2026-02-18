@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/lib/useAuth";
 import { useState, useEffect } from "react";
 import { Brain, Loader2, FileText, Sparkles, Zap, BarChart3, ShieldCheck, Eye, EyeOff, CheckCircle2 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
@@ -101,10 +101,7 @@ const AI_CARDS = [
 ];
 
 export default function AIHubPage() {
-  const { data: session } = useSession();
-  const user = session?.user as any;
-  const token = user?.accessToken;
-  const tenantId = user?.tenantId;
+  const { accessToken, tenantId } = useAuth();
 
   const [cases, setCases] = useState<Case[]>([]);
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
@@ -120,16 +117,16 @@ export default function AIHubPage() {
 
   // Load cases on mount
   useEffect(() => {
-    if (!token) return;
+    if (!accessToken) return;
     setCasesLoading(true);
-    apiFetch<CasesResponse>("/cases", token, { tenantId })
+    apiFetch<CasesResponse>("/cases", accessToken, { tenantId })
       .then((data) => setCases(data.items || []))
       .catch((err) => setError(err.message))
       .finally(() => setCasesLoading(false));
-  }, [token, tenantId]);
+  }, [accessToken, tenantId]);
 
   const handleGenerate = async (taskType: string) => {
-    if (!selectedCase.trim() || !prompt.trim() || !token) {
+    if (!selectedCase.trim() || !prompt.trim() || !accessToken) {
       setError("Veuillez sélectionner un dossier et entrer un prompt");
       return;
     }
@@ -141,7 +138,7 @@ export default function AIHubPage() {
     try {
       const data = await apiFetch<LLMResult>(
         "/llm/complete",
-        token,
+        accessToken,
         {
           method: "POST",
           tenantId,
@@ -164,10 +161,10 @@ export default function AIHubPage() {
   };
 
   const handleValidate = async (auditId: string) => {
-    if (!token) return;
+    if (!accessToken) return;
     setValidating(true);
     try {
-      await apiFetch(`/llm/audit/${auditId}/validate`, token, {
+      await apiFetch(`/llm/audit/${auditId}/validate`, accessToken, {
         method: "POST",
         tenantId,
       });
