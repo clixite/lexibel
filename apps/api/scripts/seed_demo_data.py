@@ -453,21 +453,31 @@ async def seed_data():
 
         # ── 10. Inbox Items ──
         print("\n📥 Creating 5 inbox items...")
-        inbox_statuses = ["pending", "pending", "pending", "validated", "refused"]
+        inbox_items_data = [
+            ("OUTLOOK", "DRAFT", None, None),
+            ("RINGOVER", "DRAFT", None, None),
+            ("PLAUD", "DRAFT", None, None),
+            ("OUTLOOK", "VALIDATED", cases[0].id, 0.95),
+            ("DPA_JBOX", "REFUSED", None, None),
+        ]
 
-        for i, status in enumerate(inbox_statuses):
+        for i, (source, status, suggested_case, confidence) in enumerate(inbox_items_data):
             item = InboxItem(
                 id=uuid4(),
                 tenant_id=tenant.id,
-                case_id=cases[i].id if status == "validated" else None,
-                source="OUTLOOK",
-                title=f"Email #{i + 1} - Nouveau message",
-                preview=f"Contenu de l'email #{i + 1} en attente de validation...",
+                source=source,
                 status=status,
-                metadata_={
+                raw_payload={
+                    "id": f"external-{source.lower()}-{i + 1}",
                     "from": f"sender{i + 1}@example.com",
                     "subject": f"Sujet #{i + 1}",
+                    "body": f"Contenu de l'item #{i + 1} en attente de validation...",
+                    "received_at": str(datetime.now() - timedelta(days=i)),
                 },
+                suggested_case_id=suggested_case,
+                confidence=confidence,
+                validated_by=admin_user.id if status == "VALIDATED" else None,
+                validated_at=datetime.now() - timedelta(hours=i) if status == "VALIDATED" else None,
             )
             session.add(item)
 
