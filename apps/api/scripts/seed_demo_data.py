@@ -364,15 +364,15 @@ async def seed_data():
             id=uuid4(),
             tenant_id=tenant.id,
             case_id=cases[0].id,
+            client_contact_id=contacts[0].id,  # Jean Dupont
             invoice_number="2026/001",
             issue_date=date.today() - timedelta(days=7),
             due_date=date.today() + timedelta(days=23),
             status="draft",
             subtotal_cents=62500,  # €625
             vat_rate=21.0,
-            vat_cents=13125,  # €131.25
+            vat_amount_cents=13125,  # €131.25
             total_cents=75625,  # €756.25
-            communication_structuree="+++001/0000/00123+++",
         )
         session.add(invoice1)
 
@@ -392,15 +392,15 @@ async def seed_data():
             id=uuid4(),
             tenant_id=tenant.id,
             case_id=cases[1].id,
+            client_contact_id=contacts[1].id,  # Marie Martin
             invoice_number="2026/002",
             issue_date=date.today() - timedelta(days=15),
             due_date=date.today() + timedelta(days=15),
             status="sent",
             subtotal_cents=100000,  # €1000
             vat_rate=21.0,
-            vat_cents=21000,  # €210
+            vat_amount_cents=21000,  # €210
             total_cents=121000,  # €1210
-            communication_structuree="+++002/0000/00456+++",
         )
         session.add(invoice2)
 
