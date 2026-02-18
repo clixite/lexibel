@@ -53,14 +53,14 @@ export const GraphNodeSchema = z.object({
   id: z.string(),
   label: z.string(),
   name: z.string(),
-  properties: z.record(z.any()).optional(),
+  properties: z.record(z.string(), z.any()).optional(),
 });
 
 export const GraphEdgeSchema = z.object({
   from: z.string(),
   to: z.string(),
   type: z.string(),
-  properties: z.record(z.any()).optional(),
+  properties: z.record(z.string(), z.any()).optional(),
 });
 
 export const ConflictCheckResponseSchema = z.object({
