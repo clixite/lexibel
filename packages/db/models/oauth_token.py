@@ -52,6 +52,23 @@ class OAuthToken(TenantMixin, TimestampMixin, Base):
     # Space-separated scopes
     scope: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # Token status: 'active', 'expired', 'revoked'
+    status: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        server_default=text("'active'"),
+        index=True,
+        comment="Token status: active, expired, revoked",
+    )
+
+    # Email address associated with this OAuth token
+    email_address: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+        index=True,
+        comment="Email address associated with this OAuth token",
+    )
+
     __table_args__ = (
         # Unique constraint: one token per user per provider
         UniqueConstraint("user_id", "provider", name="uq_oauth_token_user_provider"),

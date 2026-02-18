@@ -45,6 +45,7 @@ from apps.api.routers.emails import router as emails_router
 from apps.api.routers.calls import router as calls_router
 from apps.api.routers.transcriptions import router as transcriptions_router
 from apps.api.routers.dashboard import router as dashboard_router
+from apps.api.routers.oauth import router as oauth_router
 
 # Optional routers (defensive imports)
 try:
@@ -166,6 +167,7 @@ def create_app() -> FastAPI:
     app.include_router(calls_router)
     app.include_router(transcriptions_router)
     app.include_router(dashboard_router)
+    app.include_router(oauth_router)
 
     # Optional routers
     if SENTINEL_AVAILABLE and sentinel_router:
