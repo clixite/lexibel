@@ -379,6 +379,7 @@ async def seed_data():
         # Add invoice lines
         line1 = InvoiceLine(
             id=uuid4(),
+            tenant_id=tenant.id,
             invoice_id=invoice1.id,
             description="Prestations juridiques - Janvier 2026",
             quantity=2.5,
@@ -406,6 +407,7 @@ async def seed_data():
 
         line2 = InvoiceLine(
             id=uuid4(),
+            tenant_id=tenant.id,
             invoice_id=invoice2.id,
             description="Honoraires - Divorce",
             quantity=4.0,
