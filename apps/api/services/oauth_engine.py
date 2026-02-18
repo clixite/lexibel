@@ -80,40 +80,33 @@ class OAuthEngine:
     ) -> dict:
         """Get OAuth configuration for a tenant.
 
-        Checks tenant.config.oauth.{provider} first, falls back to env vars.
+        Priority: tenant_settings DB → tenant.config.oauth → env vars.
         """
-        # Query tenant config
-        result = await session.execute(
-            select(Tenant).where(Tenant.id == tenant_id)
-        )
-        tenant = result.scalar_one_or_none()
-
-        if not tenant:
-            raise ValueError(f"Tenant {tenant_id} not found")
-
-        # Try tenant-specific config first
-        oauth_config = tenant.config.get("oauth", {}).get(provider, {})
+        from apps.api.services.config_provider import get_config
 
         if provider == "google":
-            client_id = oauth_config.get("client_id") or os.getenv(
-                "GOOGLE_CLIENT_ID"
-            )
-            client_secret = oauth_config.get("client_secret") or os.getenv(
-                "GOOGLE_CLIENT_SECRET"
-            )
+            client_id = await get_config(session, tenant_id, "GOOGLE_CLIENT_ID")
+            client_secret = await get_config(session, tenant_id, "GOOGLE_CLIENT_SECRET")
         else:  # microsoft
-            client_id = oauth_config.get("client_id") or os.getenv(
-                "MICROSOFT_CLIENT_ID"
+            client_id = await get_config(session, tenant_id, "MICROSOFT_CLIENT_ID")
+            client_secret = await get_config(session, tenant_id, "MICROSOFT_CLIENT_SECRET")
+
+        # Fallback: also check tenant.config.oauth.{provider} (legacy)
+        if not client_id or not client_secret:
+            result = await session.execute(
+                select(Tenant).where(Tenant.id == tenant_id)
             )
-            client_secret = oauth_config.get("client_secret") or os.getenv(
-                "MICROSOFT_CLIENT_SECRET"
-            )
+            tenant = result.scalar_one_or_none()
+            if tenant:
+                oauth_config = tenant.config.get("oauth", {}).get(provider, {})
+                client_id = client_id or oauth_config.get("client_id")
+                client_secret = client_secret or oauth_config.get("client_secret")
 
         if not client_id or not client_secret:
             raise ValueError(
                 f"OAuth config missing for {provider}. "
                 f"Set {provider.upper()}_CLIENT_ID and {provider.upper()}_CLIENT_SECRET "
-                "in environment or configure in tenant settings."
+                "in Admin → Settings or environment variables."
             )
 
         return {

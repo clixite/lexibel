@@ -37,6 +37,7 @@ from apps.api.routers.ml import router as ml_router
 from apps.api.routers.graph import router as graph_router
 from apps.api.routers.agents import router as agents_router
 from apps.api.routers.admin import router as admin_router
+from apps.api.routers.admin_settings import router as admin_settings_router
 from apps.api.routers.mobile import router as mobile_router
 from apps.api.routers.ringover import router as ringover_router
 from apps.api.routers.legal_rag import router as legal_rag_router
@@ -164,6 +165,7 @@ def create_app() -> FastAPI:
     app.include_router(graph_router)
     app.include_router(agents_router)
     app.include_router(admin_router)
+    app.include_router(admin_settings_router)
     app.include_router(mobile_router)
     app.include_router(ringover_router)
     app.include_router(legal_rag_router)

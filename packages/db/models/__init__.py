@@ -37,6 +37,7 @@ from packages.db.models.cloud_sync_job import CloudSyncJob
 from packages.db.models.document_case_link import DocumentCaseLink
 from packages.db.models.timeline_document import TimelineDocument
 from packages.db.models.timeline_event import TimelineEvent
+from packages.db.models.tenant_setting import TenantSetting
 
 __all__ = [
     "Base",
@@ -76,4 +77,5 @@ __all__ = [
     "DocumentCaseLink",
     "TimelineDocument",
     "TimelineEvent",
+    "TenantSetting",
 ]

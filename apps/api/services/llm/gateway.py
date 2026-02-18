@@ -177,6 +177,14 @@ class LLMProviderBase(ABC):
         self._status = ProviderStatus.HEALTHY if self.api_key else ProviderStatus.DISABLED
         self._client: httpx.AsyncClient | None = None
 
+    def set_api_key(self, key: str) -> None:
+        """Set API key dynamically (from DB settings)."""
+        self.api_key = key
+        if key:
+            self._status = ProviderStatus.HEALTHY
+        else:
+            self._status = ProviderStatus.DISABLED
+
     @property
     def is_available(self) -> bool:
         return self._status in (ProviderStatus.HEALTHY, ProviderStatus.DEGRADED) and bool(
@@ -614,6 +622,26 @@ class LLMGateway:
         # Initialize providers
         for name, config in PROVIDER_CONFIGS.items():
             self.providers[name] = _create_provider(config)
+
+    async def load_tenant_keys(
+        self, session: "AsyncSession", tenant_id: "uuid.UUID"
+    ) -> None:
+        """Load API keys from tenant_settings DB for all providers.
+
+        Called before each request to ensure keys are up-to-date.
+        Falls back to env vars (already loaded in __init__).
+        """
+        from apps.api.services.settings_service import get_settings_by_category
+
+        try:
+            llm_settings = await get_settings_by_category(session, tenant_id, "llm")
+            for name, config in PROVIDER_CONFIGS.items():
+                db_key = llm_settings.get(config.api_key_env, "")
+                if db_key:
+                    self.providers[name].set_api_key(db_key)
+        except Exception:
+            # Silently fall back to env vars if DB lookup fails
+            pass
 
     def _get_messages_text(self, messages: list[dict]) -> str:
         """Extract all text content from messages for classification."""

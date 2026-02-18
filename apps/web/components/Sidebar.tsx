@@ -22,6 +22,7 @@ import {
   Brain,
   Mic,
   Upload,
+  Settings,
   Shield,
   ShieldAlert,
   ChevronLeft,
@@ -173,17 +174,31 @@ export default function Sidebar({
                 ADMINISTRATION
               </div>
             )}
-            <Link
-              href="/dashboard/admin"
-              className={`relative flex items-center gap-3 px-3 py-2.5 rounded transition-colors duration-150 group ${
-                pathname.startsWith("/dashboard/admin")
-                  ? "bg-white/10 text-white"
-                  : "text-white/70 hover:bg-white/10 hover:text-white"
-              }`}
-            >
-              <Shield className="w-5 h-5 flex-shrink-0" />
-              {!collapsed && <span className="text-sm font-medium">Admin</span>}
-            </Link>
+            <div className="space-y-1">
+              <Link
+                href="/dashboard/admin"
+                className={`relative flex items-center gap-3 px-3 py-2.5 rounded transition-colors duration-150 group ${
+                  pathname === "/dashboard/admin"
+                    ? "bg-white/10 text-white"
+                    : "text-white/70 hover:bg-white/10 hover:text-white"
+                }`}
+              >
+                <Shield className="w-5 h-5 flex-shrink-0" />
+                {!collapsed && <span className="text-sm font-medium">Admin</span>}
+              </Link>
+              <Link
+                href="/dashboard/admin/settings"
+                title={collapsed ? "Paramètres" : undefined}
+                className={`relative flex items-center gap-3 px-3 py-2.5 rounded transition-colors duration-150 group ${
+                  pathname === "/dashboard/admin/settings"
+                    ? "bg-white/10 text-white"
+                    : "text-white/70 hover:bg-white/10 hover:text-white"
+                }`}
+              >
+                <Settings className="w-5 h-5 flex-shrink-0" />
+                {!collapsed && <span className="text-sm font-medium">Paramètres</span>}
+              </Link>
+            </div>
           </div>
         )}
       </nav>
