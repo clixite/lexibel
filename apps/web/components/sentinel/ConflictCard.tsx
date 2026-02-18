@@ -1,6 +1,6 @@
 "use client";
 
-import { ConflictSummary } from "@/lib/sentinel/api-client";
+import { ConflictDetail } from "@/lib/sentinel/api-client";
 import ConflictBadge from "./ConflictBadge";
 import SeverityIndicator from "./SeverityIndicator";
 import { formatDistanceToNow } from "date-fns";
@@ -8,7 +8,7 @@ import { fr } from "date-fns/locale";
 import { Users, Calendar, AlertTriangle } from "lucide-react";
 
 interface ConflictCardProps {
-  conflict: ConflictSummary;
+  conflict: ConflictDetail & { status?: "active" | "resolved" | "dismissed"; resolved_at?: string | null };
   onClick?: () => void;
   className?: string;
 }
@@ -18,6 +18,8 @@ export default function ConflictCard({
   onClick,
   className = "",
 }: ConflictCardProps) {
+  const status = conflict.status ?? "active";
+
   const statusColors = {
     active: "border-red-500 bg-red-50 dark:bg-red-950/20",
     resolved: "border-green-500 bg-green-50 dark:bg-green-950/20",
@@ -33,7 +35,7 @@ export default function ConflictCard({
   return (
     <div
       onClick={onClick}
-      className={`p-4 rounded-lg border-l-4 ${statusColors[conflict.status]} cursor-pointer hover:shadow-md transition-shadow ${className}`}
+      className={`p-4 rounded-lg border-l-4 ${statusColors[status]} cursor-pointer hover:shadow-md transition-shadow ${className}`}
     >
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
@@ -50,7 +52,7 @@ export default function ConflictCard({
           <ConflictBadge type={conflict.conflict_type} />
         </div>
         <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
-          {statusLabels[conflict.status]}
+          {statusLabels[status]}
         </span>
       </div>
 
