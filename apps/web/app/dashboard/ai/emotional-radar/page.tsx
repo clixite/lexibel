@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { Activity, AlertTriangle, TrendingDown, TrendingUp, Minus, Loader2 } from "lucide-react";
+import { apiFetch } from "@/lib/api";
 
 interface EventTone {
   event_id: string;
@@ -48,14 +50,18 @@ function TrendIcon({ trend }: { trend: string }) {
 }
 
 export default function EmotionalRadarPage() {
+  const { data: session } = useSession();
   const [caseId, setCaseId] = useState("");
   const [eventsJson, setEventsJson] = useState("");
   const [result, setResult] = useState<EmotionalProfile | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const token = (session?.user as any)?.accessToken;
+  const tenantId = (session?.user as any)?.tenantId;
+
   const runAnalysis = async () => {
-    if (!caseId.trim()) return;
+    if (!caseId.trim() || !token) return;
     setLoading(true);
     setError("");
     setResult(null);
@@ -72,15 +78,15 @@ export default function EmotionalRadarPage() {
     }
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
-      const res = await fetch(`${apiUrl}/agents/emotional-radar/${caseId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ events }),
-      });
-      if (!res.ok) throw new Error(`Erreur ${res.status}`);
-      const data = await res.json();
+      const data = await apiFetch<EmotionalProfile>(
+        `/agents/emotional-radar/${caseId}`,
+        token,
+        {
+          tenantId,
+          method: "POST",
+          body: JSON.stringify({ events }),
+        }
+      );
       setResult(data);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Erreur inconnue");

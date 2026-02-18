@@ -25,7 +25,7 @@ interface ContactListResponse {
 
 const TYPE_STYLES: Record<string, string> = {
   natural: "bg-accent-50 text-accent-700",
-  legal: "bg-purple-100 text-purple-700",
+  legal: "bg-accent-100 text-accent-700",
 };
 
 const TYPE_LABELS: Record<string, string> = {

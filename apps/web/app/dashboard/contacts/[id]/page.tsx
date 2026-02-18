@@ -261,7 +261,7 @@ export default function ContactDetailPage() {
             <span
               className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium mt-1 ${
                 contact.type === "legal"
-                  ? "bg-purple-100 text-purple-700"
+                  ? "bg-accent-100 text-accent-700"
                   : "bg-accent-50 text-accent-700"
               }`}
             >

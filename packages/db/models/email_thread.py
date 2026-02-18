@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -82,5 +82,5 @@ class EmailThread(TenantMixin, TimestampMixin, Base):
         Index("idx_email_threads_tenant_case", "tenant_id", "case_id"),
         Index("idx_email_threads_last_message", "last_message_at"),
         # Unique constraint per provider
-        {"unique_constraint": ("external_id", "provider")},
+        UniqueConstraint("external_id", "provider", name="uq_email_thread_external_provider"),
     )

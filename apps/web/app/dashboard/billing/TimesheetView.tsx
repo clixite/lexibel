@@ -30,7 +30,7 @@ const STATUS_COLORS: Record<string, string> = {
   draft: "bg-neutral-100 text-neutral-700",
   submitted: "bg-accent-50 text-accent-700",
   approved: "bg-success-50 text-success-700",
-  invoiced: "bg-purple-100 text-purple-700",
+  invoiced: "bg-accent-100 text-accent-700",
 };
 
 const STATUS_LABELS: Record<string, string> = {

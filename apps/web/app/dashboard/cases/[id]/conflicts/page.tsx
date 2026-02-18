@@ -185,14 +185,14 @@ export default function CaseConflictsPage({
           </p>
         </div>
 
-        <div className="card bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
+        <div className="card bg-gradient-to-br from-accent-50 to-accent-50 border-accent-200">
           <div className="flex items-center justify-between mb-2">
-            <TrendingUp className="w-8 h-8 text-purple-600" />
-            <span className="text-3xl font-bold text-purple-700">
+            <TrendingUp className="w-8 h-8 text-accent-600" />
+            <span className="text-3xl font-bold text-accent-700">
               {predictions.length}
             </span>
           </div>
-          <p className="text-sm font-medium text-purple-800">
+          <p className="text-sm font-medium text-accent-800">
             Prédictions IA
           </p>
         </div>

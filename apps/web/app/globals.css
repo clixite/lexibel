@@ -2,25 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap");
-
 :root {
-  /* Corporate Slate Palette */
-  --color-primary: 26 29 41; /* Charcoal #1A1D29 - Autorité absolue */
-  --color-secondary: 51 65 85; /* Graphite #334155 - Profondeur */
-  --color-accent: 71 85 105; /* Slate Blue #475569 - Discrétion */
-  --color-success: 22 101 52; /* Forest Green #166534 - Stabilité */
-  --color-warning: 161 98 7; /* Bronze #A16207 - Conservateur */
-  --color-danger: 127 29 29; /* Burgundy #7F1D1D - Sérieux */
-  --color-background: 248 250 252; /* Pearl #F8FAFC - Luxe silencieux */
+  /* Premium Legal Palette */
+  --color-primary: 30 41 59; /* Deep Slate #1E293B - Authority */
+  --color-secondary: 51 65 85; /* Graphite #334155 - Depth */
+  --color-accent: 212 175 55; /* Warm Gold #D4AF37 - Prestige */
+  --color-success: 22 101 52; /* Forest Green #166534 - Stability */
+  --color-warning: 161 98 7; /* Bronze #A16207 - Conservative */
+  --color-danger: 127 29 29; /* Burgundy #7F1D1D - Serious */
+  --color-background: 248 250 252; /* Pearl #F8FAFC - Quiet Luxury */
   --color-surface: 255 255 255; /* White */
   --color-text-primary: 15 23 42; /* Slate-900 */
   --color-text-secondary: 71 85 105; /* Slate-600 */
   --color-border: 226 232 240; /* Steel #E2E8F0 */
 
-  /* Typography - Corporate Precision */
-  --font-display: 'Inter Tight', -apple-system, sans-serif;
-  --font-body: 'Inter', -apple-system, sans-serif;
+  /* Typography - Premium Legal */
+  --font-display: var(--font-display), 'Crimson Pro', Georgia, serif;
+  --font-body: var(--font-sans), 'Manrope', -apple-system, sans-serif;
   --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
 
   /* Type Scale - Conservative */

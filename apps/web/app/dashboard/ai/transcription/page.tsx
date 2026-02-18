@@ -12,7 +12,7 @@ import {
   X,
   AlertCircle,
 } from "lucide-react";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, API_BASE } from "@/lib/api";
 import { LoadingSkeleton, ErrorState, EmptyState, DataTable, Badge } from "@/components/ui";
 import { toast } from "sonner";
 
@@ -105,7 +105,7 @@ export default function TranscriptionPage() {
       const formData = new FormData();
       formData.append("file", uploadFile);
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/transcriptions/upload`, {
+      const response = await fetch(`${API_BASE}/transcriptions/upload`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${session?.user?.accessToken}`,

@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { Shield, AlertTriangle, CheckCircle, Loader2 } from "lucide-react";
+import { apiFetch } from "@/lib/api";
 
 interface EntityRisk {
   entity_name: string;
@@ -32,31 +34,35 @@ const RISK_COLORS: Record<string, string> = {
 };
 
 export default function DueDiligencePage() {
+  const { data: session } = useSession();
   const [caseId, setCaseId] = useState("");
   const [documentsText, setDocumentsText] = useState("");
   const [result, setResult] = useState<DueDiligenceResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const token = (session?.user as any)?.accessToken;
+  const tenantId = (session?.user as any)?.tenantId;
+
   const runAnalysis = async () => {
-    if (!caseId.trim()) return;
+    if (!caseId.trim() || !token) return;
     setLoading(true);
     setError("");
     setResult(null);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
-      const res = await fetch(`${apiUrl}/agents/due-diligence/${caseId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          documents_text: documentsText,
-          events: [],
-        }),
-      });
-      if (!res.ok) throw new Error(`Erreur ${res.status}`);
-      const data = await res.json();
+      const data = await apiFetch<DueDiligenceResult>(
+        `/agents/due-diligence/${caseId}`,
+        token,
+        {
+          tenantId,
+          method: "POST",
+          body: JSON.stringify({
+            documents_text: documentsText,
+            events: [],
+          }),
+        }
+      );
       setResult(data);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Erreur inconnue");

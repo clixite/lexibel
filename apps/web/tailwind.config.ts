@@ -10,7 +10,7 @@ const config: Config = {
     extend: {
       colors: {
         primary: {
-          DEFAULT: '#1A1D29', // Charcoal
+          DEFAULT: '#1E293B', // Deep Slate
           50: '#F8FAFC',
           100: '#F1F5F9',
           200: '#E2E8F0',
@@ -21,20 +21,20 @@ const config: Config = {
           700: '#334155',
           800: '#1E293B',
           900: '#0F172A',
-          950: '#1A1D29',
+          950: '#0A0F1A',
         },
         accent: {
-          DEFAULT: '#475569', // Slate Blue - discret
-          50: '#F8FAFC',
-          100: '#F1F5F9',
-          200: '#E2E8F0',
-          300: '#CBD5E1',
-          400: '#94A3B8',
-          500: '#64748B',
-          600: '#475569',
-          700: '#334155',
-          800: '#1E293B',
-          900: '#0F172A',
+          DEFAULT: '#D4AF37', // Warm Gold
+          50: '#FEF9E7',
+          100: '#FDF4D1',
+          200: '#FCE9A3',
+          300: '#FADE75',
+          400: '#F9D347',
+          500: '#D4AF37',
+          600: '#B8962F',
+          700: '#9C7D27',
+          800: '#80641F',
+          900: '#644B17',
         },
         success: {
           DEFAULT: '#166534', // Forest Green
@@ -89,8 +89,8 @@ const config: Config = {
         },
       },
       fontFamily: {
-        display: ['Inter Tight', '-apple-system', 'sans-serif'],
-        sans: ['Inter', '-apple-system', 'sans-serif'],
+        display: ['Crimson Pro', 'Georgia', 'serif'],
+        sans: ['Manrope', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
         mono: ['IBM Plex Mono', 'Courier New', 'monospace'],
       },
       boxShadow: {

@@ -1,0 +1,16 @@
+{
+  "name": "LexiBel",
+  "short_name": "LexiBel",
+  "description": "AI-Native Legal Practice Management for Belgian Bar",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#1E293B",
+  "theme_color": "#1E293B",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

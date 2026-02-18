@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, text
+from sqlalchemy import DateTime, ForeignKey, String, Text, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -54,5 +54,5 @@ class OAuthToken(TenantMixin, TimestampMixin, Base):
 
     __table_args__ = (
         # Unique constraint: one token per user per provider
-        {"unique_constraint": ("user_id", "provider")},
+        UniqueConstraint("user_id", "provider", name="uq_oauth_token_user_provider"),
     )

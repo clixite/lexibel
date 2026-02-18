@@ -51,7 +51,7 @@ class TestLLMGateway:
         response = await gateway.generate("Résume le dossier", context)
         assert isinstance(response, LLMResponse)
         assert response.text == "Voici le résumé du dossier."
-        assert response.model == "stub"
+        assert response.model == "stub-intelligent"
         assert len(response.sources) == 1
         assert response.sources[0].document_id == "doc-1"
 

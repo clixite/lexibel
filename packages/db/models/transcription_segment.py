@@ -3,7 +3,7 @@
 import uuid
 from decimal import Decimal
 
-from sqlalchemy import ForeignKey, Index, Integer, Numeric, String, Text, text
+from sqlalchemy import ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -70,5 +70,5 @@ class TranscriptionSegment(TimestampMixin, Base):
             "segment_index",
         ),
         # Unique constraint: one segment per index per transcription
-        {"unique_constraint": ("transcription_id", "segment_index")},
+        UniqueConstraint("transcription_id", "segment_index", name="uq_transcription_segment_idx"),
     )
