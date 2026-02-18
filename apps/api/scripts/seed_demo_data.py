@@ -426,10 +426,12 @@ async def seed_data():
             id=uuid4(),
             tenant_id=tenant.id,
             case_id=cases[0].id,
-            date=date.today() - timedelta(days=10),
+            entry_date=date.today() - timedelta(days=10),
             description="Frais d'huissier - Signification",
             amount_cents=15000,  # €150
-            type="debit",
+            entry_type="withdrawal",
+            reference="HUIS-2026-001",
+            created_by=admin_user.id,
         )
         session.add(tp1)
 
@@ -437,10 +439,12 @@ async def seed_data():
             id=uuid4(),
             tenant_id=tenant.id,
             case_id=cases[0].id,
-            date=date.today() - timedelta(days=5),
+            entry_date=date.today() - timedelta(days=5),
             description="Paiement client",
             amount_cents=15000,
-            type="credit",
+            entry_type="deposit",
+            reference="VIREMENT-2026-001",
+            created_by=admin_user.id,
         )
         session.add(tp2)
 
