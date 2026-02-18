@@ -416,8 +416,36 @@ async def seed_data():
         )
         session.add(line2)
 
+        # Invoice 3: Paid
+        invoice3 = Invoice(
+            id=uuid4(),
+            tenant_id=tenant.id,
+            case_id=cases[2].id,
+            client_contact_id=contacts[2].id,  # Pierre Dubois
+            invoice_number="2026/003",
+            issue_date=date.today() - timedelta(days=45),
+            due_date=date.today() - timedelta(days=15),
+            status="paid",
+            subtotal_cents=150000,  # €1500
+            vat_rate=21.0,
+            vat_amount_cents=31500,  # €315
+            total_cents=181500,  # €1815
+        )
+        session.add(invoice3)
+
+        line3 = InvoiceLine(
+            id=uuid4(),
+            tenant_id=tenant.id,
+            invoice_id=invoice3.id,
+            description="Honoraires - Recouvrement créances - Phase 1",
+            quantity=6.0,
+            unit_price_cents=25000,
+            total_cents=150000,
+        )
+        session.add(line3)
+
         await session.flush()
-        print("✅ 2 invoices with lines created")
+        print("✅ 3 invoices with lines created")
 
         # ── 9. Third-Party Entries ──
         print("\n💳 Creating third-party ledger entries...")
@@ -1615,7 +1643,7 @@ Deadline: signature prévue pour fin mars."""
         print(f"  • Case-Contact links: {len(case_contacts)}")
         print("  • Timeline events: 20")
         print(f"  • Time entries: {len(time_entries)}")
-        print("  • Invoices: 2")
+        print("  • Invoices: 3")
         print("  • Third-party entries: 2")
         print("  • Inbox items: 5")
         print(f"  • Email threads: {thread_count} (with {message_count} messages)")

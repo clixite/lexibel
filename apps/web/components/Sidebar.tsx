@@ -27,6 +27,7 @@ import {
   ChevronRight,
   Moon,
   Sun,
+  FolderOpen,
 } from "lucide-react";
 
 // NAV_ITEMS groupés par section
@@ -39,6 +40,7 @@ const NAV_GROUPS = [
       { label: "Contacts", href: "/dashboard/contacts", icon: Users },
       { label: "Timeline", href: "/dashboard/timeline", icon: Clock },
       { label: "Facturation", href: "/dashboard/billing", icon: FileText },
+      { label: "Documents", href: "/dashboard/documents", icon: FolderOpen },
     ],
   },
   {
@@ -130,13 +132,13 @@ export default function Sidebar({
                     title={collapsed ? item.label : undefined}
                     className={`relative flex items-center gap-3 px-3 py-2.5 rounded transition-colors duration-150 group ${
                       isActive
-                        ? "bg-primary/5 text-primary"
-                        : "text-white/70 hover:bg-primary/5 hover:text-white"
+                        ? "bg-white/10 text-white"
+                        : "text-white/70 hover:bg-white/10 hover:text-white"
                     }`}
                   >
                     {/* Active indicator */}
                     {isActive && (
-                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-primary rounded-r" />
+                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-accent rounded-r" />
                     )}
 
                     <item.icon
@@ -174,8 +176,8 @@ export default function Sidebar({
               href="/dashboard/admin"
               className={`relative flex items-center gap-3 px-3 py-2.5 rounded transition-colors duration-150 group ${
                 pathname.startsWith("/dashboard/admin")
-                  ? "bg-primary/5 text-primary"
-                  : "text-white/70 hover:bg-primary/5 hover:text-white"
+                  ? "bg-white/10 text-white"
+                  : "text-white/70 hover:bg-white/10 hover:text-white"
               }`}
             >
               <Shield className="w-5 h-5 flex-shrink-0" />

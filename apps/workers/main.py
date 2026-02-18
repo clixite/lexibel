@@ -21,4 +21,16 @@ app.conf.update(
         "migration": {},
         "peppol": {},
     },
+    beat_schedule={
+        "incremental-sync-every-15min": {
+            "task": "scheduled_incremental_sync",
+            "schedule": 900,
+        },
+        "refresh-tokens-every-45min": {
+            "task": "refresh_expiring_tokens",
+            "schedule": 2700,
+        },
+    },
 )
+
+app.autodiscover_tasks(["apps.workers.tasks"])

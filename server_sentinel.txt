@@ -1,0 +1,60 @@
+/**
+ * SENTINEL API Client
+ *
+ * Type-safe client for all SENTINEL conflict detection endpoints.
+ */
+
+import { z } from "zod";
+
+// ══════════════════════════════════════════════════════════════════
+// SCHEMAS
+// ══════════════════════════════════════════════════════════════════
+
+export const ConflictTypeSchema = z.enum([
+  "direct_adversary",
+  "director_overlap",
+  "family_tie",
+  "indirect_ownership",
+  "group_company",
+  "business_partner",
+  "historical_conflict",
+  "professional_overlap",
+]);
+
+export const ConflictStatusSchema = z.enum(["active", "resolved", "dismissed"]);
+
+export const ResolutionTypeSchema = z.enum([
+  "refused",
+  "waiver_obtained",
+  "false_positive",
+]);
+
+export const EntityRefSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  type: z.enum(["Person", "Company"]),
+});
+
+export const ConflictDetailSchema = z.object({
+  id: z.string().uuid(),
+  conflict_type: ConflictTypeSchema,
+  severity_score: z.number().int().min(0).max(100),
+  description: z.string(),
+  entities_involved: z.array(EntityRefSchema),
+  detected_at: z.string().datetime(),
+});
+
+export const ConflictSummarySchema = ConflictDetailSchema.extend({
+  status: ConflictStatusSchema,
+  resolved_at: z.string().datetime().optional().nullable(),
+});
+
+export const GraphNodeSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  name: z.string(),
+  properties: z.record(z.string(), z.any()).optional(),
+});
+
+export const GraphEdgeSchema = z.object({
+  from: z.string(),

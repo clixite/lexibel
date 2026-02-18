@@ -35,9 +35,13 @@ class OAuthTokenResponse(BaseModel):
     id: str
     provider: str
     email_address: str | None
+    display_name: str | None = None
+    avatar_url: str | None = None
     status: str
     scope: str | None
     expires_at: str | None
+    last_sync_at: str | None = None
+    sync_status: str = "idle"
     created_at: str
 
 
@@ -159,9 +163,13 @@ async def list_oauth_tokens(
             id=str(token.id),
             provider=token.provider,
             email_address=token.email_address,
+            display_name=getattr(token, "display_name", None),
+            avatar_url=getattr(token, "avatar_url", None),
             status=token.status,
             scope=token.scope,
             expires_at=token.expires_at.isoformat() if token.expires_at else None,
+            last_sync_at=getattr(token, "last_sync_at", None) and getattr(token, "last_sync_at").isoformat(),
+            sync_status=getattr(token, "sync_status", "idle") or "idle",
             created_at=token.created_at.isoformat(),
         )
         for token in tokens

@@ -69,6 +69,37 @@ class OAuthToken(TenantMixin, TimestampMixin, Base):
         comment="Email address associated with this OAuth token",
     )
 
+    # Display name from provider profile
+    display_name: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+        comment="Display name from provider profile",
+    )
+
+    # Avatar URL from provider profile
+    avatar_url: Mapped[str | None] = mapped_column(
+        String(500),
+        nullable=True,
+    )
+
+    # Sync status fields (added in migration 017)
+    last_sync_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="Last successful document sync",
+    )
+    sync_status: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        server_default=text("'idle'"),
+        comment="idle | syncing | error",
+    )
+    sync_error: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Last sync error message",
+    )
+
     __table_args__ = (
         # Unique constraint: one token per user per provider
         UniqueConstraint("user_id", "provider", name="uq_oauth_token_user_provider"),

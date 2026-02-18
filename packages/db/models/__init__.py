@@ -32,6 +32,9 @@ from packages.db.models.prophet_simulation import ProphetSimulation
 from packages.db.models.sentinel_conflict import SentinelConflict
 from packages.db.models.sentinel_entity import SentinelEntity
 from packages.db.models.ai_audit_log import AIAuditLog
+from packages.db.models.cloud_document import CloudDocument
+from packages.db.models.cloud_sync_job import CloudSyncJob
+from packages.db.models.document_case_link import DocumentCaseLink
 
 __all__ = [
     "Base",
@@ -66,4 +69,7 @@ __all__ = [
     "SentinelConflict",
     "SentinelEntity",
     "AIAuditLog",
+    "CloudDocument",
+    "CloudSyncJob",
+    "DocumentCaseLink",
 ]

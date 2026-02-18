@@ -48,8 +48,12 @@ class OAuthEngine:
     GOOGLE_SCOPES = [
         "https://www.googleapis.com/auth/gmail.readonly",
         "https://www.googleapis.com/auth/gmail.send",
+        "https://www.googleapis.com/auth/drive.readonly",
+        "https://www.googleapis.com/auth/drive.metadata.readonly",
+        "https://www.googleapis.com/auth/documents.readonly",
         "https://www.googleapis.com/auth/calendar.readonly",
         "https://www.googleapis.com/auth/userinfo.email",
+        "https://www.googleapis.com/auth/userinfo.profile",
     ]
 
     MICROSOFT_SCOPES = [
@@ -57,6 +61,9 @@ class OAuthEngine:
         "User.Read",
         "Mail.Read",
         "Mail.Send",
+        "Files.Read",
+        "Files.Read.All",
+        "Sites.Read.All",
         "Calendars.Read",
     ]
 
@@ -251,9 +258,12 @@ class OAuthEngine:
 
             token_data = response.json()
 
-        # Get user profile to extract email
+        # Get user profile to extract email + display_name + avatar
         access_token = token_data["access_token"]
-        email_address = await self._get_user_email(provider, access_token)
+        profile = await self._get_user_profile(provider, access_token)
+        email_address = profile["email"]
+        display_name = profile.get("display_name")
+        avatar_url = profile.get("avatar_url")
 
         # Encrypt tokens
         encrypted_access = self.encryption.encrypt(access_token)
@@ -286,6 +296,8 @@ class OAuthEngine:
             oauth_token.scope = token_data.get("scope", "")
             oauth_token.status = "active"
             oauth_token.email_address = email_address
+            oauth_token.display_name = display_name
+            oauth_token.avatar_url = avatar_url
         else:
             # Create new token
             oauth_token = OAuthToken(
@@ -299,6 +311,8 @@ class OAuthEngine:
                 scope=token_data.get("scope", ""),
                 status="active",
                 email_address=email_address,
+                display_name=display_name,
+                avatar_url=avatar_url,
             )
             session.add(oauth_token)
 
@@ -307,8 +321,10 @@ class OAuthEngine:
 
         return oauth_token
 
-    async def _get_user_email(self, provider: ProviderType, access_token: str) -> str:
-        """Get user email from provider's userinfo endpoint."""
+    async def _get_user_profile(
+        self, provider: ProviderType, access_token: str
+    ) -> dict:
+        """Get user profile (email, name, avatar) from provider's userinfo endpoint."""
         async with httpx.AsyncClient() as client:
             if provider == "google":
                 response = await client.get(
@@ -325,7 +341,24 @@ class OAuthEngine:
                 raise ValueError(f"Failed to get user profile: {response.text}")
 
             data = response.json()
-            return data.get("email") or data.get("userPrincipalName")
+
+            if provider == "google":
+                return {
+                    "email": data.get("email", ""),
+                    "display_name": data.get("name"),
+                    "avatar_url": data.get("picture"),
+                }
+            else:
+                return {
+                    "email": data.get("mail") or data.get("userPrincipalName", ""),
+                    "display_name": data.get("displayName"),
+                    "avatar_url": None,  # Requires separate photo endpoint
+                }
+
+    async def _get_user_email(self, provider: ProviderType, access_token: str) -> str:
+        """Get user email from provider's userinfo endpoint (legacy)."""
+        profile = await self._get_user_profile(provider, access_token)
+        return profile["email"]
 
     async def refresh_token(
         self, session: AsyncSession, token_id: uuid.UUID

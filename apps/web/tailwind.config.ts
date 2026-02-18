@@ -89,8 +89,8 @@ const config: Config = {
         },
       },
       fontFamily: {
-        display: ['Crimson Pro', 'Georgia', 'serif'],
-        sans: ['Manrope', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        display: ['var(--font-display)', 'Crimson Pro', 'Georgia', 'serif'],
+        sans: ['var(--font-sans)', 'Manrope', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
         mono: ['IBM Plex Mono', 'Courier New', 'monospace'],
       },
       boxShadow: {
@@ -113,12 +113,32 @@ const config: Config = {
       },
       animation: {
         'fade': 'fadeIn 150ms ease-out',
+        'slide-up': 'slideUp 200ms ease-out',
+        'scale-in': 'scaleIn 150ms ease-out',
+        'shimmer': 'shimmer 1.5s infinite',
+        'pulse-subtle': 'pulseSubtle 2s ease-in-out infinite',
         'none': 'none',
       },
       keyframes: {
         fadeIn: {
           '0%': { opacity: '0' },
           '100%': { opacity: '1' },
+        },
+        slideUp: {
+          '0%': { opacity: '0', transform: 'translateY(8px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        scaleIn: {
+          '0%': { opacity: '0', transform: 'scale(0.95)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        shimmer: {
+          '0%': { backgroundPosition: '-200% 0' },
+          '100%': { backgroundPosition: '200% 0' },
+        },
+        pulseSubtle: {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.7' },
         },
       },
       transitionDuration: {

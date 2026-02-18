@@ -37,11 +37,13 @@ const PROVIDERS: Provider[] = [
   {
     id: "google",
     name: "Google Workspace",
-    description: "Gmail, Calendar, Drive",
+    description: "Gmail, Drive, Docs, Calendar",
     features: [
       "Synchronisation emails Gmail",
-      "Gestion de l'agenda Google",
-      "Accès aux fichiers Drive",
+      "Google Drive & Google Docs",
+      "Édition en ligne des documents",
+      "Agenda Google Calendar",
+      "Recherche sémantique (IA)",
     ],
     icon: <Mail className="w-6 h-6 text-blue-400" />,
     color: "bg-blue-500/10",
@@ -49,11 +51,13 @@ const PROVIDERS: Provider[] = [
   {
     id: "microsoft",
     name: "Microsoft 365",
-    description: "Outlook, Calendar, OneDrive",
+    description: "Outlook, OneDrive, SharePoint, Word",
     features: [
       "Synchronisation emails Outlook",
-      "Gestion de l'agenda Outlook",
-      "Accès aux fichiers OneDrive",
+      "OneDrive & SharePoint",
+      "Word / Excel Online",
+      "Agenda Outlook",
+      "Recherche sémantique (IA)",
     ],
     icon: <Cloud className="w-6 h-6 text-orange-400" />,
     color: "bg-orange-500/10",
@@ -71,6 +75,18 @@ const GOOGLE_SCOPES: Scope[] = [
     id: "gmail.send",
     name: "Envoyer des emails",
     description: "Envoyer des emails en votre nom depuis LexiBel",
+    required: false,
+  },
+  {
+    id: "drive.readonly",
+    name: "Accéder à Google Drive",
+    description: "Synchroniser les fichiers et dossiers de Google Drive (métadonnées uniquement, vos fichiers restent chez Google)",
+    required: true,
+  },
+  {
+    id: "documents.readonly",
+    name: "Lire les Google Docs",
+    description: "Accéder au contenu des documents Google Docs pour l'indexation et la recherche",
     required: false,
   },
   {
@@ -92,6 +108,18 @@ const MICROSOFT_SCOPES: Scope[] = [
     id: "mail.send",
     name: "Envoyer des emails",
     description: "Envoyer des emails en votre nom depuis LexiBel",
+    required: false,
+  },
+  {
+    id: "files.read",
+    name: "Accéder à OneDrive",
+    description: "Synchroniser les fichiers OneDrive (métadonnées uniquement, vos fichiers restent chez Microsoft)",
+    required: true,
+  },
+  {
+    id: "sites.read.all",
+    name: "Accéder à SharePoint",
+    description: "Accéder aux bibliothèques de documents SharePoint de votre organisation",
     required: false,
   },
   {
