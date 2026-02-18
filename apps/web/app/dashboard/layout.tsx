@@ -8,6 +8,7 @@ import Sidebar from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
 import CommandPalette from "@/components/CommandPalette";
 import ToastContainer from "@/components/ToastContainer";
+import AlertBanner from "@/components/sentinel/AlertBanner";
 
 export default function DashboardLayout({
   children,
@@ -49,6 +50,7 @@ export default function DashboardLayout({
       <TopBar sidebarCollapsed={sidebarCollapsed} />
       <CommandPalette />
       <ToastContainer />
+      <AlertBanner />
       <main
         className={`transition-all duration-300 pt-16 ${
           sidebarCollapsed ? "ml-20" : "ml-72"
