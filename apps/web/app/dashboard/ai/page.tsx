@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
-import { Brain, Loader2, FileText, Sparkles, Zap, BarChart3 } from "lucide-react";
+import { Brain, Loader2, FileText, Sparkles, Zap, BarChart3, ShieldCheck, Eye, EyeOff, CheckCircle2 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { LoadingSkeleton, ErrorState, Badge, Card, Button, Input } from "@/components/ui";
 
@@ -15,11 +15,51 @@ interface CasesResponse {
   items: Case[];
 }
 
-interface AIResult {
-  task_type: string;
-  result: string;
-  timestamp: string;
+interface LLMResult {
+  content: string;
+  provider: string;
+  model: string;
+  sensitivity: string;
+  was_anonymized: boolean;
+  tokens: { input: number; output: number };
+  cost_eur: number;
+  latency_ms: number;
+  audit_id: string;
+  require_human_validation: boolean;
+  /** Kept for card-matching purposes */
+  task_type?: string;
 }
+
+const PROVIDER_LABELS: Record<string, { label: string; flag: string }> = {
+  mistral: { label: "Mistral", flag: "\u{1F1EA}\u{1F1FA}" },
+  openai: { label: "OpenAI", flag: "\u{1F1FA}\u{1F1F8}" },
+  anthropic: { label: "Anthropic", flag: "\u{1F1FA}\u{1F1F8}" },
+  azure: { label: "Azure OpenAI", flag: "\u{1F1EA}\u{1F1FA}" },
+  cohere: { label: "Cohere", flag: "\u{1F1E8}\u{1F1E6}" },
+};
+
+const SENSITIVITY_STYLES: Record<string, { label: string; className: string }> = {
+  public: { label: "Public", className: "bg-green-100 text-green-800" },
+  internal: { label: "Interne", className: "bg-blue-100 text-blue-800" },
+  confidential: { label: "Confidentiel", className: "bg-yellow-100 text-yellow-800" },
+  sensitive: { label: "Sensible", className: "bg-orange-100 text-orange-800" },
+  restricted: { label: "Restreint", className: "bg-red-100 text-red-800" },
+};
+
+const PURPOSE_MAP: Record<string, string> = {
+  draft: "document_drafting",
+  summary: "document_summary",
+  analysis: "case_analysis",
+  generation: "content_generation",
+};
+
+const AVAILABLE_PROVIDERS = [
+  { value: "", label: "Automatique (recommandé)" },
+  { value: "mistral", label: "Mistral \u{1F1EA}\u{1F1FA}" },
+  { value: "openai", label: "OpenAI \u{1F1FA}\u{1F1F8}" },
+  { value: "anthropic", label: "Anthropic \u{1F1FA}\u{1F1F8}" },
+  { value: "azure", label: "Azure OpenAI \u{1F1EA}\u{1F1FA}" },
+];
 
 const AI_CARDS = [
   {
@@ -70,10 +110,13 @@ export default function AIHubPage() {
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
   const [selectedCase, setSelectedCase] = useState("");
   const [prompt, setPrompt] = useState("");
-  const [result, setResult] = useState<AIResult | null>(null);
+  const [result, setResult] = useState<LLMResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [casesLoading, setCasesLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [preferredProvider, setPreferredProvider] = useState("");
+  const [validated, setValidated] = useState(false);
+  const [validating, setValidating] = useState(false);
 
   // Load cases on mount
   useEffect(() => {
@@ -93,27 +136,46 @@ export default function AIHubPage() {
 
     setLoading(true);
     setError(null);
+    setValidated(false);
 
     try {
-      const data = await apiFetch<AIResult>(
-        "/ai/generate",
+      const data = await apiFetch<LLMResult>(
+        "/llm/complete",
         token,
         {
           method: "POST",
           tenantId,
           body: JSON.stringify({
-            case_id: selectedCase,
-            task_type: taskType,
-            prompt: prompt.trim(),
+            messages: [{ role: "user", content: prompt.trim() }],
+            purpose: PURPOSE_MAP[taskType] || "case_analysis",
+            preferred_provider: preferredProvider || null,
+            temperature: 0.3,
+            max_tokens: 4096,
           }),
         }
       );
-      setResult(data);
+      setResult({ ...data, task_type: taskType });
       setPrompt("");
     } catch (err: any) {
       setError(err.message || "Erreur lors de la génération");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleValidate = async (auditId: string) => {
+    if (!token) return;
+    setValidating(true);
+    try {
+      await apiFetch(`/llm/audit/${auditId}/validate`, token, {
+        method: "POST",
+        tenantId,
+      });
+      setValidated(true);
+    } catch (err: any) {
+      setError(err.message || "Erreur lors de la validation");
+    } finally {
+      setValidating(false);
     }
   };
 
@@ -184,6 +246,25 @@ export default function AIHubPage() {
                     </select>
                   </div>
 
+                  {/* Provider Selector */}
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-2">
+                      Fournisseur LLM
+                    </label>
+                    <select
+                      value={preferredProvider}
+                      onChange={(e) => setPreferredProvider(e.target.value)}
+                      className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-200 disabled:opacity-50"
+                      disabled={loading}
+                    >
+                      {AVAILABLE_PROVIDERS.map((p) => (
+                        <option key={p.value} value={p.value}>
+                          {p.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
                   {/* Textarea */}
                   <div>
                     <label className="block text-sm font-medium text-neutral-700 mb-2">
@@ -211,10 +292,108 @@ export default function AIHubPage() {
 
                   {/* Result Display */}
                   {result && result.task_type === card.id && (
-                    <div className="bg-neutral-50 rounded-lg p-4 max-h-64 overflow-y-auto border border-neutral-200">
-                      <p className="text-sm text-neutral-700 whitespace-pre-wrap">
-                        {result.result}
-                      </p>
+                    <div className="bg-neutral-50 rounded-lg p-4 border border-neutral-200 space-y-3">
+                      {/* Metadata Badges */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        {/* Provider Badge */}
+                        {result.provider && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                            {PROVIDER_LABELS[result.provider]?.flag || ""}{" "}
+                            {PROVIDER_LABELS[result.provider]?.label || result.provider}
+                            {result.model && (
+                              <span className="text-indigo-500 ml-1">({result.model})</span>
+                            )}
+                          </span>
+                        )}
+
+                        {/* Sensitivity Badge */}
+                        {result.sensitivity && (
+                          <span
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${
+                              SENSITIVITY_STYLES[result.sensitivity]?.className ||
+                              "bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            <ShieldCheck className="w-3 h-3" />
+                            {SENSITIVITY_STYLES[result.sensitivity]?.label || result.sensitivity}
+                          </span>
+                        )}
+
+                        {/* Anonymization Indicator */}
+                        {result.was_anonymized !== undefined && (
+                          <span
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${
+                              result.was_anonymized
+                                ? "bg-purple-100 text-purple-800"
+                                : "bg-gray-100 text-gray-600"
+                            }`}
+                          >
+                            {result.was_anonymized ? (
+                              <>
+                                <EyeOff className="w-3 h-3" />
+                                Anonymisé
+                              </>
+                            ) : (
+                              <>
+                                <Eye className="w-3 h-3" />
+                                Non anonymisé
+                              </>
+                            )}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Cost & Performance */}
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-500">
+                        {result.cost_eur !== undefined && (
+                          <span>
+                            {"Coût\u00a0:"} {result.cost_eur < 0.01
+                              ? `${(result.cost_eur * 1000).toFixed(2)} m\u20AC`
+                              : `${result.cost_eur.toFixed(4)} \u20AC`}
+                          </span>
+                        )}
+                        {result.tokens && (
+                          <span>
+                            {"Tokens\u00a0:"} {result.tokens.input} in / {result.tokens.output} out
+                          </span>
+                        )}
+                        {result.latency_ms !== undefined && (
+                          <span>
+                            {"Latence\u00a0:"} {result.latency_ms < 1000
+                              ? `${result.latency_ms} ms`
+                              : `${(result.latency_ms / 1000).toFixed(1)} s`}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Generated Content */}
+                      <div className="max-h-64 overflow-y-auto">
+                        <p className="text-sm text-neutral-700 whitespace-pre-wrap">
+                          {result.content}
+                        </p>
+                      </div>
+
+                      {/* Human Validation (AI Act Art. 14) */}
+                      {result.audit_id && (
+                        <div className="pt-2 border-t border-neutral-200">
+                          {validated ? (
+                            <div className="flex items-center gap-2 text-sm text-green-700">
+                              <CheckCircle2 className="w-4 h-4" />
+                              Réponse validée (Art. 14 AI Act)
+                            </div>
+                          ) : (
+                            <Button
+                              onClick={() => handleValidate(result.audit_id)}
+                              disabled={validating}
+                              loading={validating}
+                              className="w-full"
+                              icon={<ShieldCheck className="w-4 h-4" />}
+                            >
+                              Valider cette réponse (Art. 14 AI Act)
+                            </Button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
 

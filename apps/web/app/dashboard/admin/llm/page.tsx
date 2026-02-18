@@ -53,16 +53,18 @@ interface ProvidersResponse {
 
 interface AuditItem {
   id: string;
-  timestamp: string;
+  created_at: string;
   provider: string;
   model: string;
-  sensitivity: string;
-  input_tokens: number;
-  output_tokens: number;
-  cost_eur: number;
-  user_id?: string;
+  data_sensitivity: string;
+  was_anonymized: boolean;
+  purpose: string;
+  token_count_input: number | null;
+  token_count_output: number | null;
+  cost_estimate_eur: number | null;
+  latency_ms: number | null;
   human_validated: boolean;
-  prompt_preview?: string;
+  error: string | null;
 }
 
 interface AuditResponse {
@@ -74,10 +76,11 @@ interface AuditResponse {
 
 interface ProviderStat {
   provider: string;
-  request_count: number;
-  total_cost_eur: number;
-  avg_input_tokens: number;
-  avg_output_tokens: number;
+  count: number;
+  cost_eur: number;
+  tokens_in: number;
+  tokens_out: number;
+  avg_latency_ms: number;
 }
 
 interface StatsResponse {
@@ -91,28 +94,35 @@ interface StatsResponse {
 }
 
 interface DPIAReport {
+  report_type: string;
+  regulation: string;
   generated_at: string;
-  tenant_id?: string;
-  summary: {
+  system_classification: string;
+  processing_description: {
+    purpose: string;
+    legal_basis: string;
+    data_categories: string[];
+    data_subjects: string;
+    retention_period: string;
+  };
+  sub_processors: Record<string, any>;
+  safeguards: Record<string, string>;
+  statistics: {
     total_requests: number;
-    period_days: number;
-    providers_used: string[];
-    sensitivity_distribution: Record<string, number>;
-    total_cost_eur: number;
+    anonymized_requests: number;
+    anonymization_rate: number;
+    error_count: number;
+    error_rate: number;
+    usage_by_provider: any[];
+    usage_by_sensitivity: Record<string, number>;
     human_validation_rate: number;
+    total_cost_eur: number;
   };
   risk_assessment: {
-    level: string;
-    factors: string[];
-    mitigations: string[];
+    identified_risks: string[];
+    mitigation_measures: string[];
+    residual_risk: string;
   };
-  data_flows: {
-    provider: string;
-    data_location: string;
-    encryption: string;
-    retention_policy: string;
-  }[];
-  recommendations: string[];
 }
 
 interface ClassifyResponse {
@@ -138,22 +148,22 @@ type TabId = (typeof TABS)[number]["id"];
 
 const SENSITIVITY_COLORS: Record<string, string> = {
   public: "bg-green-100 text-green-800 border-green-200",
-  semi_confidential: "bg-yellow-100 text-yellow-800 border-yellow-200",
-  confidential: "bg-orange-100 text-orange-800 border-orange-200",
+  semi: "bg-yellow-100 text-yellow-800 border-yellow-200",
+  sensitive: "bg-orange-100 text-orange-800 border-orange-200",
   critical: "bg-red-100 text-red-800 border-red-200",
 };
 
 const SENSITIVITY_DOT_COLORS: Record<string, string> = {
   public: "bg-green-500",
-  semi_confidential: "bg-yellow-500",
-  confidential: "bg-orange-500",
+  semi: "bg-yellow-500",
+  sensitive: "bg-orange-500",
   critical: "bg-red-500",
 };
 
 const SENSITIVITY_LABELS: Record<string, string> = {
   public: "Public",
-  semi_confidential: "Semi-confidentiel",
-  confidential: "Confidentiel",
+  semi: "Semi-sensible",
+  sensitive: "Sensible",
   critical: "Critique",
 };
 
@@ -164,9 +174,9 @@ const TIER_COLORS: Record<number, string> = {
 };
 
 const TIER_LABELS: Record<number, string> = {
-  1: "Tier 1 - Souverain",
-  2: "Tier 2 - EU",
-  3: "Tier 3 - International",
+  1: "Tier 1 - EU-Safe",
+  2: "Tier 2 - Anonymise",
+  3: "Tier 3 - Public Only",
 };
 
 const STATUS_DOT: Record<string, string> = {
@@ -647,8 +657,8 @@ function AuditTab({ token, tenantId }: { token: string; tenantId?: string }) {
               >
                 <option value="">Toutes</option>
                 <option value="public">Public</option>
-                <option value="semi_confidential">Semi-confidentiel</option>
-                <option value="confidential">Confidentiel</option>
+                <option value="semi">Semi-sensible</option>
+                <option value="sensitive">Sensible</option>
                 <option value="critical">Critique</option>
               </select>
             </div>
@@ -730,13 +740,13 @@ function AuditTab({ token, tenantId }: { token: string; tenantId?: string }) {
                     onClick={() => setExpandedRow(expandedRow === item.id ? null : item.id)}
                   >
                     <td className="py-3 px-4 text-neutral-600 whitespace-nowrap text-xs">
-                      {new Date(item.timestamp).toLocaleString("fr-BE", {
+                      {item.created_at ? new Date(item.created_at).toLocaleString("fr-BE", {
                         day: "2-digit",
                         month: "2-digit",
                         year: "numeric",
                         hour: "2-digit",
                         minute: "2-digit",
-                      })}
+                      }) : "-"}
                     </td>
                     <td className="py-3 px-4 font-medium text-neutral-900 capitalize whitespace-nowrap">
                       {item.provider}
@@ -745,13 +755,13 @@ function AuditTab({ token, tenantId }: { token: string; tenantId?: string }) {
                       {item.model}
                     </td>
                     <td className="py-3 px-4">
-                      <SensitivityBadge sensitivity={item.sensitivity} />
+                      <SensitivityBadge sensitivity={item.data_sensitivity} />
                     </td>
                     <td className="py-3 px-4 text-right text-neutral-600 font-mono text-xs whitespace-nowrap">
-                      {item.input_tokens.toLocaleString("fr-BE")} / {item.output_tokens.toLocaleString("fr-BE")}
+                      {(item.token_count_input ?? 0).toLocaleString("fr-BE")} / {(item.token_count_output ?? 0).toLocaleString("fr-BE")}
                     </td>
                     <td className="py-3 px-4 text-right text-neutral-900 font-mono text-xs font-medium whitespace-nowrap">
-                      {item.cost_eur.toFixed(4)} EUR
+                      {(item.cost_estimate_eur ?? 0).toFixed(4)} EUR
                     </td>
                     <td className="py-3 px-4 text-center">
                       {item.human_validated ? (
@@ -935,7 +945,7 @@ function StatsTab({ token, tenantId }: { token: string; tenantId?: string }) {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-neutral-900">
-                    {(stats.human_validation_rate * 100).toFixed(1)}%
+                    {stats.human_validation_rate.toFixed(1)}%
                   </p>
                   <p className="text-xs text-neutral-500">Taux de validation</p>
                 </div>
@@ -979,7 +989,7 @@ function StatsTab({ token, tenantId }: { token: string; tenantId?: string }) {
                   <tbody className="divide-y divide-neutral-100">
                     {stats.by_provider.map((ps) => {
                       const pct = stats.total_requests > 0
-                        ? (ps.request_count / stats.total_requests) * 100
+                        ? (ps.count / stats.total_requests) * 100
                         : 0;
                       return (
                         <tr key={ps.provider} className="hover:bg-neutral-50 transition-colors">
@@ -987,16 +997,16 @@ function StatsTab({ token, tenantId }: { token: string; tenantId?: string }) {
                             {ps.provider}
                           </td>
                           <td className="py-2.5 px-3 text-right text-neutral-700 font-mono">
-                            {ps.request_count.toLocaleString("fr-BE")}
+                            {ps.count.toLocaleString("fr-BE")}
                           </td>
                           <td className="py-2.5 px-3 text-right text-neutral-700 font-mono">
-                            {ps.total_cost_eur.toFixed(4)} EUR
+                            {ps.cost_eur.toFixed(4)} EUR
                           </td>
                           <td className="py-2.5 px-3 text-right text-neutral-500 font-mono text-xs">
-                            {Math.round(ps.avg_input_tokens).toLocaleString("fr-BE")}
+                            {(ps.tokens_in || 0).toLocaleString("fr-BE")}
                           </td>
                           <td className="py-2.5 px-3 text-right text-neutral-500 font-mono text-xs">
-                            {Math.round(ps.avg_output_tokens).toLocaleString("fr-BE")}
+                            {(ps.tokens_out || 0).toLocaleString("fr-BE")}
                           </td>
                           <td className="py-2.5 px-3">
                             <div className="flex items-center gap-2">
@@ -1146,55 +1156,72 @@ function DPIATab({ token, tenantId }: { token: string; tenantId?: string }) {
 
       {report && (
         <>
-          {/* Summary */}
+          {/* System Classification */}
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-orange-900">Classification AI Act</p>
+              <p className="text-xs text-orange-700 mt-1">{report.system_classification}</p>
+            </div>
+          </div>
+
+          {/* Statistics */}
           <div className="card">
             <h3 className="text-sm font-semibold text-neutral-900 mb-4 flex items-center gap-2">
               <FileText className="w-4 h-4 text-accent" />
-              Resume
+              Statistiques
             </h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
               <div className="p-3 bg-neutral-50 rounded-lg text-center">
                 <p className="text-xl font-bold text-neutral-900">
-                  {report.summary.total_requests.toLocaleString("fr-BE")}
+                  {report.statistics.total_requests.toLocaleString("fr-BE")}
                 </p>
                 <p className="text-xs text-neutral-500 mt-0.5">Requetes</p>
               </div>
               <div className="p-3 bg-neutral-50 rounded-lg text-center">
-                <p className="text-xl font-bold text-neutral-900">{report.summary.period_days}j</p>
-                <p className="text-xs text-neutral-500 mt-0.5">Periode</p>
+                <p className="text-xl font-bold text-neutral-900">
+                  {report.statistics.anonymization_rate.toFixed(1)}%
+                </p>
+                <p className="text-xs text-neutral-500 mt-0.5">Taux anonymisation</p>
               </div>
               <div className="p-3 bg-neutral-50 rounded-lg text-center">
                 <p className="text-xl font-bold text-neutral-900">
-                  {report.summary.total_cost_eur.toFixed(2)} EUR
+                  {report.statistics.total_cost_eur.toFixed(2)} EUR
                 </p>
                 <p className="text-xs text-neutral-500 mt-0.5">Cout total</p>
               </div>
               <div className="p-3 bg-neutral-50 rounded-lg text-center">
                 <p className="text-xl font-bold text-neutral-900">
-                  {(report.summary.human_validation_rate * 100).toFixed(1)}%
+                  {report.statistics.human_validation_rate.toFixed(1)}%
                 </p>
                 <p className="text-xs text-neutral-500 mt-0.5">Validation humaine</p>
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-1.5 mt-3">
-              <span className="text-xs text-neutral-500 mr-1">Providers utilises :</span>
-              {report.summary.providers_used.map((p) => (
-                <span
-                  key={p}
-                  className="px-2 py-0.5 bg-accent/10 text-accent rounded text-xs font-medium capitalize"
-                >
-                  {p}
-                </span>
-              ))}
+            {/* Sub-processors */}
+            <div className="mt-4 pt-4 border-t border-neutral-200">
+              <p className="text-xs font-medium text-neutral-500 mb-2 uppercase">Sous-traitants utilises</p>
+              <div className="flex flex-wrap gap-1.5">
+                {Object.entries(report.sub_processors).map(([key, info]: [string, any]) => (
+                  <span
+                    key={key}
+                    className="px-2 py-0.5 bg-accent/10 text-accent rounded text-xs font-medium"
+                  >
+                    {info.name || key}
+                  </span>
+                ))}
+              </div>
             </div>
 
             {/* Sensitivity distribution */}
             <div className="mt-4 pt-4 border-t border-neutral-200">
               <p className="text-xs font-medium text-neutral-500 mb-2 uppercase">Distribution de sensibilite</p>
               <div className="flex flex-wrap gap-2">
-                {Object.entries(report.summary.sensitivity_distribution).map(([sens, count]) => (
-                  <SensitivityBadge key={sens} sensitivity={sens} />
+                {Object.entries(report.statistics.usage_by_sensitivity).map(([sens, count]) => (
+                  <div key={sens} className="flex items-center gap-1.5">
+                    <SensitivityBadge sensitivity={sens} />
+                    <span className="text-xs text-neutral-600 font-mono">{(count as number).toLocaleString("fr-BE")}</span>
+                  </div>
                 ))}
               </div>
             </div>
@@ -1207,18 +1234,16 @@ function DPIATab({ token, tenantId }: { token: string; tenantId?: string }) {
               Evaluation des risques
             </h3>
             <div
-              className={`inline-flex items-center px-3 py-1.5 rounded-lg border text-sm font-semibold mb-4 ${
-                RISK_COLORS[report.risk_assessment.level] || "bg-neutral-100 text-neutral-700 border-neutral-300"
-              }`}
+              className="inline-flex items-center px-3 py-1.5 rounded-lg border text-sm font-semibold mb-4 bg-green-100 text-green-800 border-green-300"
             >
-              Niveau de risque : {report.risk_assessment.level.toUpperCase()}
+              Risque residuel : {report.risk_assessment.residual_risk}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <p className="text-xs font-semibold text-neutral-600 uppercase mb-2">Facteurs de risque</p>
+                <p className="text-xs font-semibold text-neutral-600 uppercase mb-2">Risques identifies</p>
                 <ul className="space-y-1.5">
-                  {report.risk_assessment.factors.map((f, i) => (
+                  {report.risk_assessment.identified_risks.map((f, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm text-neutral-700">
                       <XCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
                       {f}
@@ -1229,7 +1254,7 @@ function DPIATab({ token, tenantId }: { token: string; tenantId?: string }) {
               <div>
                 <p className="text-xs font-semibold text-neutral-600 uppercase mb-2">Mesures d'attenuation</p>
                 <ul className="space-y-1.5">
-                  {report.risk_assessment.mitigations.map((m, i) => (
+                  {report.risk_assessment.mitigation_measures.map((m, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm text-neutral-700">
                       <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
                       {m}
@@ -1240,60 +1265,23 @@ function DPIATab({ token, tenantId }: { token: string; tenantId?: string }) {
             </div>
           </div>
 
-          {/* Data Flows */}
-          <div className="card">
-            <h3 className="text-sm font-semibold text-neutral-900 mb-4 flex items-center gap-2">
-              <Server className="w-4 h-4 text-accent" />
-              Flux de donnees
-            </h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-neutral-200">
-                    <th className="text-left py-2.5 px-3 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
-                      Provider
-                    </th>
-                    <th className="text-left py-2.5 px-3 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
-                      Localisation
-                    </th>
-                    <th className="text-left py-2.5 px-3 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
-                      Chiffrement
-                    </th>
-                    <th className="text-left py-2.5 px-3 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
-                      Retention
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-neutral-100">
-                  {report.data_flows.map((flow, i) => (
-                    <tr key={i} className="hover:bg-neutral-50 transition-colors">
-                      <td className="py-2.5 px-3 font-medium text-neutral-900 capitalize">{flow.provider}</td>
-                      <td className="py-2.5 px-3 text-neutral-600">{flow.data_location}</td>
-                      <td className="py-2.5 px-3 text-neutral-600">{flow.encryption}</td>
-                      <td className="py-2.5 px-3 text-neutral-600">{flow.retention_policy}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Recommendations */}
+          {/* Safeguards */}
           <div className="card">
             <h3 className="text-sm font-semibold text-neutral-900 mb-4 flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-accent" />
-              Recommandations
+              Mesures de securite
             </h3>
-            <ol className="space-y-2">
-              {report.recommendations.map((rec, i) => (
-                <li key={i} className="flex items-start gap-3 text-sm text-neutral-700">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-accent/10 text-accent text-xs font-bold flex items-center justify-center mt-0.5">
-                    {i + 1}
-                  </span>
-                  {rec}
-                </li>
+            <div className="space-y-2">
+              {Object.entries(report.safeguards).map(([key, desc]) => (
+                <div key={key} className="flex items-start gap-3 text-sm text-neutral-700">
+                  <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-medium capitalize">{key.replace(/_/g, " ")}</span>
+                    <span className="text-neutral-500"> — {desc}</span>
+                  </div>
+                </div>
               ))}
-            </ol>
+            </div>
           </div>
 
           {/* Generated at */}
@@ -1488,11 +1476,13 @@ function ConfigTab({ token, tenantId }: { token: string; tenantId?: string }) {
         </h3>
         <div className="space-y-1.5">
           {[
-            { env: "MISTRAL_API_KEY", desc: "Cle API Mistral AI (Tier 1 - Souverain)" },
-            { env: "OPENAI_API_KEY", desc: "Cle API OpenAI (Tier 3 - International)" },
-            { env: "ANTHROPIC_API_KEY", desc: "Cle API Anthropic Claude (Tier 3 - International)" },
-            { env: "AZURE_OPENAI_API_KEY", desc: "Cle API Azure OpenAI (Tier 2 - EU)" },
-            { env: "AZURE_OPENAI_ENDPOINT", desc: "Endpoint Azure OpenAI" },
+            { env: "MISTRAL_API_KEY", desc: "Cle API Mistral AI (Tier 1 - EU-native, France)" },
+            { env: "GEMINI_API_KEY", desc: "Cle API Google Gemini (Tier 1 - EU, europe-west1 Belgique)" },
+            { env: "ANTHROPIC_API_KEY", desc: "Cle API Anthropic Claude (Tier 1 - EU-US DPF)" },
+            { env: "OPENAI_API_KEY", desc: "Cle API OpenAI GPT-4o (Tier 1 - EU-US DPF)" },
+            { env: "DEEPSEEK_API_KEY", desc: "Cle API DeepSeek (Tier 2 - Donnees anonymisees uniquement)" },
+            { env: "GLM_API_KEY", desc: "Cle API GLM-4 Zhipu (Tier 3 - Donnees publiques uniquement)" },
+            { env: "KIMI_API_KEY", desc: "Cle API Kimi Moonshot (Tier 3 - Donnees publiques uniquement)" },
           ].map((item) => (
             <div key={item.env} className="flex items-center gap-3 py-1.5">
               <code className="text-xs font-mono bg-white px-2 py-1 rounded border border-neutral-200 text-neutral-700 min-w-[220px]">

@@ -11,8 +11,7 @@ However, pseudonymized data (reversible) still requires safeguards.
 Our approach: reversible replacement with ephemeral in-memory mapping.
 """
 
-import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from apps.api.services.llm.data_classifier import (
     DetectedEntity,

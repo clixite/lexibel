@@ -282,16 +282,6 @@ class AIAuditLogger:
         ]
 
         # Anonymization stats
-        anon_q = (
-            select(
-                func.count().label("total"),
-                func.sum(
-                    func.cast(AIAuditLog.was_anonymized, func.literal_column("integer"))
-                ).label("anonymized"),
-            )
-            .where(AIAuditLog.tenant_id == tenant_id)
-        )
-        # Simpler approach
         total_q = select(func.count()).select_from(AIAuditLog).where(
             AIAuditLog.tenant_id == tenant_id
         )
