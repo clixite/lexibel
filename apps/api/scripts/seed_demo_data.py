@@ -24,6 +24,7 @@ import sys
 from datetime import datetime, timedelta, date
 from pathlib import Path
 from uuid import uuid4
+import os
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
@@ -52,8 +53,9 @@ from packages.db.models import (
     OAuthToken,
 )
 
-# Database URL
-DATABASE_URL = "postgresql+asyncpg://lexibel:lexibel_dev_2026@localhost:5432/lexibel"
+# Database URL from environment or default to production
+import os
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://lexibel:lexibel_dev_2026@localhost:5432/lexibel")
 
 
 async def seed_data():
@@ -67,40 +69,65 @@ async def seed_data():
         print("🌱 Starting seed data...")
 
         # ── 1. Tenant ──
-        print("\n📦 Creating tenant...")
-        tenant = Tenant(
-            id=uuid4(),
-            name="Cabinet Demo",
-            slug="cabinet-demo",
-            plan="professional",
-            locale="fr-BE",
-            config={"timezone": "Europe/Brussels", "currency": "EUR"},
-            status="active",
-        )
-        session.add(tenant)
-        await session.flush()
-        print(f"✅ Tenant created: {tenant.name} ({tenant.id})")
+        print("\n📦 Creating/updating tenant...")
+        from sqlalchemy import select
+        from sqlalchemy.dialects.postgresql import insert
+
+        # Check if tenant exists
+        result = await session.execute(select(Tenant).where(Tenant.slug == "cabinet-demo"))
+        tenant = result.scalar_one_or_none()
+
+        if tenant:
+            print(f"✅ Tenant already exists: {tenant.name} ({tenant.id})")
+        else:
+            tenant = Tenant(
+                id=uuid4(),
+                name="Cabinet Demo",
+                slug="cabinet-demo",
+                plan="professional",
+                locale="fr-BE",
+                config={"timezone": "Europe/Brussels", "currency": "EUR"},
+                status="active",
+            )
+            session.add(tenant)
+            await session.flush()
+            print(f"✅ Tenant created: {tenant.name} ({tenant.id})")
 
         # Set tenant context for RLS
         await session.execute(f"SET app.current_tenant_id = '{tenant.id}'")
 
         # ── 2. Admin User ──
-        print("\n👤 Creating admin user...")
-        admin_user = User(
-            id=uuid4(),
-            tenant_id=tenant.id,
-            email="nicolas@clixite.be",
-            full_name="Nicolas Simon",
-            role="partner",
-            auth_provider="local",
-            hashed_password="$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5NU0TpQfTJ6Sy",  # LexiBel2026!
-            mfa_enabled=False,
-            hourly_rate_cents=25000,  # €250/h
-            is_active=True,
-        )
-        session.add(admin_user)
-        await session.flush()
-        print(f"✅ User created: {admin_user.email} (password: LexiBel2026!)")
+        print("\n👤 Creating/updating admin user...")
+
+        # Check if user exists
+        result = await session.execute(select(User).where(User.email == "nicolas@clixite.be"))
+        admin_user = result.scalar_one_or_none()
+
+        if admin_user:
+            # Update password and other fields
+            admin_user.hashed_password = "$2b$12$b08gCP9T14tSROHu97NxRe/bu8t0vkVaboWDjcq5.V7fP4kXd0aL."  # admin123
+            admin_user.full_name = "Nicolas Simon"
+            admin_user.role = "partner"
+            admin_user.hourly_rate_cents = 25000
+            admin_user.is_active = True
+            await session.flush()
+            print(f"✅ User updated: {admin_user.email} (password: admin123)")
+        else:
+            admin_user = User(
+                id=uuid4(),
+                tenant_id=tenant.id,
+                email="nicolas@clixite.be",
+                full_name="Nicolas Simon",
+                role="partner",
+                auth_provider="local",
+                hashed_password="$2b$12$b08gCP9T14tSROHu97NxRe/bu8t0vkVaboWDjcq5.V7fP4kXd0aL.",  # admin123
+                mfa_enabled=False,
+                hourly_rate_cents=25000,  # €250/h
+                is_active=True,
+            )
+            session.add(admin_user)
+            await session.flush()
+            print(f"✅ User created: {admin_user.email} (password: admin123)")
 
         # ── 3. Contacts ──
         print("\n📇 Creating 10 contacts...")
@@ -1566,7 +1593,7 @@ Deadline: signature prévue pour fin mars."""
         print("=" * 60)
         print("\n📊 Summary:")
         print(f"  • Tenant: {tenant.name}")
-        print(f"  • Admin user: {admin_user.email} (password: LexiBel2026!)")
+        print(f"  • Admin user: {admin_user.email} (password: admin123)")
         print(f"  • Cases: {len(cases)}")
         print(f"  • Contacts: {len(contacts)}")
         print(f"  • Case-Contact links: {len(case_contacts)}")
@@ -1584,7 +1611,7 @@ Deadline: signature prévue pour fin mars."""
         print(f"  • OAuth tokens: {token_count}")
         print("\n✅ You can now login at https://lexibel.clixite.cloud")
         print(f"   Email: {admin_user.email}")
-        print("   Password: LexiBel2026!")
+        print("   Password: admin123")
         print()
 
 
