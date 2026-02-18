@@ -71,7 +71,7 @@ async def seed_data():
 
         # ── 1. Tenant ──
         print("\n📦 Creating/updating tenant...")
-        from sqlalchemy import select
+        from sqlalchemy import select, text
         from sqlalchemy.dialects.postgresql import insert
 
         # Check if tenant exists
