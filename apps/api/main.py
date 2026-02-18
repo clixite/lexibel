@@ -27,7 +27,7 @@ from apps.api.webhooks.ringover import router as ringover_webhook_router
 from apps.api.webhooks.plaud import router as plaud_webhook_router
 from apps.api.routers.integrations import router as integrations_router
 from apps.api.routers.events import router as events_router
-from apps.api.routers.bootstrap import router as bootstrap_router, ensure_admin_user
+from apps.api.routers.bootstrap import router as bootstrap_router, ensure_admin_user, seed_demo_data
 from apps.api.routers.search import router as search_router
 from apps.api.routers.ai import router as ai_router
 from apps.api.routers.migration import router as migration_router
@@ -93,6 +93,12 @@ async def lifespan(app: FastAPI):
         await ensure_admin_user()
     except Exception as e:
         logger.warning("Admin bootstrap skipped: %s", e)
+
+    # Seed demo data if DB is empty
+    try:
+        await seed_demo_data()
+    except Exception as e:
+        logger.warning("Demo data seeding skipped: %s", e)
 
     yield
 

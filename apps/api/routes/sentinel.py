@@ -487,7 +487,7 @@ async def resolve_conflict(
         success = await alerter.resolve_conflict(
             conflict_id=conflict_id,
             resolution=request.resolution,
-            resolved_by=UUID(current_user['user_id']),  # Use authenticated user
+            resolved_by=current_user['user_id'] if isinstance(current_user['user_id'], UUID) else UUID(str(current_user['user_id'])),
         )
 
         if not success:
@@ -931,7 +931,7 @@ async def stream_alerts(
     Returns:
         EventSourceResponse: SSE stream of AlertStreamEvent objects
     """
-    user_id = UUID(current_user["user_id"])
+    user_id = current_user["user_id"] if isinstance(current_user["user_id"], UUID) else UUID(str(current_user["user_id"]))
     request_id = f"stream-{user_id}"
     logger.info(f"[{request_id}] SSE stream opened")
 
