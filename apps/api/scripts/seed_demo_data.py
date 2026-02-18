@@ -269,7 +269,6 @@ async def seed_data():
 
         for case, contact, role in case_contacts:
             case_contact = CaseContact(
-                id=uuid4(),
                 tenant_id=tenant.id,
                 case_id=case.id,
                 contact_id=contact.id,
