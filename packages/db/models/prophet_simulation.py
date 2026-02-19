@@ -1,4 +1,5 @@
 """PROPHET simulation model."""
+
 import uuid
 
 from sqlalchemy import Float, ForeignKey, String, text

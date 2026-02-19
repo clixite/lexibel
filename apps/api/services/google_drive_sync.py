@@ -8,13 +8,12 @@ Uses the Google Drive API v3 via raw HTTP requests with Bearer token.
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
 import httpx
 from sqlalchemy import select
-from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from packages.db.models.cloud_document import CloudDocument
@@ -86,6 +85,7 @@ class GoogleDriveSync:
             )
             response.raise_for_status()
             return response.json()
+
     async def sync_folder(
         self,
         session: AsyncSession,
@@ -129,16 +129,25 @@ class GoogleDriveSync:
 
                     # Recurse into subfolders
                     if recursive and file_data.get("mimeType") == GOOGLE_FOLDER_TYPE:
-                        subfolder_path = f"{parent_path}/{file_data['name']}".lstrip("/")
+                        subfolder_path = f"{parent_path}/{file_data['name']}".lstrip(
+                            "/"
+                        )
                         sub = await self.sync_folder(
-                            session, token_id, tenant_id,
-                            file_data["id"], recursive, job_id, subfolder_path
+                            session,
+                            token_id,
+                            tenant_id,
+                            file_data["id"],
+                            recursive,
+                            job_id,
+                            subfolder_path,
                         )
                         synced += sub["synced"]
                         errors += sub["errors"]
 
                 except Exception as e:
-                    logger.error(f"Failed to sync Drive file {file_data.get('id')}: {e}")
+                    logger.error(
+                        f"Failed to sync Drive file {file_data.get('id')}: {e}"
+                    )
                     errors += 1
 
             page_token = result.get("nextPageToken")
@@ -181,17 +190,24 @@ class GoogleDriveSync:
                 response = await client.get(
                     f"{DRIVE_BASE_URL}/files",
                     headers={"Authorization": f"Bearer {access_token}"},
-                    params={**params, **({"-pageToken": page_token} if page_token else {})},
+                    params={
+                        **params,
+                        **({"-pageToken": page_token} if page_token else {}),
+                    },
                 )
                 response.raise_for_status()
                 result = response.json()
 
             for file_data in result.get("files", []):
                 try:
-                    await self._upsert_document(session, token_id, tenant_id, file_data, "")
+                    await self._upsert_document(
+                        session, token_id, tenant_id, file_data, ""
+                    )
                     synced += 1
                 except Exception as e:
-                    logger.error(f"Incremental sync error for {file_data.get('id')}: {e}")
+                    logger.error(
+                        f"Incremental sync error for {file_data.get('id')}: {e}"
+                    )
                     errors += 1
 
             page_token = result.get("nextPageToken")
@@ -199,6 +215,7 @@ class GoogleDriveSync:
                 break
 
         return {"synced": synced, "errors": errors}
+
     async def search_files(
         self,
         session: AsyncSession,
@@ -211,7 +228,7 @@ class GoogleDriveSync:
         access_token = await oauth_engine.get_valid_token(session, token_id)
 
         params = {
-            "q": f"fullText contains '{query.replace(chr(39), chr(39)*2)}' and trashed = false",
+            "q": f"fullText contains '{query.replace(chr(39), chr(39) * 2)}' and trashed = false",
             "fields": "files(id,name,mimeType,size,webViewLink,modifiedTime)",
             "pageSize": 20,
         }
@@ -245,7 +262,7 @@ class GoogleDriveSync:
                 export_mime = "application/pdf"
                 if mime_type == "application/vnd.google-apps.spreadsheet":
                     export_mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                
+
                 response = await client.get(
                     f"{DRIVE_BASE_URL}/files/{file_id}/export",
                     headers={"Authorization": f"Bearer {access_token}"},
@@ -258,7 +275,7 @@ class GoogleDriveSync:
                     headers={"Authorization": f"Bearer {access_token}"},
                     params={"alt": "media"},
                 )
-            
+
             response.raise_for_status()
             return response.content
 
@@ -291,6 +308,7 @@ class GoogleDriveSync:
         except Exception as e:
             logger.warning(f"Could not extract text from {file_id}: {e}")
             return ""
+
     async def _upsert_document(
         self,
         session: AsyncSession,
@@ -339,7 +357,9 @@ class GoogleDriveSync:
             # Update
             existing.name = file_data["name"]
             existing.mime_type = mime_type
-            existing.size_bytes = int(file_data["size"]) if file_data.get("size") else None
+            existing.size_bytes = (
+                int(file_data["size"]) if file_data.get("size") else None
+            )
             existing.web_url = web_url
             existing.edit_url = edit_url
             existing.thumbnail_url = file_data.get("thumbnailLink")
@@ -391,11 +411,12 @@ class GoogleDriveSync:
             job.processed_items = processed
             await session.flush()
 
+
 def _extract_docs_text(doc: dict) -> str:
     """Extract plain text from Google Docs API response."""
     texts = []
     body = doc.get("body", {})
-    
+
     def extract_from_content(content: list) -> None:
         for element in content:
             if "paragraph" in element:
@@ -406,7 +427,7 @@ def _extract_docs_text(doc: dict) -> str:
                 for row in element["table"].get("tableRows", []):
                     for cell in row.get("tableCells", []):
                         extract_from_content(cell.get("content", []))
-    
+
     extract_from_content(body.get("content", []))
     return "".join(texts)
 
@@ -420,20 +441,18 @@ def _extract_text_from_bytes(content: bytes, mime_type: str) -> str:
             try:
                 import pdfplumber
                 import io
+
                 with pdfplumber.open(io.BytesIO(content)) as pdf:
-                    return "
-".join(
-                        page.extract_text() or "" for page in pdf.pages
-                    )
+                    return "\n".join(page.extract_text() or "" for page in pdf.pages)
             except ImportError:
                 return ""
         elif "wordprocessingml" in mime_type or mime_type.endswith(".docx"):
             try:
                 import docx
                 import io
+
                 doc = docx.Document(io.BytesIO(content))
-                return "
-".join(para.text for para in doc.paragraphs)
+                return "\n".join(para.text for para in doc.paragraphs)
             except ImportError:
                 return ""
     except Exception:

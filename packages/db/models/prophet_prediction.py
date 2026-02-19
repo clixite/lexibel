@@ -1,8 +1,8 @@
 """PROPHET prediction model."""
-import uuid
-from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, String, text
+import uuid
+
+from sqlalchemy import Boolean, Float, ForeignKey, String, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 

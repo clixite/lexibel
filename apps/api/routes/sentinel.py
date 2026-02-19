@@ -146,7 +146,9 @@ async def check_conflict(
                     EntityRef(
                         id=UUID(conflict["client_id"]),
                         name=conflict.get("client_name", "Unknown"),
-                        type="Company" if conflict.get("client_type") == "legal" else "Person",
+                        type="Company"
+                        if conflict.get("client_type") == "legal"
+                        else "Person",
                     )
                 )
 
@@ -161,9 +163,7 @@ async def check_conflict(
             conflict_details.append(conflict_detail)
 
         # Calculate highest severity
-        highest_severity = max(
-            (c.severity_score for c in conflict_details), default=0
-        )
+        highest_severity = max((c.severity_score for c in conflict_details), default=0)
 
         # Fetch graph data if requested
         graph_data = None
@@ -211,7 +211,7 @@ async def check_conflict(
                             nodes_dict[node_id] = {
                                 "id": node_id,
                                 "type": record.get("node_type", "Entity"),
-                                "name": record.get("node_name", "Unknown")
+                                "name": record.get("node_name", "Unknown"),
                             }
 
                         # Add edge if relationship exists
@@ -228,21 +228,26 @@ async def check_conflict(
                     for edge_key in edges_set:
                         edge_parts = list(edge_key)
                         if len(edge_parts) >= 3:
-                            edges_list.append({
-                                "from": edge_parts[0],
-                                "to": edge_parts[1],
-                                "type": edge_parts[2]
-                            })
+                            edges_list.append(
+                                {
+                                    "from": edge_parts[0],
+                                    "to": edge_parts[1],
+                                    "type": edge_parts[2],
+                                }
+                            )
 
                     graph_data = {
                         "nodes": list(nodes_dict.values()),
-                        "edges": edges_list
+                        "edges": edges_list,
                     }
                 else:
                     # Fallback to basic structure
                     graph_data = {
-                        "nodes": [{"id": str(eid), "type": "Entity", "name": "Unknown"} for eid in entity_ids],
-                        "edges": []
+                        "nodes": [
+                            {"id": str(eid), "type": "Entity", "name": "Unknown"}
+                            for eid in entity_ids
+                        ],
+                        "edges": [],
                     }
             except Exception as e:
                 logger.warning(f"[{request_id}] Failed to fetch graph data: {e}")
@@ -282,7 +287,9 @@ async def list_conflicts(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     status_filter: Optional[str] = Query(
-        None, alias="status", description="Filter by status: active, resolved, dismissed"
+        None,
+        alias="status",
+        description="Filter by status: active, resolved, dismissed",
     ),
     severity_min: Optional[int] = Query(
         None, ge=0, le=100, description="Minimum severity score"
@@ -394,7 +401,9 @@ async def list_conflicts(
                         EntityRef(
                             id=conflicting_contact.id,
                             name=conflicting_contact.full_name,
-                            type="Company" if conflicting_contact.type == "legal" else "Person",
+                            type="Company"
+                            if conflicting_contact.type == "legal"
+                            else "Person",
                         )
                     )
 
@@ -420,7 +429,9 @@ async def list_conflicts(
             total_pages=total_pages,
         )
 
-        logger.info(f"[{request_id}] Returning {len(conflicts)} conflicts (page {page}/{total_pages})")
+        logger.info(
+            f"[{request_id}] Returning {len(conflicts)} conflicts (page {page}/{total_pages})"
+        )
 
         return ConflictListResponse(
             conflicts=conflict_summaries,
@@ -487,7 +498,9 @@ async def resolve_conflict(
         success = await alerter.resolve_conflict(
             conflict_id=conflict_id,
             resolution=request.resolution,
-            resolved_by=current_user['user_id'] if isinstance(current_user['user_id'], UUID) else UUID(str(current_user['user_id'])),
+            resolved_by=current_user["user_id"]
+            if isinstance(current_user["user_id"], UUID)
+            else UUID(str(current_user["user_id"])),
         )
 
         if not success:
@@ -575,7 +588,9 @@ async def sync_graph(
 
         elif request.entity_ids:
             # Sync specific entities
-            logger.info(f"[{request_id}] Syncing {len(request.entity_ids)} specific entities")
+            logger.info(
+                f"[{request_id}] Syncing {len(request.entity_ids)} specific entities"
+            )
 
             for entity_id in request.entity_ids:
                 # Try syncing as person first
@@ -695,9 +710,7 @@ async def get_graph_data(
                }}) as edges
         """
 
-        results = await neo4j_client.execute_query(
-            query, {"entity_id": str(entity_id)}
-        )
+        results = await neo4j_client.execute_query(query, {"entity_id": str(entity_id)})
 
         # Build nodes and edges
         nodes = []
@@ -711,7 +724,7 @@ async def get_graph_data(
             if not center or not center.get("id"):
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Entity {entity_id} not found in graph"
+                    detail=f"Entity {entity_id} not found in graph",
                 )
 
             center_type = center.get("type", "Unknown")
@@ -744,7 +757,8 @@ async def get_graph_data(
                                 label=label,
                                 name=neighbor.get("name", "Unknown"),
                                 properties={
-                                    k: v for k, v in neighbor.items()
+                                    k: v
+                                    for k, v in neighbor.items()
                                     if k not in ("id", "name", "labels")
                                 },
                             )
@@ -931,7 +945,11 @@ async def stream_alerts(
     Returns:
         EventSourceResponse: SSE stream of AlertStreamEvent objects
     """
-    user_id = current_user["user_id"] if isinstance(current_user["user_id"], UUID) else UUID(str(current_user["user_id"]))
+    user_id = (
+        current_user["user_id"]
+        if isinstance(current_user["user_id"], UUID)
+        else UUID(str(current_user["user_id"]))
+    )
     request_id = f"stream-{user_id}"
     logger.info(f"[{request_id}] SSE stream opened")
 
@@ -953,9 +971,9 @@ async def stream_alerts(
                 event_type="conflict_detected",  # Using available event type
                 data={
                     "message": "Connected to SENTINEL alert stream",
-                    "status": "connected"
+                    "status": "connected",
                 },
-                timestamp=datetime.now()
+                timestamp=datetime.now(),
             )
             yield {
                 "event": "connected",
@@ -972,7 +990,7 @@ async def stream_alerts(
                 heartbeat_event = AlertStreamEvent(
                     event_type="conflict_detected",
                     data={"heartbeat": True},
-                    timestamp=datetime.now()
+                    timestamp=datetime.now(),
                 )
                 yield {
                     "event": "heartbeat",
@@ -984,7 +1002,7 @@ async def stream_alerts(
             error_event = AlertStreamEvent(
                 event_type="conflict_detected",
                 data={"error": "Stream error occurred"},
-                timestamp=datetime.now()
+                timestamp=datetime.now(),
             )
             yield {
                 "event": "error",

@@ -1,4 +1,5 @@
 """BRAIN memory model for vector storage metadata."""
+
 import uuid
 
 from sqlalchemy import Float, ForeignKey, String, Text, text

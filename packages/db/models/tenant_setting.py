@@ -53,8 +53,6 @@ class TenantSetting(Base):
     is_required = Column(Boolean, default=False, server_default="false")
 
     # Audit
-    updated_by = Column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
-    )
+    updated_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, nullable=False, server_default="now()")
     updated_at = Column(DateTime, nullable=False, server_default="now()")

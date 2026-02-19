@@ -4,12 +4,17 @@ These tests verify that the GDPR and AI Act protections cannot be bypassed.
 If ANY test fails, the build MUST be blocked.
 """
 
-
 from apps.api.services.llm.data_classifier import (
-    DataClassifier, DataSensitivity, DetectedEntity,
+    DataClassifier,
+    DataSensitivity,
+    DetectedEntity,
 )
 from apps.api.services.llm.anonymizer import DataAnonymizer
-from apps.api.services.llm.gateway import LLMGateway, PROVIDER_CONFIGS, _NON_EU_PROVIDERS
+from apps.api.services.llm.gateway import (
+    LLMGateway,
+    PROVIDER_CONFIGS,
+    _NON_EU_PROVIDERS,
+)
 
 
 # ── Test data with Belgian PII ──
@@ -69,7 +74,10 @@ class TestCriticalDataNeverReachesTier3:
         # Text with person name in legal context -> SENSITIVE
         text = "Me Jean Dupont a déposé des conclusions."
         result = classifier.classify(text)
-        assert result.sensitivity in (DataSensitivity.SENSITIVE, DataSensitivity.CRITICAL)
+        assert result.sensitivity in (
+            DataSensitivity.SENSITIVE,
+            DataSensitivity.CRITICAL,
+        )
         assert "glm" not in result.allowed_providers
         assert "kimi" not in result.allowed_providers
 
@@ -90,7 +98,10 @@ class TestAnonymizationRemovesAllEntities:
         result = anonymizer.anonymize(text)
 
         # Check that no original PII values remain
-        assert "Jean Dupont" not in result.anonymized_text or "PERSONNE" in result.anonymized_text
+        assert (
+            "Jean Dupont" not in result.anonymized_text
+            or "PERSONNE" in result.anonymized_text
+        )
         assert "85.06.15-123.45" not in result.anonymized_text
         assert "0123.456.789" not in result.anonymized_text
         assert "+32 2 123 45 67" not in result.anonymized_text
@@ -157,7 +168,10 @@ class TestDeanonymizationRoundtrip:
         anonymizer = DataAnonymizer()
         messages = [
             {"role": "system", "content": "Tu es un assistant juridique."},
-            {"role": "user", "content": "Analysez le dossier de Me Jean Dupont, NISS 85.06.15-123.45."},
+            {
+                "role": "user",
+                "content": "Analysez le dossier de Me Jean Dupont, NISS 85.06.15-123.45.",
+            },
         ]
         anon_messages, mapping = anonymizer.anonymize_messages(messages)
 
@@ -175,6 +189,7 @@ class TestAuditLogNeverContainsContent:
 
     def test_hash_content_is_sha256(self):
         from apps.api.services.llm.audit_logger import AIAuditLogger
+
         content = "This is a secret legal document about Mr. Dupont."
         h = AIAuditLogger.hash_content(content)
         assert len(h) == 64  # SHA-256 hex digest
@@ -206,7 +221,9 @@ class TestFallbackRespectsTier:
         assert result.sensitivity == DataSensitivity.CRITICAL
         # CRITICAL should only allow mistral and gemini (EU-native)
         for p in result.allowed_providers:
-            assert p in ("mistral", "gemini"), f"Unexpected provider {p} for CRITICAL data"
+            assert p in ("mistral", "gemini"), (
+                f"Unexpected provider {p} for CRITICAL data"
+            )
 
 
 class TestClassifierDefaultSensitive:
@@ -250,7 +267,10 @@ class TestChineseProvidersNeverReceiveUnverifiedData:
 
         for text in self.SAMPLE_TEXTS:
             result = classifier.classify(text)
-            if result.sensitivity in (DataSensitivity.CRITICAL, DataSensitivity.SENSITIVE):
+            if result.sensitivity in (
+                DataSensitivity.CRITICAL,
+                DataSensitivity.SENSITIVE,
+            ):
                 for cp in chinese_providers:
                     assert cp not in result.allowed_providers, (
                         f"Chinese provider '{cp}' allowed for {result.sensitivity.value} "

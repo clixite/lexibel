@@ -1,12 +1,9 @@
 """SENTINEL alert notification service."""
-import asyncio
+
 import logging
-from typing import List, Optional, Dict
+from typing import List, Dict
 from uuid import UUID
 from datetime import datetime, timedelta
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-import smtplib
 
 from packages.db.models.sentinel_conflict import SentinelConflict
 from packages.db.models.user import User
@@ -17,10 +14,11 @@ logger = logging.getLogger(__name__)
 
 class AlertSeverity:
     """Alert severity levels."""
+
     CRITICAL = "critical"  # Score 90-100: Direct adversary, director overlap
-    HIGH = "high"         # Score 70-89: Ownership, family ties
-    MEDIUM = "medium"     # Score 50-69: Historical, professional
-    LOW = "low"           # Score 0-49: Weak connections
+    HIGH = "high"  # Score 70-89: Ownership, family ties
+    MEDIUM = "medium"  # Score 50-69: Historical, professional
+    LOW = "low"  # Score 0-49: Weak connections
 
 
 class ConflictAlerter:
@@ -42,9 +40,7 @@ class ConflictAlerter:
             return AlertSeverity.LOW
 
     async def create_conflict_alert(
-        self,
-        conflict: SentinelConflict,
-        notify_user_id: UUID
+        self, conflict: SentinelConflict, notify_user_id: UUID
     ) -> Dict:
         """Create alert and notify user.
 
@@ -70,8 +66,8 @@ class ConflictAlerter:
             "actions": [
                 {"label": "Review", "action": "review"},
                 {"label": "Resolve", "action": "resolve"},
-                {"label": "Dismiss", "action": "dismiss"}
-            ]
+                {"label": "Dismiss", "action": "dismiss"},
+            ],
         }
 
         # Send real-time alert via SSE
@@ -81,7 +77,9 @@ class ConflictAlerter:
         if severity == AlertSeverity.CRITICAL:
             await self.send_email_alert(notify_user_id, alert_data)
 
-        logger.info(f"Alert created: {conflict.conflict_type} for user {notify_user_id}")
+        logger.info(
+            f"Alert created: {conflict.conflict_type} for user {notify_user_id}"
+        )
         return alert_data
 
     async def send_realtime_alert(self, user_id: UUID, alert_data: Dict):
@@ -113,19 +111,19 @@ class ConflictAlerter:
                 logger.warning(f"No email for user {user_id}")
                 return
 
-            # Create email
+            # Create email (logged for now, SMTP in production)
             subject = f"[URGENT] {alert_data['title']} - LexiBel SENTINEL"
-            body = f"""
+            _body = f"""
             <html>
                 <body>
                     <h2 style="color: #d32f2f;">Conflict of Interest Detected</h2>
-                    <p><strong>Severity:</strong> {alert_data['severity'].upper()}</p>
-                    <p><strong>Type:</strong> {alert_data['title']}</p>
-                    <p><strong>Description:</strong> {alert_data['message']}</p>
-                    <p><strong>Conflict Score:</strong> {alert_data['conflict_score']}/100</p>
+                    <p><strong>Severity:</strong> {alert_data["severity"].upper()}</p>
+                    <p><strong>Type:</strong> {alert_data["title"]}</p>
+                    <p><strong>Description:</strong> {alert_data["message"]}</p>
+                    <p><strong>Conflict Score:</strong> {alert_data["conflict_score"]}/100</p>
                     <hr>
                     <p>Please review this conflict immediately in the LexiBel SENTINEL dashboard.</p>
-                    <p><a href="https://app.lexibel.be/sentinel/conflicts/{alert_data['id']}">
+                    <p><a href="https://app.lexibel.be/sentinel/conflicts/{alert_data["id"]}">
                         View Conflict Details
                     </a></p>
                 </body>
@@ -160,7 +158,7 @@ class ConflictAlerter:
                 AND (resolution IS NULL OR resolution = '')
                 ORDER BY severity_score DESC
                 """,
-                {"cutoff": yesterday}
+                {"cutoff": yesterday},
             )
             conflicts = conflicts.fetchall()
 
@@ -168,8 +166,8 @@ class ConflictAlerter:
                 logger.info(f"No conflicts to report for user {user_id}")
                 return True
 
-            # Create digest email
-            subject = f"Daily Conflict Summary - {len(conflicts)} conflicts detected"
+            # Create digest email (logged for now, SMTP in production)
+            subject = f"Daily Conflict Summary - {len(conflicts)} conflicts detected"  # noqa: F841
 
             # Build HTML table of conflicts
             conflict_rows = ""
@@ -179,19 +177,19 @@ class ConflictAlerter:
                     "critical": "#d32f2f",
                     "high": "#f57c00",
                     "medium": "#fbc02d",
-                    "low": "#388e3c"
+                    "low": "#388e3c",
                 }.get(severity, "#666")
 
                 conflict_rows += f"""
                 <tr>
                     <td style="color: {severity_color}; font-weight: bold;">{severity.upper()}</td>
-                    <td>{conflict.conflict_type.replace('_', ' ').title()}</td>
+                    <td>{conflict.conflict_type.replace("_", " ").title()}</td>
                     <td>{conflict.severity_score}/100</td>
-                    <td>{conflict.created_at.strftime('%H:%M')}</td>
+                    <td>{conflict.created_at.strftime("%H:%M")}</td>
                 </tr>
                 """
 
-            body = f"""
+            _body = f"""
             <html>
                 <body>
                     <h2>LexiBel SENTINEL - Daily Conflict Report</h2>
@@ -219,7 +217,9 @@ class ConflictAlerter:
             """
 
             # In production, send via SMTP
-            logger.info(f"Digest email sent to {user.email}: {len(conflicts)} conflicts")
+            logger.info(
+                f"Digest email sent to {user.email}: {len(conflicts)} conflicts"
+            )
             return True
 
         except Exception as e:
@@ -227,10 +227,7 @@ class ConflictAlerter:
             return False
 
     async def resolve_conflict(
-        self,
-        conflict_id: UUID,
-        resolution: str,
-        resolved_by: UUID
+        self, conflict_id: UUID, resolution: str, resolved_by: UUID
     ) -> bool:
         """Mark conflict as resolved.
 
@@ -256,7 +253,9 @@ class ConflictAlerter:
 
             await self.db.commit()
 
-            logger.info(f"Conflict {conflict_id} resolved: {resolution} by {resolved_by}")
+            logger.info(
+                f"Conflict {conflict_id} resolved: {resolution} by {resolved_by}"
+            )
             return True
 
         except Exception as e:

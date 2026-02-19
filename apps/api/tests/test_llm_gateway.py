@@ -12,7 +12,7 @@ Uses:
 """
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -265,7 +265,9 @@ class TestDataAnonymizer:
 
     def test_anonymize_deanonymize_roundtrip(self, anonymizer):
         """Anonymize then deanonymize must recover the original text exactly."""
-        original = "Le dossier de Me Jean Dupont, NISS 78.06.15-123.45, doit être traité."
+        original = (
+            "Le dossier de Me Jean Dupont, NISS 78.06.15-123.45, doit être traité."
+        )
         anon_result = anonymizer.anonymize(original)
 
         # Verify PII is removed
@@ -273,7 +275,9 @@ class TestDataAnonymizer:
         assert "Jean Dupont" not in anon_result.anonymized_text
 
         # Verify roundtrip restores original
-        restored = anonymizer.deanonymize(anon_result.anonymized_text, anon_result.mapping)
+        restored = anonymizer.deanonymize(
+            anon_result.anonymized_text, anon_result.mapping
+        )
         assert restored == original
 
     def test_anonymize_messages(self, anonymizer):
@@ -307,7 +311,9 @@ class TestDataAnonymizer:
         assert "Jean Dupont" not in result.anonymized_text
         assert result.entity_count >= 3
         # Verify each type has its own placeholder prefix
-        placeholder_prefixes = {k.split("_")[0].strip("[") for k in result.mapping.keys()}
+        placeholder_prefixes = {
+            k.split("_")[0].strip("[") for k in result.mapping.keys()
+        }
         assert "NISS" in placeholder_prefixes
         assert "EMAIL" in placeholder_prefixes
         assert "PERSONNE" in placeholder_prefixes
@@ -328,7 +334,9 @@ class TestDataAnonymizer:
         """deanonymize_text must be an alias for deanonymize."""
         mapping = {"[NISS_1]": "78.06.15-123.45"}
         text = "Le NISS est [NISS_1]"
-        assert anonymizer.deanonymize_text(text, mapping) == anonymizer.deanonymize(text, mapping)
+        assert anonymizer.deanonymize_text(text, mapping) == anonymizer.deanonymize(
+            text, mapping
+        )
 
 
 # ════════════════════════════════════════════════════════════════════════
@@ -357,7 +365,15 @@ class TestProviderRoutingRules:
     def test_public_allows_all(self, classifier):
         """PUBLIC must allow all 7 providers."""
         allowed = classifier.get_allowed_providers(DataSensitivity.PUBLIC)
-        assert allowed == ["mistral", "gemini", "anthropic", "openai", "deepseek", "glm", "kimi"]
+        assert allowed == [
+            "mistral",
+            "gemini",
+            "anthropic",
+            "openai",
+            "deepseek",
+            "glm",
+            "kimi",
+        ]
         assert len(allowed) == 7
 
     def test_sensitive_never_reaches_glm(self, classifier):
@@ -379,9 +395,7 @@ class TestProviderRoutingRules:
         """CRITICAL data must NEVER reach any non-EU provider."""
         allowed = classifier.get_allowed_providers(DataSensitivity.CRITICAL)
         for non_eu in _NON_EU_PROVIDERS:
-            assert non_eu not in allowed, (
-                f"CRITICAL data must never reach {non_eu}"
-            )
+            assert non_eu not in allowed, f"CRITICAL data must never reach {non_eu}"
 
     def test_non_eu_providers_set_is_correct(self):
         """The set of non-EU providers must match expected providers."""
@@ -421,15 +435,18 @@ class TestLLMGatewayIntegration:
     @pytest.fixture
     def gateway(self):
         """Create a gateway with all providers mocked as available with API keys."""
-        with patch.dict("os.environ", {
-            "MISTRAL_API_KEY": "test-mistral-key",
-            "GEMINI_API_KEY": "test-gemini-key",
-            "ANTHROPIC_API_KEY": "test-anthropic-key",
-            "OPENAI_API_KEY": "test-openai-key",
-            "DEEPSEEK_API_KEY": "test-deepseek-key",
-            "GLM_API_KEY": "test-glm-key",
-            "KIMI_API_KEY": "test-kimi-key",
-        }):
+        with patch.dict(
+            "os.environ",
+            {
+                "MISTRAL_API_KEY": "test-mistral-key",
+                "GEMINI_API_KEY": "test-gemini-key",
+                "ANTHROPIC_API_KEY": "test-anthropic-key",
+                "OPENAI_API_KEY": "test-openai-key",
+                "DEEPSEEK_API_KEY": "test-deepseek-key",
+                "GLM_API_KEY": "test-glm-key",
+                "KIMI_API_KEY": "test-kimi-key",
+            },
+        ):
             gw = LLMGateway()
             # Mark all providers as HEALTHY
             for name, provider in gw.providers.items():
@@ -472,7 +489,9 @@ class TestLLMGatewayIntegration:
     @pytest.mark.asyncio
     async def test_auto_anonymization_for_non_eu_provider(self, gateway, audit_logger):
         """When routed to a non-EU provider with non-PUBLIC data, anonymization must happen."""
-        messages = [{"role": "user", "content": "L'entreprise 0123.456.789 est enregistrée"}]
+        messages = [
+            {"role": "user", "content": "L'entreprise 0123.456.789 est enregistrée"}
+        ]
 
         mock_result = {
             "content": "L'entreprise [BCE_1] est bien enregistrée auprès de la BCE.",
@@ -495,7 +514,11 @@ class TestLLMGatewayIntegration:
         assert response.was_anonymized is True
         # Verify the provider received anonymized messages (placeholder, not original)
         call_args = gateway.providers["deepseek"].complete.call_args
-        sent_messages = call_args.kwargs.get("messages") or call_args[1].get("messages") or call_args[0][0]
+        sent_messages = (
+            call_args.kwargs.get("messages")
+            or call_args[1].get("messages")
+            or call_args[0][0]
+        )
         sent_content = sent_messages[0]["content"]
         assert "0123.456.789" not in sent_content
         # The response should be deanonymized (original BCE number restored)
@@ -507,7 +530,9 @@ class TestLLMGatewayIntegration:
         messages = [{"role": "user", "content": "Le Code civil belge dispose que"}]
 
         # Mistral fails
-        gateway.providers["mistral"].complete = AsyncMock(side_effect=Exception("Connection timeout"))
+        gateway.providers["mistral"].complete = AsyncMock(
+            side_effect=Exception("Connection timeout")
+        )
 
         # Anthropic succeeds
         mock_result = {
@@ -534,7 +559,9 @@ class TestLLMGatewayIntegration:
     @pytest.mark.asyncio
     async def test_anonymization_failure_blocks_request(self, gateway, audit_logger):
         """When anonymization fails for a non-EU provider, the request must be BLOCKED entirely."""
-        messages = [{"role": "user", "content": "L'entreprise 0123.456.789 est enregistrée"}]
+        messages = [
+            {"role": "user", "content": "L'entreprise 0123.456.789 est enregistrée"}
+        ]
 
         # Force deepseek as the only available provider
         for name in ["mistral", "gemini", "anthropic", "openai"]:
@@ -563,8 +590,10 @@ class TestLLMGatewayIntegration:
                 )
 
         # The provider's complete method must NEVER have been called
-        assert not hasattr(gateway.providers["deepseek"].complete, "call_count") or \
-            gateway.providers["deepseek"].complete.call_count == 0
+        assert (
+            not hasattr(gateway.providers["deepseek"].complete, "call_count")
+            or gateway.providers["deepseek"].complete.call_count == 0
+        )
 
     @pytest.mark.asyncio
     async def test_classification_auto_detection(self, gateway, audit_logger):
@@ -717,7 +746,9 @@ class TestLLMGatewayIntegration:
     @pytest.mark.asyncio
     async def test_cost_estimate(self, gateway):
         """get_cost_estimate must return a non-negative float."""
-        cost = gateway.get_cost_estimate("Le Code civil belge est une source de droit.", "mistral")
+        cost = gateway.get_cost_estimate(
+            "Le Code civil belge est une source de droit.", "mistral"
+        )
         assert isinstance(cost, float)
         assert cost >= 0.0
 

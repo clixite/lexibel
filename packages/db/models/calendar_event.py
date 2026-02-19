@@ -3,7 +3,16 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, Text, UniqueConstraint, text
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Index,
+    String,
+    Text,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -95,5 +104,7 @@ class CalendarEvent(TenantMixin, TimestampMixin, Base):
         Index("idx_calendar_events_tenant_user", "tenant_id", "user_id"),
         Index("idx_calendar_events_start_time", "start_time"),
         # Unique constraint per provider
-        UniqueConstraint("external_id", "provider", name="uq_calendar_event_external_provider"),
+        UniqueConstraint(
+            "external_id", "provider", name="uq_calendar_event_external_provider"
+        ),
     )

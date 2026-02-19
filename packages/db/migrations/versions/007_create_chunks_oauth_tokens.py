@@ -107,7 +107,10 @@ def upgrade() -> None:
         sa.Column("access_token", sa.Text, nullable=False),
         sa.Column("refresh_token", sa.Text, nullable=True),
         sa.Column(
-            "token_type", sa.String(50), nullable=False, server_default=sa.text("'Bearer'")
+            "token_type",
+            sa.String(50),
+            nullable=False,
+            server_default=sa.text("'Bearer'"),
         ),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("scope", sa.Text, nullable=True),

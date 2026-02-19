@@ -1,7 +1,7 @@
 """Chunk model for RAG/vector storage."""
 
 import uuid
-from sqlalchemy import ForeignKey, Index, LargeBinary, String, Text, text
+from sqlalchemy import ForeignKey, Index, LargeBinary, Text, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 

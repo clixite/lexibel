@@ -1,5 +1,6 @@
 """Calls router — Convenience wrapper for call records."""
 
+import logging
 import os
 from datetime import datetime
 
@@ -9,6 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from apps.api.dependencies import get_current_user, get_db_session
 from apps.api.services.ringover_client import RingoverClient, RingoverAPIError
 from packages.db.models import InteractionEvent
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/calls", tags=["calls"])
 
@@ -96,7 +99,7 @@ async def get_calls(
 
         except RingoverAPIError as e:
             # Log error but fallback to DB
-            print(f"Ringover API error, falling back to DB: {e}")
+            logger.warning("Ringover API error, falling back to DB: %s", e)
 
     # Fallback: Query local InteractionEvent records
     from sqlalchemy import select

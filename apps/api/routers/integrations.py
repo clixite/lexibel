@@ -19,6 +19,7 @@ Outlook:
   POST   /api/v1/integrations/outlook/sync — trigger email sync
 """
 
+import logging
 import secrets
 import uuid
 from datetime import datetime
@@ -33,6 +34,8 @@ from apps.api.dependencies import get_current_tenant, get_current_user, get_db_s
 from apps.api.services import outlook_service
 from packages.db.models.oauth_token import OAuthToken
 
+logger = logging.getLogger(__name__)
+
 # OAuth service imports with graceful fallback
 try:
     from apps.api.services.google_oauth_service import get_google_oauth_service
@@ -42,19 +45,21 @@ try:
     GOOGLE_OAUTH_AVAILABLE = True
 except ImportError as e:
     GOOGLE_OAUTH_AVAILABLE = False
-    print(f"Google OAuth services unavailable: {e}")
+    logging.getLogger(__name__).info("Google OAuth services unavailable: %s", e)
 
 try:
     from apps.api.services.microsoft_oauth_service import get_microsoft_oauth_service
     from apps.api.services.microsoft_outlook_sync_service import (
         get_microsoft_outlook_sync_service,
     )
-    from apps.api.services.microsoft_calendar_service import get_microsoft_calendar_service
+    from apps.api.services.microsoft_calendar_service import (
+        get_microsoft_calendar_service,
+    )
 
     MICROSOFT_OAUTH_AVAILABLE = True
 except ImportError as e:
     MICROSOFT_OAUTH_AVAILABLE = False
-    print(f"Microsoft OAuth services unavailable: {e}")
+    logging.getLogger(__name__).info("Microsoft OAuth services unavailable: %s", e)
 
 router = APIRouter(prefix="/api/v1/integrations", tags=["integrations"])
 

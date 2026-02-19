@@ -82,7 +82,10 @@ export default function Sidebar({
   onToggle,
 }: SidebarProps) {
   const pathname = usePathname();
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return document.documentElement.classList.contains("dark");
+  });
 
   // Initials
   const initials = userEmail
@@ -207,7 +210,14 @@ export default function Sidebar({
       <div className="p-3 border-t border-white/10 space-y-2">
         {/* Dark Mode Toggle */}
         <button
-          onClick={() => setDarkMode(!darkMode)}
+          onClick={() => {
+            const next = !darkMode;
+            setDarkMode(next);
+            if (typeof window !== "undefined") {
+              document.documentElement.classList.toggle("dark", next);
+              localStorage.setItem("lexibel_theme", next ? "dark" : "light");
+            }
+          }}
           className="w-full flex items-center gap-3 px-3 py-2 rounded text-white/70 hover:bg-white/5 hover:text-white transition-colors duration-150"
         >
           {darkMode ? (

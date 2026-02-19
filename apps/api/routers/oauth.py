@@ -168,7 +168,8 @@ async def list_oauth_tokens(
             status=token.status,
             scope=token.scope,
             expires_at=token.expires_at.isoformat() if token.expires_at else None,
-            last_sync_at=getattr(token, "last_sync_at", None) and getattr(token, "last_sync_at").isoformat(),
+            last_sync_at=getattr(token, "last_sync_at", None)
+            and getattr(token, "last_sync_at").isoformat(),
             sync_status=getattr(token, "sync_status", "idle") or "idle",
             created_at=token.created_at.isoformat(),
         )

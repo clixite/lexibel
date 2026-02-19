@@ -1,4 +1,4 @@
-﻿"""LexiBel API — FastAPI Application Factory"""
+"""LexiBel API — FastAPI Application Factory"""
 
 import logging
 import os
@@ -27,7 +27,11 @@ from apps.api.webhooks.ringover import router as ringover_webhook_router
 from apps.api.webhooks.plaud import router as plaud_webhook_router
 from apps.api.routers.integrations import router as integrations_router
 from apps.api.routers.events import router as events_router
-from apps.api.routers.bootstrap import router as bootstrap_router, ensure_admin_user, seed_demo_data
+from apps.api.routers.bootstrap import (
+    router as bootstrap_router,
+    ensure_admin_user,
+    seed_demo_data,
+)
 from apps.api.routers.search import router as search_router
 from apps.api.routers.ai import router as ai_router
 from apps.api.routers.migration import router as migration_router
@@ -53,6 +57,7 @@ from apps.api.routers.llm import router as llm_router
 # Optional routers (defensive imports)
 try:
     from apps.api.routes.sentinel import router as sentinel_router
+
     SENTINEL_AVAILABLE = True
 except ImportError as e:
     logger = logging.getLogger(__name__)

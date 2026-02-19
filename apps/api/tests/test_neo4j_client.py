@@ -1,6 +1,8 @@
 """Tests for Neo4j client."""
+
 import pytest
 from apps.api.services.neo4j_client import Neo4jClient
+
 
 @pytest.mark.asyncio
 async def test_neo4j_connection():
@@ -12,6 +14,7 @@ async def test_neo4j_connection():
     assert health is True
 
     await client.close()
+
 
 @pytest.mark.asyncio
 async def test_neo4j_query_execution():

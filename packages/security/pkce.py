@@ -28,9 +28,7 @@ def generate_code_verifier() -> str:
     random_bytes = secrets.token_bytes(64)
 
     # Base64url encode (removes padding)
-    code_verifier = (
-        base64.urlsafe_b64encode(random_bytes).decode("utf-8").rstrip("=")
-    )
+    code_verifier = base64.urlsafe_b64encode(random_bytes).decode("utf-8").rstrip("=")
 
     return code_verifier
 

@@ -1,12 +1,12 @@
 """SENTINEL graph synchronization service."""
+
 import asyncio
 import logging
-from typing import List, Optional
+from typing import Optional
 from uuid import UUID
 from datetime import datetime
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api.services.neo4j_client import get_neo4j_client, Neo4jClient
 from packages.db.models.contact import Contact
@@ -69,7 +69,7 @@ class GraphSyncService:
                     "email": contact.email,
                     "phone": contact.phone_e164,
                     "language": contact.language,
-                    "address": contact.address if contact.address else None
+                    "address": contact.address if contact.address else None,
                 }
 
                 # Execute query
@@ -119,7 +119,7 @@ class GraphSyncService:
                     "phone": contact.phone_e164,
                     "bce_number": contact.bce_number,
                     "address": contact.address if contact.address else None,
-                    "language": contact.language
+                    "language": contact.language,
                 }
 
                 # Execute query
@@ -136,9 +136,7 @@ class GraphSyncService:
         try:
             # Get case from PostgreSQL
             async with get_superadmin_session() as session:
-                result = await session.execute(
-                    select(Case).where(Case.id == case_id)
-                )
+                result = await session.execute(select(Case).where(Case.id == case_id))
                 case = result.scalar_one_or_none()
 
                 if not case:
@@ -169,7 +167,11 @@ class GraphSyncService:
                     "jurisdiction": case.jurisdiction,
                     "court_reference": case.court_reference,
                     "opened_at": case.opened_at.isoformat() if case.opened_at else None,
-                    "closed_at": datetime.combine(case.closed_at, datetime.min.time()).isoformat() if case.closed_at else None
+                    "closed_at": datetime.combine(
+                        case.closed_at, datetime.min.time()
+                    ).isoformat()
+                    if case.closed_at
+                    else None,
                 }
 
                 # Execute query
@@ -210,7 +212,9 @@ class GraphSyncService:
                 lawyer = user_result.scalar_one_or_none()
 
                 if not lawyer:
-                    logger.warning(f"Lawyer {case.responsible_user_id} not found for case {case_id}")
+                    logger.warning(
+                        f"Lawyer {case.responsible_user_id} not found for case {case_id}"
+                    )
                     return 0
 
                 # Create Lawyer node if not exists
@@ -227,8 +231,8 @@ class GraphSyncService:
                         "id": str(lawyer.id),
                         "name": lawyer.full_name,
                         "email": lawyer.email,
-                        "role": lawyer.role
-                    }
+                        "role": lawyer.role,
+                    },
                 )
 
                 # Process case contacts and create relationships
@@ -258,10 +262,12 @@ class GraphSyncService:
                             {
                                 "lawyer_id": str(lawyer.id),
                                 "contact_id": str(contact.id),
-                                "since": case.opened_at.isoformat() if case.opened_at else datetime.now().isoformat(),
+                                "since": case.opened_at.isoformat()
+                                if case.opened_at
+                                else datetime.now().isoformat(),
                                 "case_id": str(case.id),
-                                "case_reference": case.reference
-                            }
+                                "case_reference": case.reference,
+                            },
                         )
                         relationships_created += 1
 
@@ -271,7 +277,7 @@ class GraphSyncService:
                         clients_result = await session.execute(
                             select(CaseContact).where(
                                 CaseContact.case_id == case_id,
-                                CaseContact.role == "client"
+                                CaseContact.role == "client",
                             )
                         )
                         clients = clients_result.scalars().all()
@@ -283,7 +289,11 @@ class GraphSyncService:
                             client_contact = client_contact_result.scalar_one_or_none()
 
                             if client_contact:
-                                client_label = "Company" if client_contact.type == "legal" else "Person"
+                                client_label = (
+                                    "Company"
+                                    if client_contact.type == "legal"
+                                    else "Person"
+                                )
                                 opposes_query = f"""
                                 MATCH (client:{client_label} {{id: $client_id}}), (adverse:{node_label} {{id: $adverse_id}})
                                 MERGE (client)-[r:OPPOSES]->(adverse)
@@ -298,12 +308,16 @@ class GraphSyncService:
                                         "adverse_id": str(contact.id),
                                         "case_id": str(case.id),
                                         "case_reference": case.reference,
-                                        "since": case.opened_at.isoformat() if case.opened_at else datetime.now().isoformat()
-                                    }
+                                        "since": case.opened_at.isoformat()
+                                        if case.opened_at
+                                        else datetime.now().isoformat(),
+                                    },
                                 )
                                 relationships_created += 1
 
-                logger.info(f"Created {relationships_created} relationships for case {case_id}")
+                logger.info(
+                    f"Created {relationships_created} relationships for case {case_id}"
+                )
                 return relationships_created
 
         except Exception as e:
@@ -321,15 +335,13 @@ class GraphSyncService:
                 "lawyers": 0,
                 "relationships": 0,
                 "errors": 0,
-                "duration_seconds": 0
+                "duration_seconds": 0,
             }
 
             async with get_superadmin_session() as session:
                 # Sync all persons
                 persons_result = await session.execute(
-                    select(Contact)
-                    .where(Contact.type == "natural")
-                    .limit(limit)
+                    select(Contact).where(Contact.type == "natural").limit(limit)
                 )
                 persons = persons_result.scalars().all()
 
@@ -342,9 +354,7 @@ class GraphSyncService:
 
                 # Sync all companies
                 companies_result = await session.execute(
-                    select(Contact)
-                    .where(Contact.type == "legal")
-                    .limit(limit)
+                    select(Contact).where(Contact.type == "legal").limit(limit)
                 )
                 companies = companies_result.scalars().all()
 
@@ -356,9 +366,7 @@ class GraphSyncService:
                         stats["errors"] += 1
 
                 # Sync all lawyers
-                lawyers_result = await session.execute(
-                    select(User).limit(limit)
-                )
+                lawyers_result = await session.execute(select(User).limit(limit))
                 lawyers = lawyers_result.scalars().all()
 
                 for lawyer in lawyers:
@@ -376,8 +384,8 @@ class GraphSyncService:
                                 "id": str(lawyer.id),
                                 "name": lawyer.full_name,
                                 "email": lawyer.email,
-                                "role": lawyer.role
-                            }
+                                "role": lawyer.role,
+                            },
                         )
                         stats["lawyers"] += 1
                     except Exception as e:
@@ -385,9 +393,7 @@ class GraphSyncService:
                         stats["errors"] += 1
 
                 # Sync all cases
-                cases_result = await session.execute(
-                    select(Case).limit(limit)
-                )
+                cases_result = await session.execute(select(Case).limit(limit))
                 cases = cases_result.scalars().all()
 
                 for case in cases:

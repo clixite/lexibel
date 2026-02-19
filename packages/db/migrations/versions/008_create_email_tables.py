@@ -51,12 +51,17 @@ def upgrade() -> None:
             "message_count", sa.Integer, nullable=False, server_default=sa.text("0")
         ),
         sa.Column(
-            "has_attachments", sa.Boolean, nullable=False, server_default=sa.text("false")
+            "has_attachments",
+            sa.Boolean,
+            nullable=False,
+            server_default=sa.text("false"),
         ),
         sa.Column(
             "is_important", sa.Boolean, nullable=False, server_default=sa.text("false")
         ),
-        sa.Column("last_message_at", sa.DateTime(timezone=True), nullable=True, index=True),
+        sa.Column(
+            "last_message_at", sa.DateTime(timezone=True), nullable=True, index=True
+        ),
         sa.Column("synced_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column(
             "created_at", sa.DateTime, nullable=False, server_default=sa.text("now()")
@@ -120,7 +125,10 @@ def upgrade() -> None:
             "cc_addresses", JSONB, nullable=False, server_default=sa.text("'[]'::jsonb")
         ),
         sa.Column(
-            "bcc_addresses", JSONB, nullable=False, server_default=sa.text("'[]'::jsonb")
+            "bcc_addresses",
+            JSONB,
+            nullable=False,
+            server_default=sa.text("'[]'::jsonb"),
         ),
         sa.Column("body_text", sa.Text, nullable=True),
         sa.Column("body_html", sa.Text, nullable=True),

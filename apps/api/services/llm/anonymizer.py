@@ -188,33 +188,23 @@ class DataAnonymizer:
 
         # NISS
         for m in _NISS_PATTERN.finditer(text):
-            entities.append(
-                DetectedEntity("niss", m.group(), m.start(), m.end())
-            )
+            entities.append(DetectedEntity("niss", m.group(), m.start(), m.end()))
 
         # BCE
         for m in _BCE_PATTERN.finditer(text):
-            entities.append(
-                DetectedEntity("bce", m.group(), m.start(), m.end())
-            )
+            entities.append(DetectedEntity("bce", m.group(), m.start(), m.end()))
 
         # Phone
         for m in _PHONE_BE_PATTERN.finditer(text):
-            entities.append(
-                DetectedEntity("phone", m.group(), m.start(), m.end())
-            )
+            entities.append(DetectedEntity("phone", m.group(), m.start(), m.end()))
 
         # IBAN
         for m in _IBAN_BE_PATTERN.finditer(text):
-            entities.append(
-                DetectedEntity("iban", m.group(), m.start(), m.end())
-            )
+            entities.append(DetectedEntity("iban", m.group(), m.start(), m.end()))
 
         # Email
         for m in _EMAIL_PATTERN.finditer(text):
-            entities.append(
-                DetectedEntity("email", m.group(), m.start(), m.end())
-            )
+            entities.append(DetectedEntity("email", m.group(), m.start(), m.end()))
 
         # Date of birth
         for m in _DOB_PATTERN.finditer(text):
@@ -225,7 +215,9 @@ class DataAnonymizer:
         # Person names (legal context — high confidence)
         for m in _LEGAL_CONTEXT_NAME.finditer(text):
             entities.append(
-                DetectedEntity("person_name", m.group(), m.start(), m.end(), confidence=0.9)
+                DetectedEntity(
+                    "person_name", m.group(), m.start(), m.end(), confidence=0.9
+                )
             )
 
         # Person names (standalone proper names — medium confidence)
@@ -233,11 +225,17 @@ class DataAnonymizer:
             name = m.group(1)
             # Skip common legal terms
             if name.lower() not in {
-                "code civil", "code pénal", "cour appel", "conseil état",
-                "moniteur belge", "union européenne",
+                "code civil",
+                "code pénal",
+                "cour appel",
+                "conseil état",
+                "moniteur belge",
+                "union européenne",
             }:
                 entities.append(
-                    DetectedEntity("person_name", name, m.start(1), m.end(1), confidence=0.6)
+                    DetectedEntity(
+                        "person_name", name, m.start(1), m.end(1), confidence=0.6
+                    )
                 )
 
         # Addresses (street keyword + postal code)
@@ -248,7 +246,10 @@ class DataAnonymizer:
             for addr in addr_matches:
                 # Find next postal code after this address keyword (within 100 chars)
                 for postal in postal_matches:
-                    if postal.start() > addr.start() and (postal.start() - addr.start()) < 100:
+                    if (
+                        postal.start() > addr.start()
+                        and (postal.start() - addr.start()) < 100
+                    ):
                         entities.append(
                             DetectedEntity(
                                 "address",

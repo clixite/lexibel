@@ -11,7 +11,7 @@ from packages.db.base import Base, TenantMixin, TimestampMixin
 
 class DocumentCaseLink(TenantMixin, TimestampMixin, Base):
     """Links a cloud document to a legal case (dossier).
-    
+
     One document can be linked to multiple cases, and one case
     can have multiple documents.
     """
@@ -53,7 +53,8 @@ class DocumentCaseLink(TenantMixin, TimestampMixin, Base):
 
     __table_args__ = (
         UniqueConstraint(
-            "cloud_document_id", "case_id",
+            "cloud_document_id",
+            "case_id",
             name="uq_document_case_links_doc_case",
         ),
     )

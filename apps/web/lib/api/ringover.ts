@@ -71,16 +71,14 @@ export const ringoverApi = {
       });
     }
 
-    const response = await apiClient.get(`/api/v1/ringover/calls?${params.toString()}`);
-    return response.json();
+    return apiClient.get<CallListResponse>(`/api/v1/ringover/calls?${params.toString()}`);
   },
 
   /**
    * Get detailed call information
    */
   async getCall(eventId: string): Promise<CallEvent> {
-    const response = await apiClient.get(`/api/v1/ringover/calls/${eventId}`);
-    return response.json();
+    return apiClient.get<CallEvent>(`/api/v1/ringover/calls/${eventId}`);
   },
 
   /**
@@ -92,8 +90,7 @@ export const ringoverApi = {
       params.append('case_id', caseId);
     }
 
-    const response = await apiClient.get(`/api/v1/ringover/stats?${params.toString()}`);
-    return response.json();
+    return apiClient.get<CallStats>(`/api/v1/ringover/stats?${params.toString()}`);
   },
 
   /**

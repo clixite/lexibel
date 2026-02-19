@@ -1,12 +1,24 @@
 """Qdrant client for BRAIN vector search."""
+
 import asyncio
 import logging
 import os
-from qdrant_client import AsyncQdrantClient
-from qdrant_client.models import Distance, VectorParams, PointStruct
 from typing import Optional, Union
 
 logger = logging.getLogger(__name__)
+
+try:
+    from qdrant_client import AsyncQdrantClient
+    from qdrant_client.models import Distance, VectorParams, PointStruct
+except ImportError:
+    AsyncQdrantClient = None  # type: ignore[assignment,misc]
+    Distance = None  # type: ignore[assignment,misc]
+    VectorParams = None  # type: ignore[assignment,misc]
+    PointStruct = None  # type: ignore[assignment,misc]
+    logger.info(
+        "qdrant-client package not installed. Vector search will be unavailable."
+    )
+
 
 class QdrantVectorStore:
     """Async Qdrant client for embeddings."""
@@ -17,6 +29,11 @@ class QdrantVectorStore:
 
     async def connect(self):
         """Connect to Qdrant."""
+        if AsyncQdrantClient is None:
+            raise RuntimeError(
+                "qdrant-client package is not installed. "
+                "Install it with: pip install qdrant-client"
+            )
         try:
             self._client = AsyncQdrantClient(url=self.url, check_compatibility=False)
             # Test connection
@@ -42,40 +59,35 @@ class QdrantVectorStore:
         if name not in [c.name for c in collections.collections]:
             await self._client.create_collection(
                 collection_name=name,
-                vectors_config=VectorParams(
-                    size=vector_size,
-                    distance=Distance.COSINE
-                )
+                vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
             )
 
-    async def upsert(self, collection: str, id: Union[str, int], vector: list[float], payload: dict):
+    async def upsert(
+        self, collection: str, id: Union[str, int], vector: list[float], payload: dict
+    ):
         """Insert or update vector."""
         if self._client is None:
             raise RuntimeError("Qdrant client not connected. Call connect() first.")
         await self._client.upsert(
             collection_name=collection,
-            points=[
-                PointStruct(
-                    id=id,
-                    vector=vector,
-                    payload=payload
-                )
-            ]
+            points=[PointStruct(id=id, vector=vector, payload=payload)],
         )
 
     async def search(self, collection: str, vector: list[float], limit: int = 10):
         """Search similar vectors."""
-        from qdrant_client.http.models import SearchRequest
+        try:
+            from qdrant_client.http.models import SearchRequest
+        except ImportError:
+            raise RuntimeError(
+                "qdrant-client package is not installed. "
+                "Install it with: pip install qdrant-client"
+            )
 
         if self._client is None:
             raise RuntimeError("Qdrant client not connected. Call connect() first.")
         results = await self._client.http.search_api.search_points(
             collection_name=collection,
-            search_request=SearchRequest(
-                vector=vector,
-                limit=limit,
-                with_payload=True
-            )
+            search_request=SearchRequest(vector=vector, limit=limit, with_payload=True),
         )
         return results.result
 
@@ -97,6 +109,7 @@ class QdrantVectorStore:
 # Singleton
 _qdrant_client: Optional[QdrantVectorStore] = None
 _lock = asyncio.Lock()
+
 
 async def get_qdrant_client() -> QdrantVectorStore:
     """Get Qdrant client singleton."""

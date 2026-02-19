@@ -4,10 +4,17 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from pydantic import BaseModel, Field
 
 from apps.api.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/v1/mobile", tags=["mobile"])
+
+
+class QuickTimeEntryRequest(BaseModel):
+    case_id: str = Field(..., min_length=1)
+    minutes: float = Field(..., gt=0, le=1440)
+    description: str = Field("", max_length=1000)
 
 
 @router.get("/dashboard")
@@ -58,26 +65,17 @@ async def mobile_case_summary(
 
 @router.post("/quick-time")
 async def quick_time_entry(
-    body: dict,
+    body: QuickTimeEntryRequest,
     user: dict = Depends(get_current_user),
 ):
     """Simplified time entry for mobile — minimal fields."""
-    case_id = body.get("case_id")
-    minutes = body.get("minutes")
-    description = body.get("description", "")
-
-    if not case_id:
-        raise HTTPException(status_code=400, detail="case_id required")
-    if not minutes or not isinstance(minutes, (int, float)) or minutes <= 0:
-        raise HTTPException(status_code=400, detail="minutes must be a positive number")
-
     entry = {
         "id": str(uuid.uuid4()),
-        "case_id": case_id,
+        "case_id": body.case_id,
         "user_id": str(user.get("user_id", "")),
         "tenant_id": str(user.get("tenant_id", "")),
-        "minutes": minutes,
-        "description": description,
+        "minutes": body.minutes,
+        "description": body.description,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "source": "mobile",
     }

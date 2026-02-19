@@ -1,8 +1,8 @@
 """Tests for TIMELINE models."""
+
 import uuid
 from datetime import date
 
-import pytest
 
 from packages.db.models.timeline_document import TimelineDocument
 from packages.db.models.timeline_event import TimelineEvent

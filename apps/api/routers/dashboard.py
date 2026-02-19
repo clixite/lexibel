@@ -3,7 +3,7 @@
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -40,44 +40,52 @@ async def get_dashboard_stats(
     """
     tenant_id = current_user["tenant_id"]
 
-    # Count cases
-    cases_count = await session.scalar(
-        select(func.count(Case.id)).where(Case.tenant_id == tenant_id)
-    )
+    try:
+        # Count cases
+        cases_count = await session.scalar(
+            select(func.count(Case.id)).where(Case.tenant_id == tenant_id)
+        )
 
-    # Count contacts
-    contacts_count = await session.scalar(
-        select(func.count(Contact.id)).where(Contact.tenant_id == tenant_id)
-    )
+        # Count contacts
+        contacts_count = await session.scalar(
+            select(func.count(Contact.id)).where(Contact.tenant_id == tenant_id)
+        )
 
-    # Count invoices
-    invoices_count = await session.scalar(
-        select(func.count(Invoice.id)).where(Invoice.tenant_id == tenant_id)
-    )
+        # Count invoices
+        invoices_count = await session.scalar(
+            select(func.count(Invoice.id)).where(Invoice.tenant_id == tenant_id)
+        )
 
-    # Count documents (evidence links)
-    documents_count = await session.scalar(
-        select(func.count(EvidenceLink.id)).where(EvidenceLink.tenant_id == tenant_id)
-    )
+        # Count documents (evidence links)
+        documents_count = await session.scalar(
+            select(func.count(EvidenceLink.id)).where(
+                EvidenceLink.tenant_id == tenant_id
+            )
+        )
 
-    # Count pending inbox items (status = DRAFT or PENDING)
-    pending_inbox_count = await session.scalar(
-        select(func.count(InboxItem.id))
-        .where(InboxItem.tenant_id == tenant_id)
-        .where(InboxItem.status.in_(["DRAFT", "PENDING"]))
-    )
+        # Count pending inbox items (status = DRAFT or PENDING)
+        pending_inbox_count = await session.scalar(
+            select(func.count(InboxItem.id))
+            .where(InboxItem.tenant_id == tenant_id)
+            .where(InboxItem.status.in_(["DRAFT", "PENDING"]))
+        )
 
-    # Sum monthly hours (this month)
-    from datetime import datetime, timezone
+        # Sum monthly hours (this month)
+        from datetime import datetime, timezone
 
-    now = datetime.now(timezone.utc)
-    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        now = datetime.now(timezone.utc)
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
-    monthly_hours = await session.scalar(
-        select(func.coalesce(func.sum(TimeEntry.duration), 0))
-        .where(TimeEntry.tenant_id == tenant_id)
-        .where(TimeEntry.date >= month_start)
-    )
+        monthly_hours = await session.scalar(
+            select(func.coalesce(func.sum(TimeEntry.duration), 0))
+            .where(TimeEntry.tenant_id == tenant_id)
+            .where(TimeEntry.date >= month_start)
+        )
+    except Exception as e:
+        logger.error("Failed to fetch dashboard stats: %s", e)
+        raise HTTPException(
+            status_code=500, detail="Failed to fetch dashboard statistics"
+        )
 
     return {
         "stats": {

@@ -1,6 +1,8 @@
 """Tests for Qdrant client."""
+
 import pytest
 from apps.api.services.qdrant_client import QdrantVectorStore
+
 
 @pytest.mark.asyncio
 async def test_qdrant_connection():
@@ -12,6 +14,7 @@ async def test_qdrant_connection():
     assert health is True
 
     await client.close()
+
 
 @pytest.mark.asyncio
 async def test_qdrant_collection_creation():
@@ -27,6 +30,7 @@ async def test_qdrant_collection_creation():
 
     await client.close()
 
+
 @pytest.mark.asyncio
 async def test_qdrant_upsert_and_search():
     """Test vector upsert and search."""
@@ -36,12 +40,7 @@ async def test_qdrant_upsert_and_search():
     await client.create_collection("test_search", vector_size=3)
 
     # Insert vector
-    await client.upsert(
-        "test_search",
-        1,
-        [0.1, 0.2, 0.3],
-        {"text": "test"}
-    )
+    await client.upsert("test_search", 1, [0.1, 0.2, 0.3], {"text": "test"})
 
     # Search
     results = await client.search("test_search", [0.1, 0.2, 0.3], limit=1)

@@ -7,7 +7,16 @@ Protected by RLS via tenant_id.
 import uuid
 from datetime import datetime
 
-from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, String, Text, UniqueConstraint, text
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    String,
+    Text,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -16,7 +25,7 @@ from packages.db.base import Base, TenantMixin, TimestampMixin
 
 class CloudDocument(TenantMixin, TimestampMixin, Base):
     """Metadata of a cloud file from Google Drive, OneDrive, or SharePoint.
-    
+
     Files are NOT copied to our servers (GDPR / secret professionnel Art. 458 C.P. belge).
     Only metadata + optional search index (Qdrant embeddings) are stored.
     """
@@ -141,7 +150,9 @@ class CloudDocument(TenantMixin, TimestampMixin, Base):
 
     __table_args__ = (
         UniqueConstraint(
-            "tenant_id", "provider", "external_id",
+            "tenant_id",
+            "provider",
+            "external_id",
             name="uq_cloud_documents_tenant_provider_external",
         ),
     )

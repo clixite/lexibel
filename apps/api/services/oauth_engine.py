@@ -36,12 +36,8 @@ class OAuthEngine:
     MICROSOFT_AUTH_URL = (
         "https://login.microsoftonline.com/common/oauth2/v2.0/authorize"
     )
-    MICROSOFT_TOKEN_URL = (
-        "https://login.microsoftonline.com/common/oauth2/v2.0/token"
-    )
-    MICROSOFT_REVOKE_URL = (
-        "https://login.microsoftonline.com/common/oauth2/v2.0/revoke"
-    )
+    MICROSOFT_TOKEN_URL = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
+    MICROSOFT_REVOKE_URL = "https://login.microsoftonline.com/common/oauth2/v2.0/revoke"
     MICROSOFT_USERINFO_URL = "https://graph.microsoft.com/v1.0/me"
 
     # Default scopes
@@ -89,13 +85,13 @@ class OAuthEngine:
             client_secret = await get_config(session, tenant_id, "GOOGLE_CLIENT_SECRET")
         else:  # microsoft
             client_id = await get_config(session, tenant_id, "MICROSOFT_CLIENT_ID")
-            client_secret = await get_config(session, tenant_id, "MICROSOFT_CLIENT_SECRET")
+            client_secret = await get_config(
+                session, tenant_id, "MICROSOFT_CLIENT_SECRET"
+            )
 
         # Fallback: also check tenant.config.oauth.{provider} (legacy)
         if not client_id or not client_secret:
-            result = await session.execute(
-                select(Tenant).where(Tenant.id == tenant_id)
-            )
+            result = await session.execute(select(Tenant).where(Tenant.id == tenant_id))
             tenant = result.scalar_one_or_none()
             if tenant:
                 oauth_config = tenant.config.get("oauth", {}).get(provider, {})
@@ -431,9 +427,7 @@ class OAuthEngine:
 
         return oauth_token
 
-    async def get_valid_token(
-        self, session: AsyncSession, token_id: uuid.UUID
-    ) -> str:
+    async def get_valid_token(self, session: AsyncSession, token_id: uuid.UUID) -> str:
         """Get a valid access token, refreshing if expired.
 
         Args:
@@ -468,9 +462,7 @@ class OAuthEngine:
         # Decrypt and return access token
         return self.encryption.decrypt(oauth_token.access_token)
 
-    async def revoke_token(
-        self, session: AsyncSession, token_id: uuid.UUID
-    ) -> None:
+    async def revoke_token(self, session: AsyncSession, token_id: uuid.UUID) -> None:
         """Revoke an OAuth token.
 
         Args:

@@ -12,7 +12,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import BigInteger, Boolean, ForeignKey, Integer, Numeric, String, Text, text
+from sqlalchemy import Boolean, ForeignKey, Integer, Numeric, String, Text, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 

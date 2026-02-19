@@ -13,8 +13,11 @@ POST /api/v1/graph/sync/contact/{contact_id}               — sync contact to N
 GET  /api/v1/graph/network/stats                           — network statistics
 """
 
+import logging
 from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 
 from apps.api.dependencies import get_current_user
 from apps.api.schemas.graph import (
@@ -38,7 +41,33 @@ from apps.api.services.graph.graph_rag_service import GraphRAGService
 from apps.api.services.graph.conflict_detection_service import ConflictDetectionService
 from apps.api.services.graph.graph_sync_service import GraphSyncService
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/api/v1/graph", tags=["graph"])
+
+
+class SyncCaseRequest(BaseModel):
+    """Request body for syncing case data to the knowledge graph."""
+
+    title: str = ""
+    reference: str = ""
+    matter_type: str = ""
+    status: str = ""
+    parties: list[dict] = []
+    court: str = ""
+    metadata: dict = {}
+
+
+class SyncContactRequest(BaseModel):
+    """Request body for syncing contact data to the knowledge graph."""
+
+    full_name: str = ""
+    contact_type: str = ""
+    email: str = ""
+    phone: str = ""
+    organization: str = ""
+    metadata: dict = {}
+
 
 # Shared in-memory graph for dev/test (production: Neo4j)
 _graph = InMemoryGraphService()
@@ -418,7 +447,7 @@ async def predict_conflict_risk(
 @router.post("/sync/case/{case_id}")
 async def sync_case_to_graph(
     case_id: str,
-    case_data: dict,
+    case_data: SyncCaseRequest,
     current_user: dict = Depends(get_current_user),
 ):
     """Manually trigger sync of a case to Neo4j graph.
@@ -435,12 +464,16 @@ async def sync_case_to_graph(
     tenant_id = str(current_user["tenant_id"])
     sync_service = get_sync_service()
 
-    result = await sync_service.sync_case(
-        case_id=case_id,
-        case_data=case_data,
-        tenant_id=tenant_id,
-        operation=SyncOperation.CREATE,
-    )
+    try:
+        result = await sync_service.sync_case(
+            case_id=case_id,
+            case_data=case_data.model_dump(),
+            tenant_id=tenant_id,
+            operation=SyncOperation.CREATE,
+        )
+    except Exception as e:
+        logger.error("Failed to sync case %s to graph: %s", case_id, e)
+        raise HTTPException(status_code=500, detail="Failed to sync case to graph")
 
     return {
         "success": result.success,
@@ -454,7 +487,7 @@ async def sync_case_to_graph(
 @router.post("/sync/contact/{contact_id}")
 async def sync_contact_to_graph(
     contact_id: str,
-    contact_data: dict,
+    contact_data: SyncContactRequest,
     current_user: dict = Depends(get_current_user),
 ):
     """Sync a contact (person/organization) to Neo4j graph."""
@@ -463,12 +496,16 @@ async def sync_contact_to_graph(
     tenant_id = str(current_user["tenant_id"])
     sync_service = get_sync_service()
 
-    result = await sync_service.sync_contact(
-        contact_id=contact_id,
-        contact_data=contact_data,
-        tenant_id=tenant_id,
-        operation=SyncOperation.CREATE,
-    )
+    try:
+        result = await sync_service.sync_contact(
+            contact_id=contact_id,
+            contact_data=contact_data.model_dump(),
+            tenant_id=tenant_id,
+            operation=SyncOperation.CREATE,
+        )
+    except Exception as e:
+        logger.error("Failed to sync contact %s to graph: %s", contact_id, e)
+        raise HTTPException(status_code=500, detail="Failed to sync contact to graph")
 
     return {
         "success": result.success,
