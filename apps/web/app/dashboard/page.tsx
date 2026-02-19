@@ -70,8 +70,7 @@ export default function DashboardPage() {
 
         const [statsRes, recentRes, inboxRes] = await Promise.all([
           apiFetch<DashboardResponse>("/dashboard/stats", accessToken, { tenantId }).catch(
-            (err) => {
-              console.error(err);
+            () => {
               return {};
             }
           ),
@@ -102,7 +101,6 @@ export default function DashboardPage() {
         setRecentCases(recentRes.items || []);
         setInboxItems(inboxRes.items || []);
       } catch (err: any) {
-        console.error("Error fetching dashboard data:", err);
         setError("Impossible de charger les données du tableau de bord");
       } finally {
         setLoading(false);

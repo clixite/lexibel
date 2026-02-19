@@ -52,7 +52,7 @@ export default function SentinelDashboard() {
         resolved: resolvedConflicts.pagination.total,
       });
     } catch (error) {
-      console.error("Failed to load SENTINEL data:", error);
+      // SENTINEL data load failed — stats will show zeros
     } finally {
       setIsLoading(false);
     }

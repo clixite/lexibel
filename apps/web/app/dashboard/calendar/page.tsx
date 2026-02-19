@@ -65,7 +65,7 @@ export default function CalendarPage() {
         const res = await apiFetch<CalendarStats>("/calendar/stats", accessToken);
         setStats(res);
       } catch (err) {
-        console.error("Erreur stats:", err);
+        // Stats fetch failed silently — non-critical
       }
     }
 
@@ -80,7 +80,7 @@ export default function CalendarPage() {
       setSyncing(true);
       await apiFetch("/calendar/sync", accessToken, { method: "POST" });
     } catch (err) {
-      console.error("Erreur sync:", err);
+      // Sync failed silently — non-critical
     } finally {
       setSyncing(false);
     }

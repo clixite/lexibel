@@ -60,7 +60,7 @@ export default function EmailsPage() {
         const res = await apiFetch<EmailStats>("/emails/stats", accessToken);
         setStats(res);
       } catch (err) {
-        console.error("Erreur stats:", err);
+        // Stats fetch failed silently — non-critical
       }
     }
 
