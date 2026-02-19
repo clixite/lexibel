@@ -337,7 +337,7 @@ export default function DocumentsPage() {
       });
       setTimeout(loadDocuments, 2000);
     } catch (e) {
-      console.error(e);
+      // Sync failed silently
     } finally {
       setSyncing(false);
     }
