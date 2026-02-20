@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/lib/useAuth";
 import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   Briefcase,
   Clock,
@@ -24,7 +25,28 @@ import {
   Timer,
   ChevronRight,
   X,
+  DollarSign,
+  Receipt,
+  Percent,
+  FileText,
+  MapPin,
+  Plus,
+  UserPlus,
+  ScanLine,
+  CircleDollarSign,
 } from "lucide-react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from "recharts";
 import { apiFetch } from "@/lib/api";
 import {
   LoadingSkeleton,
@@ -113,6 +135,40 @@ interface DashboardResponse {
     pending_inbox: number;
   };
   items?: unknown[];
+}
+
+interface BillingReportResponse {
+  total_unbilled_hours: number;
+  total_unbilled_amount: number;
+  recovery_rate: number;
+  anomalies: unknown[];
+  invoice_suggestions: unknown[];
+  recommendations: unknown[];
+}
+
+interface CalendarEvent {
+  id: string;
+  title: string;
+  start_time: string;
+  end_time?: string;
+  location?: string;
+}
+
+interface BillingAlert {
+  id: string;
+  message: string;
+  severity: "warning" | "danger";
+}
+
+interface RevenueTrendPoint {
+  month: string;
+  facture: number;
+  encaisse: number;
+}
+
+interface CaseDistributionSlice {
+  name: string;
+  value: number;
 }
 
 /* ─────────────────────────── Fallback Data ─────────────────────────── */
@@ -250,6 +306,65 @@ const PLACEHOLDER_WORKLOAD: WorkloadWeek[] = [
   { week_label: "10-14 mar", deadline_count: 2, capacity: 5 },
 ];
 
+const FALLBACK_BILLING: BillingReportResponse = {
+  total_unbilled_hours: 45.5,
+  total_unbilled_amount: 6825.0,
+  recovery_rate: 0.82,
+  anomalies: [],
+  invoice_suggestions: [],
+  recommendations: [],
+};
+
+const MOCK_REVENUE_TREND: RevenueTrendPoint[] = [
+  { month: "Sep", facture: 12500, encaisse: 10800 },
+  { month: "Oct", facture: 14200, encaisse: 11500 },
+  { month: "Nov", facture: 11800, encaisse: 12900 },
+  { month: "Dec", facture: 15600, encaisse: 13200 },
+  { month: "Jan", facture: 13400, encaisse: 12100 },
+  { month: "Fev", facture: 16100, encaisse: 14500 },
+];
+
+const MOCK_CASE_DISTRIBUTION: CaseDistributionSlice[] = [
+  { name: "Civil", value: 12 },
+  { name: "Penal", value: 5 },
+  { name: "Commercial", value: 8 },
+  { name: "Famille", value: 6 },
+  { name: "Administratif", value: 4 },
+  { name: "Immobilier", value: 3 },
+];
+
+const PIE_COLORS = [
+  "#6366f1", // accent-500
+  "#22c55e", // success-500
+  "#f59e0b", // warning-500
+  "#a3a3a3", // neutral-400
+  "#ef4444", // danger-500
+  "#06b6d4", // cyan-500
+];
+
+const MOCK_BILLING_ALERTS: BillingAlert[] = [
+  {
+    id: "ba-1",
+    message: "12 heures non facturees sur Dupont c/ Immobel",
+    severity: "warning",
+  },
+  {
+    id: "ba-2",
+    message: "Facture #2026-008 impayee depuis 45 jours",
+    severity: "danger",
+  },
+  {
+    id: "ba-3",
+    message: "Taux horaire inferieur au seuil sur dossier SA Construct",
+    severity: "warning",
+  },
+  {
+    id: "ba-4",
+    message: "Provision insuffisante -- Janssens c/ Etat belge",
+    severity: "danger",
+  },
+];
+
 /* ─────────────────────────── Helpers ─────────────────────────── */
 
 const urgencyConfig: Record<
@@ -338,6 +453,7 @@ function getTimeAgo(dateString: string): string {
 
 export default function DashboardPage() {
   const { accessToken, tenantId, email } = useAuth();
+  const router = useRouter();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -356,13 +472,26 @@ export default function DashboardPage() {
   // Local state for actions (for approve/reject/defer)
   const [actions, setActions] = useState<BrainAction[]>([]);
 
+  // New: Billing report data
+  const [billingReport, setBillingReport] = useState<BillingReportResponse>(FALLBACK_BILLING);
+  // New: Today's calendar events
+  const [todayEvents, setTodayEvents] = useState<CalendarEvent[]>([]);
+
   const fetchData = useCallback(async () => {
     if (!accessToken) return;
     try {
       setLoading(true);
       setError(null);
 
-      const [brainRes, statsRes, recentRes, inboxRes] = await Promise.all([
+      // Build date range for today's calendar events
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const tomorrowStart = new Date(todayStart);
+      tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+      const afterParam = todayStart.toISOString().split("T")[0];
+      const beforeParam = tomorrowStart.toISOString().split("T")[0];
+
+      const [brainRes, statsRes, recentRes, inboxRes, billingRes, calendarRes] = await Promise.all([
         apiFetch<BrainSummaryResponse>("/brain/summary", accessToken, {
           tenantId,
         }).catch(() => {
@@ -379,6 +508,14 @@ export default function DashboardPage() {
         ).catch(() => ({ items: [] })),
         apiFetch<{ items: InboxItem[] }>(
           "/inbox?status=DRAFT&per_page=5",
+          accessToken,
+          { tenantId }
+        ).catch(() => ({ items: [] })),
+        apiFetch<BillingReportResponse>("/brain/billing/report", accessToken, {
+          tenantId,
+        }).catch(() => FALLBACK_BILLING),
+        apiFetch<{ items: CalendarEvent[] }>(
+          `/calendar/events?after=${afterParam}&before=${beforeParam}`,
           accessToken,
           { tenantId }
         ).catch(() => ({ items: [] })),
@@ -421,6 +558,8 @@ export default function DashboardPage() {
       );
       setRecentCases(recentRes.items || []);
       setInboxItems(inboxRes.items || []);
+      setBillingReport(billingRes);
+      setTodayEvents(calendarRes.items || []);
     } catch {
       setError("Impossible de charger les donnees du tableau de bord");
     } finally {
@@ -658,10 +797,307 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* ═══════════════════ Section 2b: Financial KPI Row ═══════════════════ */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 animate-fade">
+        {/* Heures du mois */}
+        <div className="bg-white rounded shadow-sm p-5 border-l-4 border-accent-500">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+              Heures du mois
+            </h3>
+            <div className="p-1.5 bg-accent-100 rounded">
+              <Clock className="w-4 h-4 text-accent-600" />
+            </div>
+          </div>
+          <div className="flex items-end gap-2">
+            <p className="text-3xl font-bold text-neutral-900">
+              {dashboardStats?.monthly_hours?.toFixed(1) || "0.0"}h
+            </p>
+            <TrendingUp className="w-4 h-4 text-success-500 mb-1" />
+          </div>
+          <p className="text-xs text-neutral-500 mt-2">
+            ce mois
+          </p>
+        </div>
+
+        {/* A facturer */}
+        <div className="bg-white rounded shadow-sm p-5 border-l-4 border-warning-500">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+              A facturer
+            </h3>
+            <div className="p-1.5 bg-warning-100 rounded">
+              <CircleDollarSign className="w-4 h-4 text-warning-600" />
+            </div>
+          </div>
+          <p className="text-3xl font-bold text-neutral-900">
+            {new Intl.NumberFormat("fr-BE", {
+              style: "currency",
+              currency: "EUR",
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 0,
+            }).format(billingReport.total_unbilled_amount)}
+          </p>
+          <p className="text-xs text-neutral-500 mt-2">
+            {billingReport.total_unbilled_hours.toFixed(1)}h non facturees
+          </p>
+        </div>
+
+        {/* Taux recouvrement */}
+        <div className="bg-white rounded shadow-sm p-5 border-l-4 border-success-500">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+              Taux recouvrement
+            </h3>
+            <div className="p-1.5 bg-success-100 rounded">
+              <Percent className="w-4 h-4 text-success-600" />
+            </div>
+          </div>
+          <p
+            className={`text-3xl font-bold ${
+              billingReport.recovery_rate >= 0.8
+                ? "text-success-600"
+                : billingReport.recovery_rate >= 0.6
+                  ? "text-warning-600"
+                  : "text-danger-600"
+            }`}
+          >
+            {Math.round(billingReport.recovery_rate * 100)}%
+          </p>
+          <div className="mt-2 w-full bg-neutral-100 rounded-full h-2">
+            <div
+              className={`h-2 rounded-full transition-all duration-500 ${
+                billingReport.recovery_rate >= 0.8
+                  ? "bg-success-500"
+                  : billingReport.recovery_rate >= 0.6
+                    ? "bg-warning-500"
+                    : "bg-danger-500"
+              }`}
+              style={{
+                width: `${Math.min(billingReport.recovery_rate * 100, 100)}%`,
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Factures en attente */}
+        <div className="bg-white rounded shadow-sm p-5 border-l-4 border-neutral-400">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+              Factures en attente
+            </h3>
+            <div className="p-1.5 bg-neutral-100 rounded">
+              <Receipt className="w-4 h-4 text-neutral-600" />
+            </div>
+          </div>
+          <p className="text-3xl font-bold text-neutral-900">
+            {dashboardStats?.total_invoices || 0}
+          </p>
+          <p className="text-xs text-neutral-500 mt-2">
+            a traiter
+          </p>
+        </div>
+      </div>
+
+      {/* ═══════════════════ Section 2c: Today's Agenda ═══════════════════ */}
+      <Card
+        className="animate-fade mb-6"
+        header={
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CalendarDays className="w-5 h-5 text-accent-600" />
+              <h3 className="font-display text-lg font-semibold text-neutral-900">
+                Agenda du jour
+              </h3>
+            </div>
+            <button
+              onClick={() => router.push("/dashboard/calendar")}
+              className="text-xs font-medium text-accent-600 hover:text-accent-700 transition-colors duration-150 flex items-center gap-1"
+            >
+              Voir le calendrier
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        }
+      >
+        {todayEvents.length === 0 ? (
+          <p className="text-sm text-neutral-500 py-2">
+            Aucun rendez-vous aujourd&apos;hui
+          </p>
+        ) : (
+          <div className="flex flex-wrap gap-4">
+            {todayEvents.map((event) => (
+              <div
+                key={event.id}
+                className="flex items-center gap-3 p-3 border border-neutral-200 rounded hover:bg-neutral-50 transition-colors duration-150 min-w-[220px] flex-1"
+              >
+                <div className="p-2 bg-accent-100 rounded flex-shrink-0">
+                  <Clock className="w-4 h-4 text-accent-600" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-neutral-900 truncate">
+                    {event.title}
+                  </p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-xs text-neutral-500">
+                      {new Date(event.start_time).toLocaleTimeString("fr-FR", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                      {event.end_time &&
+                        ` - ${new Date(event.end_time).toLocaleTimeString(
+                          "fr-FR",
+                          { hour: "2-digit", minute: "2-digit" }
+                        )}`}
+                    </span>
+                    {event.location && (
+                      <span className="text-xs text-neutral-400 flex items-center gap-0.5 truncate">
+                        <MapPin className="w-3 h-3" />
+                        {event.location}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      {/* ═══════════════════ Section 2d: Quick Actions Bar ═══════════════════ */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6 animate-fade">
+        <button
+          onClick={() => router.push("/dashboard/cases/new")}
+          className="flex items-center gap-3 bg-white border border-neutral-200 rounded p-4 hover:border-accent-400 hover:bg-accent-50 transition-all duration-150 group"
+        >
+          <div className="p-2 bg-accent-100 rounded group-hover:bg-accent-200 transition-colors duration-150">
+            <Plus className="w-4 h-4 text-accent-600" />
+          </div>
+          <span className="text-sm font-medium text-neutral-700 group-hover:text-accent-700 transition-colors duration-150">
+            Nouveau dossier
+          </span>
+        </button>
+
+        <button
+          onClick={() => router.push("/dashboard/billing")}
+          className="flex items-center gap-3 bg-white border border-neutral-200 rounded p-4 hover:border-accent-400 hover:bg-accent-50 transition-all duration-150 group"
+        >
+          <div className="p-2 bg-success-100 rounded group-hover:bg-success-200 transition-colors duration-150">
+            <DollarSign className="w-4 h-4 text-success-600" />
+          </div>
+          <span className="text-sm font-medium text-neutral-700 group-hover:text-accent-700 transition-colors duration-150">
+            Nouvelle prestation
+          </span>
+        </button>
+
+        <button
+          onClick={() => router.push("/dashboard/contacts")}
+          className="flex items-center gap-3 bg-white border border-neutral-200 rounded p-4 hover:border-accent-400 hover:bg-accent-50 transition-all duration-150 group"
+        >
+          <div className="p-2 bg-warning-100 rounded group-hover:bg-warning-200 transition-colors duration-150">
+            <UserPlus className="w-4 h-4 text-warning-600" />
+          </div>
+          <span className="text-sm font-medium text-neutral-700 group-hover:text-accent-700 transition-colors duration-150">
+            Nouveau contact
+          </span>
+        </button>
+
+        <button
+          onClick={() => router.push("/dashboard/documents")}
+          className="flex items-center gap-3 bg-white border border-neutral-200 rounded p-4 hover:border-accent-400 hover:bg-accent-50 transition-all duration-150 group"
+        >
+          <div className="p-2 bg-neutral-100 rounded group-hover:bg-neutral-200 transition-colors duration-150">
+            <ScanLine className="w-4 h-4 text-neutral-600" />
+          </div>
+          <span className="text-sm font-medium text-neutral-700 group-hover:text-accent-700 transition-colors duration-150">
+            Scanner document
+          </span>
+        </button>
+      </div>
+
       {/* ═══════════════════ Section 3: Two-Column Layout ═══════════════════ */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-6">
         {/* ── Left Column (3/5 = ~60%) ── */}
         <div className="lg:col-span-3 space-y-6">
+          {/* Evolution du chiffre d'affaires */}
+          <Card
+            className="animate-fade"
+            header={
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-accent-600" />
+                  <h3 className="font-display text-lg font-semibold text-neutral-900">
+                    Evolution du chiffre d&apos;affaires
+                  </h3>
+                </div>
+                <div className="flex items-center gap-4 text-xs text-neutral-500">
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 bg-accent-500 rounded-sm" />
+                    Facture
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 bg-success-500 rounded-sm" />
+                    Encaisse
+                  </span>
+                </div>
+              </div>
+            }
+          >
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={MOCK_REVENUE_TREND}>
+                  <XAxis
+                    dataKey="month"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 12, fill: "#737373" }}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 12, fill: "#737373" }}
+                    tickFormatter={(v: number) =>
+                      `${(v / 1000).toFixed(0)}k`
+                    }
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#fff",
+                      border: "1px solid #e5e5e5",
+                      borderRadius: "8px",
+                      fontSize: "12px",
+                    }}
+                    formatter={(value) => [
+                      new Intl.NumberFormat("fr-BE", {
+                        style: "currency",
+                        currency: "EUR",
+                        minimumFractionDigits: 0,
+                      }).format(value as number),
+                    ]}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="facture"
+                    name="Facture"
+                    stroke="#6366f1"
+                    strokeWidth={2}
+                    dot={{ r: 4, fill: "#6366f1" }}
+                    activeDot={{ r: 6 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="encaisse"
+                    name="Encaisse"
+                    stroke="#22c55e"
+                    strokeWidth={2}
+                    dot={{ r: 4, fill: "#22c55e" }}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+
           {/* Prochaines echeances */}
           <Card
             className="animate-fade"
@@ -855,6 +1291,131 @@ export default function DashboardPage() {
 
         {/* ── Right Column (2/5 = ~40%) ── */}
         <div className="lg:col-span-2 space-y-6">
+          {/* Repartition des dossiers */}
+          <Card
+            className="animate-fade"
+            header={
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Briefcase className="w-5 h-5 text-accent-600" />
+                  <h3 className="font-display text-lg font-semibold text-neutral-900">
+                    Repartition des dossiers
+                  </h3>
+                </div>
+                <Badge variant="default" size="sm">
+                  {MOCK_CASE_DISTRIBUTION.reduce((s, c) => s + c.value, 0)} total
+                </Badge>
+              </div>
+            }
+          >
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={MOCK_CASE_DISTRIBUTION}
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={80}
+                    innerRadius={40}
+                    paddingAngle={2}
+                    dataKey="value"
+                    label={({ name, percent }) =>
+                      `${name || ""} ${((percent as number) * 100).toFixed(0)}%`
+                    }
+                    labelLine={{ strokeWidth: 1 }}
+                  >
+                    {MOCK_CASE_DISTRIBUTION.map((_, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={PIE_COLORS[index % PIE_COLORS.length]}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#fff",
+                      border: "1px solid #e5e5e5",
+                      borderRadius: "8px",
+                      fontSize: "12px",
+                    }}
+                    formatter={(value) => [`${value} dossiers`]}
+                  />
+                  <Legend
+                    verticalAlign="bottom"
+                    height={36}
+                    iconType="circle"
+                    iconSize={8}
+                    formatter={(value: string) => (
+                      <span className="text-xs text-neutral-600">{value}</span>
+                    )}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+
+          {/* Alertes facturation */}
+          <Card
+            className="animate-fade"
+            header={
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-warning-600" />
+                  <h3 className="font-display text-lg font-semibold text-neutral-900">
+                    Alertes facturation
+                  </h3>
+                </div>
+                <button
+                  onClick={() => router.push("/dashboard/billing")}
+                  className="text-xs font-medium text-accent-600 hover:text-accent-700 transition-colors duration-150 flex items-center gap-1"
+                >
+                  Voir la facturation
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            }
+          >
+            <div className="space-y-2">
+              {MOCK_BILLING_ALERTS.map((alert) => (
+                <div
+                  key={alert.id}
+                  className={`flex items-start gap-3 p-3 rounded border transition-colors duration-150 ${
+                    alert.severity === "danger"
+                      ? "border-danger-200 bg-danger-50/50"
+                      : "border-warning-200 bg-warning-50/30"
+                  }`}
+                >
+                  <div
+                    className={`p-1.5 rounded flex-shrink-0 mt-0.5 ${
+                      alert.severity === "danger"
+                        ? "bg-danger-100"
+                        : "bg-warning-100"
+                    }`}
+                  >
+                    <AlertTriangle
+                      className={`w-3.5 h-3.5 ${
+                        alert.severity === "danger"
+                          ? "text-danger-600"
+                          : "text-warning-600"
+                      }`}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-neutral-800 leading-relaxed">
+                      {alert.message}
+                    </p>
+                  </div>
+                  <Badge
+                    variant={alert.severity === "danger" ? "danger" : "warning"}
+                    size="sm"
+                  >
+                    {alert.severity === "danger" ? "Critique" : "Attention"}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </Card>
+
           {/* Insights IA */}
           <Card
             className="animate-fade"

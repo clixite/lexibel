@@ -1,19 +1,6 @@
 import type { Metadata } from "next";
-import { Crimson_Pro, Manrope } from "next/font/google";
 import "./globals.css";
 import Providers from "./providers";
-
-const crimsonPro = Crimson_Pro({
-  subsets: ["latin"],
-  variable: "--font-display",
-  display: "swap",
-});
-
-const manrope = Manrope({
-  subsets: ["latin"],
-  variable: "--font-sans",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "LexiBel — AI-Native Legal Practice Management",
@@ -33,7 +20,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="fr" className={`${crimsonPro.variable} ${manrope.variable}`}>
+    <html lang="fr">
       <body className="font-sans antialiased">
         <Providers>{children}</Providers>
       </body>

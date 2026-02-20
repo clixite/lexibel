@@ -13,7 +13,13 @@ import {
   AlertTriangle,
   Scale,
   Briefcase,
+  Plus,
+  List,
+  Grid3x3,
 } from "lucide-react";
+import CalendarGrid from "./CalendarGrid";
+import DeadlineCalculator from "./DeadlineCalculator";
+import EventCreationModal from "./EventCreationModal";
 import { apiFetch } from "@/lib/api";
 import {
   LoadingSkeleton,
@@ -187,6 +193,38 @@ export default function CalendarPage() {
   /* ---- deadline state ---- */
   const [deadlines, setDeadlines] = useState<Deadline[]>([]);
   const [deadlinesLoading, setDeadlinesLoading] = useState(false);
+
+  /* ---- new: view mode, calendar grid, event creation ---- */
+  const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
+  const [calendarMonth, setCalendarMonth] = useState(new Date());
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [localEvents, setLocalEvents] = useState<CalendarEvent[]>([]);
+  const [cases, setCases] = useState<{ id: string; title: string; reference: string }[]>([]);
+
+  // Fetch cases for event creation modal
+  useEffect(() => {
+    if (!accessToken) return;
+    apiFetch<{ items: { id: string; title: string; reference: string }[] }>("/cases?per_page=100", accessToken, { tenantId })
+      .then((d) => setCases(d.items || []))
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessToken]);
+
+  const handleCreateEvent = (ev: { type: string; title: string; date: string; start_time: string; end_time: string; location: string; description: string }) => {
+    const newEvent: CalendarEvent = {
+      id: crypto.randomUUID(),
+      title: ev.title,
+      start_time: `${ev.date}T${ev.start_time}:00`,
+      date: ev.date,
+      time: ev.start_time,
+      location: ev.location || undefined,
+      attendees: [],
+    };
+    setLocalEvents((prev) => [...prev, newEvent]);
+    setShowEventModal(false);
+  };
+
+  const allEvents = useMemo(() => [...events, ...localEvents], [events, localEvents]);
 
   /* ---- existing data fetching ---- */
 
@@ -505,39 +543,94 @@ export default function CalendarPage() {
       )}
 
       {/* ============================================================ */}
-      {/*  Date navigation (existing)                                   */}
+      {/*  View toggle + New event button                               */}
       {/* ============================================================ */}
-      <div className="flex items-center justify-between mb-6">
-        <Button
-          variant="secondary"
-          size="sm"
-          icon={<ChevronLeft className="w-4 h-4" />}
-          onClick={() => shiftDate(-30)}
-        >
-          -30 jours
-        </Button>
-        <div className="text-sm text-neutral-600 font-medium">
-          {new Date(dateAfter).toLocaleDateString("fr-FR")} -{" "}
-          {new Date(dateBefore).toLocaleDateString("fr-FR")}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2 bg-neutral-100 rounded-lg p-1">
+          <button
+            onClick={() => setViewMode("list")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+              viewMode === "list"
+                ? "bg-white text-neutral-900 shadow-sm"
+                : "text-neutral-500 hover:text-neutral-700"
+            }`}
+          >
+            <List className="w-4 h-4" />
+            Liste
+          </button>
+          <button
+            onClick={() => setViewMode("calendar")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+              viewMode === "calendar"
+                ? "bg-white text-neutral-900 shadow-sm"
+                : "text-neutral-500 hover:text-neutral-700"
+            }`}
+          >
+            <Grid3x3 className="w-4 h-4" />
+            Calendrier
+          </button>
         </div>
         <Button
-          variant="secondary"
+          variant="primary"
           size="sm"
-          icon={<ChevronRight className="w-4 h-4" />}
-          onClick={() => shiftDate(30)}
+          icon={<Plus className="w-4 h-4" />}
+          onClick={() => setShowEventModal(true)}
         >
-          +30 jours
+          Nouvel evenement
         </Button>
       </div>
 
       {/* ============================================================ */}
-      {/*  Event list (existing, enhanced with urgency indicators)      */}
+      {/*  Date navigation (list mode only)                             */}
       {/* ============================================================ */}
-      {loading && <LoadingSkeleton />}
+      {viewMode === "list" && (
+        <div className="flex items-center justify-between mb-6">
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={<ChevronLeft className="w-4 h-4" />}
+            onClick={() => shiftDate(-30)}
+          >
+            -30 jours
+          </Button>
+          <div className="text-sm text-neutral-600 font-medium">
+            {new Date(dateAfter).toLocaleDateString("fr-FR")} -{" "}
+            {new Date(dateBefore).toLocaleDateString("fr-FR")}
+          </div>
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={<ChevronRight className="w-4 h-4" />}
+            onClick={() => shiftDate(30)}
+          >
+            +30 jours
+          </Button>
+        </div>
+      )}
 
-      {error && <ErrorState message={error} />}
+      {/* ============================================================ */}
+      {/*  Calendar Grid (calendar mode)                                */}
+      {/* ============================================================ */}
+      {viewMode === "calendar" && (
+        <div className="mb-6">
+          <CalendarGrid
+            events={allEvents}
+            deadlines={deadlines}
+            currentMonth={calendarMonth}
+            onMonthChange={setCalendarMonth}
+            onDayClick={() => {}}
+          />
+        </div>
+      )}
 
-      {!loading && events.length === 0 && (
+      {/* ============================================================ */}
+      {/*  Event list (list mode, enhanced with urgency indicators)     */}
+      {/* ============================================================ */}
+      {viewMode === "list" && loading && <LoadingSkeleton />}
+
+      {viewMode === "list" && error && <ErrorState message={error} />}
+
+      {viewMode === "list" && !loading && allEvents.length === 0 && (
         <EmptyState
           icon={<CalendarIcon className="w-12 h-12" />}
           title="Aucun evenement"
@@ -545,9 +638,9 @@ export default function CalendarPage() {
         />
       )}
 
-      {!loading && events.length > 0 && (
+      {viewMode === "list" && !loading && allEvents.length > 0 && (
         <div className="space-y-3">
-          {events.map((event) => {
+          {allEvents.map((event) => {
             const matchedDeadline = deadlineByDate.get(event.date);
             const dlColors = matchedDeadline
               ? urgencyColor(matchedDeadline.urgency)
@@ -784,6 +877,23 @@ export default function CalendarPage() {
           </Card>
         </div>
       )}
+
+      {/* ============================================================ */}
+      {/*  4. Deadline Calculator                                       */}
+      {/* ============================================================ */}
+      <div className="mt-8">
+        <DeadlineCalculator />
+      </div>
+
+      {/* ============================================================ */}
+      {/*  Event Creation Modal                                         */}
+      {/* ============================================================ */}
+      <EventCreationModal
+        isOpen={showEventModal}
+        onClose={() => setShowEventModal(false)}
+        onSave={handleCreateEvent}
+        cases={cases}
+      />
     </div>
   );
 }
