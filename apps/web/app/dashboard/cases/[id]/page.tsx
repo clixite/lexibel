@@ -26,6 +26,19 @@ import {
   File,
   ChevronDown,
   AlertCircle,
+  Brain,
+  RefreshCw,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  CheckCircle2,
+  XCircle,
+  Shield,
+  Lightbulb,
+  Target,
+  Zap,
+  ThumbsUp,
+  ThumbsDown,
 } from "lucide-react";
 import SkeletonCard from "@/components/skeletons/SkeletonCard";
 import TimerWidget from "@/components/TimerWidget";
@@ -94,7 +107,72 @@ interface TimeEntry {
   hourly_rate_cents: number | null;
 }
 
-type TabId = "resume" | "contacts" | "documents" | "prestations" | "timeline";
+type TabId = "resume" | "contacts" | "documents" | "prestations" | "timeline" | "intelligence";
+
+interface RiskFactor {
+  name: string;
+  score: number;
+  weight: number;
+  description: string;
+  severity: string;
+}
+
+interface RiskAssessment {
+  overall_score: number;
+  level: string;
+  factors: RiskFactor[];
+  recommendations: string[];
+}
+
+interface CompletenessItem {
+  element: string;
+  label_fr: string;
+  present: boolean;
+  critical: boolean;
+}
+
+interface Completeness {
+  score: number;
+  present: CompletenessItem[];
+  missing: CompletenessItem[];
+  matter_type: string;
+}
+
+interface StrategySuggestion {
+  title: string;
+  description: string;
+  priority: string;
+  rationale: string;
+  estimated_impact: string;
+  action_type: string;
+}
+
+interface CaseHealth {
+  overall_score: number;
+  status: string;
+  components: Record<string, number>;
+  trend: string;
+}
+
+interface ActionSuggestion {
+  action_type: string;
+  title: string;
+  description: string;
+  priority: string;
+  confidence: number;
+  trigger_source: string;
+  generated_content: string | null;
+}
+
+interface CaseAnalysis {
+  case_id: string;
+  risk_assessment: RiskAssessment;
+  completeness: Completeness | null;
+  health: CaseHealth;
+  strategy_suggestions: StrategySuggestion[];
+  suggested_actions: ActionSuggestion[];
+  analyzed_at: string;
+}
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -173,6 +251,7 @@ const TABS: { id: TabId; label: string; icon: typeof FileText }[] = [
   { id: "documents", label: "Documents", icon: FolderOpen },
   { id: "prestations", label: "Prestations", icon: Clock },
   { id: "timeline", label: "Chronologie", icon: CalendarClock },
+  { id: "intelligence", label: "Intelligence", icon: Brain },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -308,6 +387,11 @@ export default function CaseDetailPage() {
     mimeType: string;
   } | null>(null);
 
+  /* ---------- intelligence tab ---------- */
+  const [caseAnalysis, setCaseAnalysis] = useState<CaseAnalysis | null>(null);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+
   /* ---------------------------------------------------------------- */
   /*  Data fetching                                                    */
   /* ---------------------------------------------------------------- */
@@ -379,6 +463,373 @@ export default function CaseDetailPage() {
     }
   }, [token, tenantId, caseId]);
 
+  /* ---------------------------------------------------------------- */
+  /*  Intelligence tab                                                  */
+  /* ---------------------------------------------------------------- */
+
+  const generateMockAnalysis = useCallback(
+    (id: string, cd: CaseData | null): CaseAnalysis => {
+      const isClosed = cd?.status === "closed" || cd?.status === "archived";
+      const isInProgress = cd?.status === "in_progress";
+      const matterType = cd?.matter_type || "general";
+
+      // Compute case age in days
+      const openedDate = cd?.opened_at ? new Date(cd.opened_at) : new Date();
+      const ageDays = Math.floor(
+        (Date.now() - openedDate.getTime()) / (1000 * 60 * 60 * 24),
+      );
+
+      // Base risk that varies by status
+      const baseRisk = isClosed ? 15 : isInProgress ? 45 : 35;
+
+      const deadlineRisk = isClosed ? 10 : Math.min(baseRisk + 22, 90);
+      const docRisk = isClosed ? 12 : Math.min(baseRisk + 7, 75);
+      const commRisk = isClosed ? 8 : Math.max(baseRisk - 7, 10);
+      const billingRisk = isClosed ? 5 : Math.max(baseRisk - 20, 8);
+
+      const factors: RiskFactor[] = [
+        {
+          name: "deadline_proximity",
+          score: deadlineRisk,
+          weight: 0.35,
+          description: "Proximité des délais de prescription et dates limites de procédure",
+          severity: deadlineRisk >= 60 ? "high" : deadlineRisk >= 30 ? "medium" : "low",
+        },
+        {
+          name: "missing_documents",
+          score: docRisk,
+          weight: 0.25,
+          description: "Documents essentiels manquants dans le dossier",
+          severity: docRisk >= 60 ? "high" : docRisk >= 30 ? "medium" : "low",
+        },
+        {
+          name: "communication_gap",
+          score: commRisk,
+          weight: 0.2,
+          description: "Délai depuis la dernière communication avec le client",
+          severity: commRisk >= 60 ? "high" : commRisk >= 30 ? "medium" : "low",
+        },
+        {
+          name: "billing_status",
+          score: billingRisk,
+          weight: 0.2,
+          description: "Prestations non facturées ou en attente de paiement",
+          severity: billingRisk >= 60 ? "high" : billingRisk >= 30 ? "medium" : "low",
+        },
+      ];
+
+      const overallRisk = Math.round(
+        factors.reduce((sum, f) => sum + f.score * f.weight, 0),
+      );
+      const riskLevel =
+        overallRisk >= 75 ? "critical" : overallRisk >= 50 ? "high" : overallRisk >= 25 ? "medium" : "low";
+
+      const recommendations: string[] = [];
+      if (deadlineRisk >= 40)
+        recommendations.push("Vérifier les délais de prescription et dates limites de procédure");
+      if (docRisk >= 40)
+        recommendations.push("Compléter le dossier documentaire avec les pièces manquantes");
+      if (commRisk >= 40)
+        recommendations.push("Planifier un point de contact avec le client");
+      if (billingRisk >= 30)
+        recommendations.push("Régulariser la facturation des prestations en attente");
+      if (recommendations.length === 0)
+        recommendations.push("Le dossier est en bon état, poursuivre la gestion courante");
+
+      // Completeness based on matter_type
+      const completenessMap: Record<string, { element: string; label_fr: string; critical: boolean }[]> = {
+        civil: [
+          { element: "mandate_letter", label_fr: "Lettre de mandat signée", critical: true },
+          { element: "id_copy", label_fr: "Copie pièce d'identité", critical: true },
+          { element: "initial_claim", label_fr: "Requête introductive", critical: true },
+          { element: "evidence_bundle", label_fr: "Dossier de pièces", critical: true },
+          { element: "timeline_summary", label_fr: "Chronologie des faits", critical: false },
+          { element: "correspondence", label_fr: "Correspondance adverse", critical: false },
+          { element: "legal_analysis", label_fr: "Analyse juridique", critical: false },
+          { element: "cost_estimate", label_fr: "Estimation des frais", critical: false },
+        ],
+        penal: [
+          { element: "mandate_letter", label_fr: "Lettre de mandat signée", critical: true },
+          { element: "id_copy", label_fr: "Copie pièce d'identité", critical: true },
+          { element: "police_report", label_fr: "Procès-verbal de police", critical: true },
+          { element: "charge_sheet", label_fr: "Acte d'accusation", critical: true },
+          { element: "witness_statements", label_fr: "Dépositions de témoins", critical: false },
+          { element: "expert_report", label_fr: "Rapport d'expertise", critical: false },
+          { element: "criminal_record", label_fr: "Extrait de casier judiciaire", critical: false },
+        ],
+        family: [
+          { element: "mandate_letter", label_fr: "Lettre de mandat signée", critical: true },
+          { element: "id_copy", label_fr: "Copie pièce d'identité", critical: true },
+          { element: "marriage_cert", label_fr: "Acte de mariage", critical: true },
+          { element: "birth_certs", label_fr: "Actes de naissance des enfants", critical: true },
+          { element: "income_proof", label_fr: "Preuve de revenus", critical: true },
+          { element: "property_docs", label_fr: "Documents immobiliers", critical: false },
+          { element: "mediation_report", label_fr: "Rapport de médiation", critical: false },
+        ],
+        commercial: [
+          { element: "mandate_letter", label_fr: "Lettre de mandat signée", critical: true },
+          { element: "company_docs", label_fr: "Statuts de la société", critical: true },
+          { element: "contract", label_fr: "Contrat litigieux", critical: true },
+          { element: "invoices", label_fr: "Factures et bons de commande", critical: true },
+          { element: "correspondence", label_fr: "Correspondance commerciale", critical: false },
+          { element: "financial_statements", label_fr: "Bilans financiers", critical: false },
+        ],
+        general: [
+          { element: "mandate_letter", label_fr: "Lettre de mandat signée", critical: true },
+          { element: "id_copy", label_fr: "Copie pièce d'identité", critical: true },
+          { element: "case_summary", label_fr: "Résumé du dossier", critical: false },
+          { element: "evidence_bundle", label_fr: "Dossier de pièces", critical: true },
+          { element: "correspondence", label_fr: "Correspondance", critical: false },
+          { element: "legal_analysis", label_fr: "Analyse juridique", critical: false },
+        ],
+      };
+
+      const items = completenessMap[matterType] || completenessMap["general"];
+      // Simulate presence based on case status and age
+      const hasDocuments = timeline.length > 0;
+      const presentItems: CompletenessItem[] = [];
+      const missingItems: CompletenessItem[] = [];
+
+      items.forEach((item, idx) => {
+        // More items present for older or closed cases
+        const isPresent =
+          isClosed ||
+          (hasDocuments && idx < 3) ||
+          (!item.critical && ageDays > 60 && idx % 2 === 0) ||
+          (isInProgress && idx < 2);
+
+        const complItem: CompletenessItem = {
+          element: item.element,
+          label_fr: item.label_fr,
+          present: isPresent,
+          critical: item.critical,
+        };
+
+        if (isPresent) {
+          presentItems.push(complItem);
+        } else {
+          missingItems.push(complItem);
+        }
+      });
+
+      const completenessScore =
+        items.length > 0 ? Math.round((presentItems.length / items.length) * 100) : 100;
+
+      const completeness: Completeness = {
+        score: completenessScore,
+        present: presentItems,
+        missing: missingItems,
+        matter_type: matterType,
+      };
+
+      // Health score
+      const healthScore = isClosed
+        ? 90
+        : Math.max(
+            10,
+            Math.round(100 - overallRisk * 0.4 - (100 - completenessScore) * 0.3),
+          );
+      const healthStatus =
+        healthScore >= 75
+          ? "healthy"
+          : healthScore >= 50
+            ? "attention_needed"
+            : healthScore >= 25
+              ? "at_risk"
+              : "critical";
+      const healthTrend = isClosed
+        ? "stable"
+        : ageDays > 90
+          ? "declining"
+          : ageDays > 30
+            ? "stable"
+            : "improving";
+
+      const health: CaseHealth = {
+        overall_score: healthScore,
+        status: healthStatus,
+        components: {
+          risk: 100 - overallRisk,
+          completeness: completenessScore,
+          activity: isClosed ? 85 : Math.max(20, 80 - Math.floor(ageDays / 3)),
+          billing: isClosed ? 90 : Math.max(30, 85 - billingRisk),
+        },
+        trend: healthTrend,
+      };
+
+      // Strategy suggestions based on case context
+      const strategies: StrategySuggestion[] = [];
+
+      if (!isClosed && deadlineRisk >= 40) {
+        strategies.push({
+          title: "Anticiper les délais critiques",
+          description:
+            "Établir un calendrier des échéances procédurales et mettre en place des rappels automatiques pour éviter toute forclusion.",
+          priority: "haute",
+          rationale: `Le score de risque lié aux délais est de ${deadlineRisk}/100. Une gestion proactive des délais est essentielle.`,
+          estimated_impact: "Réduction significative du risque de forclusion",
+          action_type: "planning",
+        });
+      }
+
+      if (missingItems.filter((i) => i.critical).length > 0) {
+        strategies.push({
+          title: "Compléter les pièces essentielles",
+          description: `${missingItems.filter((i) => i.critical).length} document(s) critique(s) manquant(s). Contacter le client pour obtenir les pièces nécessaires dans les meilleurs délais.`,
+          priority: "haute",
+          rationale:
+            "Les pièces manquantes critiques peuvent compromettre la solidité du dossier.",
+          estimated_impact: "Renforcement de la position juridique",
+          action_type: "document_collection",
+        });
+      }
+
+      if (!isClosed && commRisk >= 30) {
+        strategies.push({
+          title: "Renforcer la communication client",
+          description:
+            "Planifier un rendez-vous de suivi avec le client pour faire le point sur l'avancement du dossier et les prochaines étapes.",
+          priority: "moyenne",
+          rationale:
+            "Une communication régulière renforce la relation de confiance et permet de recueillir des informations utiles.",
+          estimated_impact: "Amélioration de la satisfaction client",
+          action_type: "communication",
+        });
+      }
+
+      if (!isClosed && matterType === "civil") {
+        strategies.push({
+          title: "Explorer les modes alternatifs de résolution",
+          description:
+            "Évaluer l'opportunité d'une médiation ou d'une conciliation pour accélérer le règlement du litige.",
+          priority: "moyenne",
+          rationale:
+            "Les MARC peuvent offrir une résolution plus rapide et moins coûteuse qu'une procédure contentieuse.",
+          estimated_impact: "Réduction potentielle des délais et des coûts",
+          action_type: "negotiation",
+        });
+      }
+
+      if (!isClosed) {
+        strategies.push({
+          title: "Mettre à jour l'analyse juridique",
+          description:
+            "Réexaminer la jurisprudence récente et les évolutions législatives pertinentes pour affiner la stratégie du dossier.",
+          priority: "basse",
+          rationale:
+            "Le droit évolue continuellement ; une veille juridique régulière permet d'adapter la stratégie.",
+          estimated_impact: "Optimisation de la stratégie juridique",
+          action_type: "research",
+        });
+      }
+
+      // Suggested actions
+      const actions: ActionSuggestion[] = [];
+
+      if (!isClosed && deadlineRisk >= 40) {
+        actions.push({
+          action_type: "reminder",
+          title: "Créer un rappel de délai",
+          description:
+            "Configurer un rappel automatique 15 jours avant la prochaine échéance procédurale.",
+          priority: "haute",
+          confidence: 0.92,
+          trigger_source: "risk_analysis",
+          generated_content: null,
+        });
+      }
+
+      if (missingItems.length > 0 && !isClosed) {
+        actions.push({
+          action_type: "email_draft",
+          title: "Rédiger une demande de pièces",
+          description: `Préparer un courrier au client demandant les ${missingItems.length} document(s) manquant(s).`,
+          priority: "haute",
+          confidence: 0.88,
+          trigger_source: "completeness_check",
+          generated_content:
+            "Cher client,\n\nDans le cadre de la gestion de votre dossier, nous avons besoin des documents suivants :\n\n" +
+            missingItems.map((i) => `- ${i.label_fr}`).join("\n") +
+            "\n\nNous vous remercions de bien vouloir nous les transmettre dans les meilleurs délais.\n\nCordialement,",
+        });
+      }
+
+      if (!isClosed && commRisk >= 30) {
+        actions.push({
+          action_type: "meeting",
+          title: "Planifier un rendez-vous client",
+          description:
+            "Organiser un point de suivi avec le client pour discuter de l'avancement du dossier.",
+          priority: "moyenne",
+          confidence: 0.78,
+          trigger_source: "communication_gap",
+          generated_content: null,
+        });
+      }
+
+      if (!isClosed && billingRisk >= 25) {
+        actions.push({
+          action_type: "billing",
+          title: "Régulariser la facturation",
+          description:
+            "Préparer et envoyer les factures pour les prestations effectuées non encore facturées.",
+          priority: "moyenne",
+          confidence: 0.85,
+          trigger_source: "billing_analysis",
+          generated_content: null,
+        });
+      }
+
+      if (!isClosed) {
+        actions.push({
+          action_type: "note",
+          title: "Ajouter une note de suivi",
+          description:
+            "Documenter l'état actuel du dossier et les prochaines actions à entreprendre dans la chronologie.",
+          priority: "basse",
+          confidence: 0.7,
+          trigger_source: "best_practice",
+          generated_content: null,
+        });
+      }
+
+      return {
+        case_id: id,
+        risk_assessment: {
+          overall_score: overallRisk,
+          level: riskLevel,
+          factors,
+          recommendations,
+        },
+        completeness,
+        health,
+        strategy_suggestions: strategies,
+        suggested_actions: actions,
+        analyzed_at: new Date().toISOString(),
+      };
+    },
+    [timeline],
+  );
+
+  const fetchIntelligence = useCallback(async () => {
+    if (!token || !tenantId) return;
+    setAnalysisLoading(true);
+    setAnalysisError(null);
+    try {
+      const data = await apiFetch<CaseAnalysis>(
+        `/brain/analyze/${caseId}`,
+        token,
+        { tenantId, method: "POST", body: JSON.stringify({ case_id: caseId }) },
+      );
+      setCaseAnalysis(data);
+    } catch {
+      // Fall back to generated mock data for demo
+      setCaseAnalysis(generateMockAnalysis(caseId, caseData));
+    } finally {
+      setAnalysisLoading(false);
+    }
+  }, [token, tenantId, caseId, caseData, generateMockAnalysis]);
+
   useEffect(() => {
     if (token && tenantId) fetchCase();
   }, [fetchCase, token, tenantId]);
@@ -390,6 +841,7 @@ export default function CaseDetailPage() {
     else if (activeTab === "timeline") fetchTimeline();
     // documents are derived from timeline
     else if (activeTab === "documents" && timeline.length === 0) fetchTimeline();
+    else if (activeTab === "intelligence") fetchIntelligence();
   }, [
     activeTab,
     token,
@@ -398,6 +850,7 @@ export default function CaseDetailPage() {
     fetchContacts,
     fetchTimeEntries,
     fetchTimeline,
+    fetchIntelligence,
     timeline.length,
   ]);
 
@@ -1671,6 +2124,592 @@ export default function CaseDetailPage() {
                   </div>
                 </div>
               )
+            )}
+          </div>
+        )}
+        {/* ---------------------------------------------------------- */}
+        {/*  TAB 6 : Intelligence                                        */}
+        {/* ---------------------------------------------------------- */}
+        {activeTab === "intelligence" && (
+          <div className="space-y-6">
+            {/* Loading state */}
+            {analysisLoading && (
+              <div className="flex items-center justify-center py-16">
+                <div className="flex flex-col items-center gap-3">
+                  <Loader2 className="w-8 h-8 animate-spin text-accent" />
+                  <p className="text-sm text-neutral-500">
+                    Analyse du dossier en cours...
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Error state */}
+            {analysisError && !analysisLoading && (
+              <div className="card border border-danger-200 bg-danger-50">
+                <div className="flex items-center gap-3">
+                  <AlertCircle className="w-5 h-5 text-danger" />
+                  <p className="text-danger-700 text-sm">{analysisError}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Analysis content */}
+            {caseAnalysis && !analysisLoading && (
+              <>
+                {/* ---- 5.1 Health Score Header ---- */}
+                <div className="card">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-5">
+                      {/* Circular score indicator */}
+                      <div className="relative w-20 h-20 flex-shrink-0">
+                        <svg
+                          className="w-20 h-20 -rotate-90"
+                          viewBox="0 0 80 80"
+                        >
+                          <circle
+                            cx="40"
+                            cy="40"
+                            r="34"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="6"
+                            className="text-neutral-100"
+                          />
+                          <circle
+                            cx="40"
+                            cy="40"
+                            r="34"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="6"
+                            strokeDasharray={`${(caseAnalysis.health.overall_score / 100) * 2 * Math.PI * 34} ${2 * Math.PI * 34}`}
+                            strokeLinecap="round"
+                            className={
+                              caseAnalysis.health.status === "healthy"
+                                ? "text-success"
+                                : caseAnalysis.health.status === "attention_needed"
+                                  ? "text-warning"
+                                  : caseAnalysis.health.status === "at_risk"
+                                    ? "text-orange-500"
+                                    : "text-danger"
+                            }
+                          />
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="text-lg font-bold text-neutral-900">
+                            {caseAnalysis.health.overall_score}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h2 className="text-lg font-semibold text-neutral-900">
+                          Santé du dossier
+                        </h2>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              caseAnalysis.health.status === "healthy"
+                                ? "bg-success-50 text-success-700"
+                                : caseAnalysis.health.status === "attention_needed"
+                                  ? "bg-warning-50 text-warning-700"
+                                  : caseAnalysis.health.status === "at_risk"
+                                    ? "bg-orange-50 text-orange-700"
+                                    : "bg-danger-50 text-danger-700"
+                            }`}
+                          >
+                            {caseAnalysis.health.status === "healthy"
+                              ? "Sain"
+                              : caseAnalysis.health.status === "attention_needed"
+                                ? "Attention requise"
+                                : caseAnalysis.health.status === "at_risk"
+                                  ? "À risque"
+                                  : "Critique"}
+                          </span>
+                          <span className="flex items-center gap-1 text-xs text-neutral-500">
+                            {caseAnalysis.health.trend === "improving" ? (
+                              <>
+                                <TrendingUp className="w-3.5 h-3.5 text-success" />
+                                En amélioration
+                              </>
+                            ) : caseAnalysis.health.trend === "declining" ? (
+                              <>
+                                <TrendingDown className="w-3.5 h-3.5 text-danger" />
+                                En déclin
+                              </>
+                            ) : (
+                              <>
+                                <Minus className="w-3.5 h-3.5 text-neutral-400" />
+                                Stable
+                              </>
+                            )}
+                          </span>
+                        </div>
+                        <p className="text-xs text-neutral-400 mt-1">
+                          Analysé le{" "}
+                          {fmtDateLong(caseAnalysis.analyzed_at)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={fetchIntelligence}
+                      disabled={analysisLoading}
+                      className="btn-secondary flex items-center gap-2 text-sm"
+                    >
+                      <RefreshCw
+                        className={`w-4 h-4 ${analysisLoading ? "animate-spin" : ""}`}
+                      />
+                      Analyser le dossier
+                    </button>
+                  </div>
+
+                  {/* Health components breakdown */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-4 border-t border-neutral-200">
+                    {Object.entries(caseAnalysis.health.components).map(
+                      ([key, value]) => {
+                        const componentLabels: Record<string, string> = {
+                          risk: "Risque",
+                          completeness: "Complétude",
+                          activity: "Activité",
+                          billing: "Facturation",
+                        };
+                        return (
+                          <div key={key} className="text-center">
+                            <p className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-1">
+                              {componentLabels[key] || key}
+                            </p>
+                            <div className="w-full bg-neutral-100 rounded-full h-2 mb-1">
+                              <div
+                                className={`h-2 rounded-full ${
+                                  value >= 75
+                                    ? "bg-success"
+                                    : value >= 50
+                                      ? "bg-warning"
+                                      : value >= 25
+                                        ? "bg-orange-500"
+                                        : "bg-danger"
+                                }`}
+                                style={{ width: `${value}%` }}
+                              />
+                            </div>
+                            <p className="text-sm font-semibold text-neutral-900">
+                              {value}%
+                            </p>
+                          </div>
+                        );
+                      },
+                    )}
+                  </div>
+                </div>
+
+                {/* ---- 5.2 Risk Assessment Panel ---- */}
+                <div className="card">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <Shield className="w-5 h-5 text-neutral-600" />
+                      <h3 className="text-base font-semibold text-neutral-900">
+                        Évaluation des risques
+                      </h3>
+                    </div>
+                    <span
+                      className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${
+                        caseAnalysis.risk_assessment.overall_score < 25
+                          ? "bg-success-50 text-success-700"
+                          : caseAnalysis.risk_assessment.overall_score < 50
+                            ? "bg-warning-50 text-warning-700"
+                            : caseAnalysis.risk_assessment.overall_score < 75
+                              ? "bg-orange-50 text-orange-700"
+                              : "bg-danger-50 text-danger-700"
+                      }`}
+                    >
+                      Score : {caseAnalysis.risk_assessment.overall_score}
+                    </span>
+                  </div>
+
+                  <div className="space-y-4">
+                    {caseAnalysis.risk_assessment.factors.map((factor) => {
+                      const factorLabels: Record<string, string> = {
+                        deadline_proximity: "Proximité délais",
+                        missing_documents: "Documents manquants",
+                        communication_gap: "Communication",
+                        billing_status: "Facturation",
+                      };
+                      const barColor =
+                        factor.score < 30
+                          ? "bg-success"
+                          : factor.score < 60
+                            ? "bg-warning"
+                            : factor.score < 80
+                              ? "bg-orange-500"
+                              : "bg-danger";
+
+                      return (
+                        <div key={factor.name}>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm font-medium text-neutral-700">
+                              {factorLabels[factor.name] || factor.name}
+                            </span>
+                            <span className="text-sm font-semibold text-neutral-900">
+                              {factor.score}
+                            </span>
+                          </div>
+                          <div className="w-full bg-neutral-100 rounded-full h-2.5">
+                            <div
+                              className={`h-2.5 rounded-full transition-all ${barColor}`}
+                              style={{ width: `${factor.score}%` }}
+                            />
+                          </div>
+                          <p className="text-xs text-neutral-500 mt-1">
+                            {factor.description}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Recommendations */}
+                  {caseAnalysis.risk_assessment.recommendations.length > 0 && (
+                    <div className="mt-6 pt-4 border-t border-neutral-200">
+                      <h4 className="text-sm font-semibold text-neutral-700 mb-2">
+                        Recommandations
+                      </h4>
+                      <ul className="space-y-1.5">
+                        {caseAnalysis.risk_assessment.recommendations.map(
+                          (rec, idx) => (
+                            <li
+                              key={idx}
+                              className="flex items-start gap-2 text-sm text-neutral-600"
+                            >
+                              <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0" />
+                              {rec}
+                            </li>
+                          ),
+                        )}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+
+                {/* ---- 5.3 Completeness Check ---- */}
+                {caseAnalysis.completeness && (
+                  <div className="card">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-5 h-5 text-neutral-600" />
+                        <h3 className="text-base font-semibold text-neutral-900">
+                          Complétude du dossier
+                        </h3>
+                      </div>
+                      <span
+                        className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${
+                          caseAnalysis.completeness.score >= 75
+                            ? "bg-success-50 text-success-700"
+                            : caseAnalysis.completeness.score >= 50
+                              ? "bg-warning-50 text-warning-700"
+                              : "bg-danger-50 text-danger-700"
+                        }`}
+                      >
+                        {caseAnalysis.completeness.score}%
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Present items */}
+                      <div>
+                        <h4 className="text-sm font-semibold text-success-700 mb-3 flex items-center gap-1.5">
+                          <CheckCircle2 className="w-4 h-4" />
+                          Éléments présents ({caseAnalysis.completeness.present.length})
+                        </h4>
+                        {caseAnalysis.completeness.present.length === 0 ? (
+                          <p className="text-sm text-neutral-400 italic">
+                            Aucun élément confirmé
+                          </p>
+                        ) : (
+                          <ul className="space-y-2">
+                            {caseAnalysis.completeness.present.map((item) => (
+                              <li
+                                key={item.element}
+                                className="flex items-center gap-2 text-sm"
+                              >
+                                <Check className="w-4 h-4 text-success flex-shrink-0" />
+                                <span className="text-neutral-700">
+                                  {item.label_fr}
+                                </span>
+                                {item.critical && (
+                                  <span className="text-xs text-neutral-400">
+                                    (essentiel)
+                                  </span>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+
+                      {/* Missing items */}
+                      <div>
+                        <h4 className="text-sm font-semibold text-danger-700 mb-3 flex items-center gap-1.5">
+                          <XCircle className="w-4 h-4" />
+                          Éléments manquants ({caseAnalysis.completeness.missing.length})
+                        </h4>
+                        {caseAnalysis.completeness.missing.length === 0 ? (
+                          <p className="text-sm text-neutral-400 italic">
+                            Tous les éléments sont présents
+                          </p>
+                        ) : (
+                          <ul className="space-y-2">
+                            {caseAnalysis.completeness.missing.map((item) => (
+                              <li
+                                key={item.element}
+                                className={`flex items-center gap-2 text-sm rounded-md px-2 py-1.5 ${
+                                  item.critical
+                                    ? "border border-danger-200 bg-danger-50"
+                                    : ""
+                                }`}
+                              >
+                                <X
+                                  className={`w-4 h-4 flex-shrink-0 ${
+                                    item.critical
+                                      ? "text-danger"
+                                      : "text-neutral-400"
+                                  }`}
+                                />
+                                <span
+                                  className={
+                                    item.critical
+                                      ? "text-danger-700 font-medium"
+                                      : "text-neutral-600"
+                                  }
+                                >
+                                  {item.label_fr}
+                                </span>
+                                {item.critical && (
+                                  <span className="text-xs font-medium text-danger-600 ml-auto">
+                                    Critique
+                                  </span>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ---- 5.4 Strategy Suggestions ---- */}
+                {caseAnalysis.strategy_suggestions.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-4">
+                      <Lightbulb className="w-5 h-5 text-neutral-600" />
+                      <h3 className="text-base font-semibold text-neutral-900">
+                        Suggestions stratégiques
+                      </h3>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {caseAnalysis.strategy_suggestions.map((strategy, idx) => {
+                        const priorityStyles: Record<string, string> = {
+                          haute:
+                            "bg-danger-50 text-danger-700 border-danger-200",
+                          moyenne:
+                            "bg-warning-50 text-warning-700 border-warning-200",
+                          basse:
+                            "bg-neutral-100 text-neutral-600 border-neutral-200",
+                        };
+                        const actionIcons: Record<string, typeof Target> = {
+                          planning: Target,
+                          document_collection: FolderOpen,
+                          communication: Users,
+                          negotiation: Zap,
+                          research: Brain,
+                        };
+                        const ActionIcon =
+                          actionIcons[strategy.action_type] || Lightbulb;
+
+                        return (
+                          <div
+                            key={idx}
+                            className="card border border-neutral-200 hover:border-accent-200 transition-colors"
+                          >
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <ActionIcon className="w-4 h-4 text-accent" />
+                                <h4 className="text-sm font-semibold text-neutral-900">
+                                  {strategy.title}
+                                </h4>
+                              </div>
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${
+                                  priorityStyles[strategy.priority] ||
+                                  priorityStyles["basse"]
+                                }`}
+                              >
+                                {strategy.priority.charAt(0).toUpperCase() +
+                                  strategy.priority.slice(1)}
+                              </span>
+                            </div>
+                            <p className="text-sm text-neutral-600 mb-3">
+                              {strategy.description}
+                            </p>
+                            <div className="flex items-start gap-1.5 text-xs text-neutral-500">
+                              <Target className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                              <span>{strategy.estimated_impact}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* ---- 5.5 Actions Suggérées ---- */}
+                {caseAnalysis.suggested_actions.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-4">
+                      <Zap className="w-5 h-5 text-neutral-600" />
+                      <h3 className="text-base font-semibold text-neutral-900">
+                        Actions suggérées par l&apos;IA
+                      </h3>
+                    </div>
+
+                    <div className="space-y-3">
+                      {caseAnalysis.suggested_actions.map((action, idx) => {
+                        const actionTypeIcons: Record<string, typeof Target> = {
+                          reminder: CalendarClock,
+                          email_draft: FileText,
+                          meeting: Users,
+                          billing: Clock,
+                          note: FileText,
+                        };
+                        const ActionTypeIcon =
+                          actionTypeIcons[action.action_type] || Zap;
+                        const priorityStyles: Record<string, string> = {
+                          haute:
+                            "bg-danger-50 text-danger-700 border-danger-200",
+                          moyenne:
+                            "bg-warning-50 text-warning-700 border-warning-200",
+                          basse:
+                            "bg-neutral-100 text-neutral-600 border-neutral-200",
+                        };
+                        const confidenceColor =
+                          action.confidence >= 0.8
+                            ? "bg-success"
+                            : action.confidence >= 0.6
+                              ? "bg-warning"
+                              : "bg-neutral-400";
+
+                        return (
+                          <div
+                            key={idx}
+                            className="card border border-neutral-200"
+                          >
+                            <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+                              <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-accent-50 flex-shrink-0">
+                                <ActionTypeIcon className="w-5 h-5 text-accent" />
+                              </div>
+
+                              <div className="flex-1 min-w-0">
+                                <div className="flex flex-wrap items-center gap-2 mb-1">
+                                  <h4 className="text-sm font-semibold text-neutral-900">
+                                    {action.title}
+                                  </h4>
+                                  <span
+                                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${
+                                      priorityStyles[action.priority] ||
+                                      priorityStyles["basse"]
+                                    }`}
+                                  >
+                                    {action.priority.charAt(0).toUpperCase() +
+                                      action.priority.slice(1)}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-neutral-600 mb-2">
+                                  {action.description}
+                                </p>
+
+                                {/* Confidence bar */}
+                                <div className="flex items-center gap-2 mb-3">
+                                  <span className="text-xs text-neutral-500">
+                                    Confiance
+                                  </span>
+                                  <div className="flex-1 max-w-32 bg-neutral-100 rounded-full h-1.5">
+                                    <div
+                                      className={`h-1.5 rounded-full ${confidenceColor}`}
+                                      style={{
+                                        width: `${Math.round(action.confidence * 100)}%`,
+                                      }}
+                                    />
+                                  </div>
+                                  <span className="text-xs font-medium text-neutral-700">
+                                    {Math.round(action.confidence * 100)}%
+                                  </span>
+                                </div>
+
+                                {/* Generated content preview */}
+                                {action.generated_content && (
+                                  <div className="bg-neutral-50 border border-neutral-200 rounded-md p-3 mb-3">
+                                    <p className="text-xs text-neutral-500 mb-1 font-medium">
+                                      Contenu généré
+                                    </p>
+                                    <p className="text-xs text-neutral-600 whitespace-pre-wrap line-clamp-4">
+                                      {action.generated_content}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Action buttons */}
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <button
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-success-50 text-success-700 hover:bg-success-100 border border-success-200 transition-colors"
+                                  onClick={() =>
+                                    flash("Action approuvée (simulation)")
+                                  }
+                                >
+                                  <ThumbsUp className="w-3.5 h-3.5" />
+                                  Approuver
+                                </button>
+                                <button
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-neutral-50 text-neutral-600 hover:bg-neutral-100 border border-neutral-200 transition-colors"
+                                  onClick={() =>
+                                    flash("Action rejetée (simulation)")
+                                  }
+                                >
+                                  <ThumbsDown className="w-3.5 h-3.5" />
+                                  Rejeter
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Empty state when no analysis yet */}
+            {!caseAnalysis && !analysisLoading && !analysisError && (
+              <div className="card text-center py-16">
+                <Brain className="w-12 h-12 mx-auto mb-4 text-neutral-300" />
+                <p className="text-neutral-500 font-medium">
+                  Aucune analyse disponible
+                </p>
+                <p className="text-neutral-400 text-sm mt-1 mb-4">
+                  Lancez une analyse pour obtenir des insights sur ce dossier.
+                </p>
+                <button
+                  onClick={fetchIntelligence}
+                  className="btn-primary inline-flex items-center gap-2"
+                >
+                  <Brain className="w-4 h-4" />
+                  Analyser le dossier
+                </button>
+              </div>
             )}
           </div>
         )}

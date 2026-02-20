@@ -60,6 +60,7 @@ const NAV_GROUPS = [
       { label: "Recherche", href: "/dashboard/search", icon: Search },
       { label: "Graphe", href: "/dashboard/graph", icon: Share2 },
       { label: "Sentinel", href: "/dashboard/sentinel", icon: ShieldAlert },
+      { label: "Intelligence IA", href: "/dashboard/brain", icon: Brain },
       { label: "Hub IA", href: "/dashboard/ai", icon: Brain },
       { label: "Legal RAG", href: "/dashboard/legal", icon: Scale },
       { label: "Transcription", href: "/dashboard/ai/transcription", icon: Mic },
