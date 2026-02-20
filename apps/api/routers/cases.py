@@ -108,6 +108,18 @@ async def update_case(
     return CaseResponse.model_validate(case)
 
 
+@router.delete("/{case_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_case(
+    case_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db_session),
+) -> None:
+    """Soft-delete a case (sets status to 'archived')."""
+    deleted = await case_service.delete_case(session, case_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Case not found")
+    await session.commit()
+
+
 @router.get("/{case_id}/contacts")
 async def get_case_contacts(
     case_id: uuid.UUID,

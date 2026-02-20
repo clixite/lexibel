@@ -340,17 +340,28 @@ async def predict_jurisprudence(
         relevant_articles=body.relevant_articles,
     )
 
-    # Add similar cases from search
-    similar_cases = [
-        {
-            "source": r.source,
-            "similarity_score": float(r.score),
-            "outcome": "Unknown",  # Would extract from metadata in production
-            "date": r.date_published.isoformat() if r.date_published else None,
-            "excerpt": r.chunk_text[:200],
-        }
-        for r in search_result.results[:5]
-    ]
+    # Add similar cases from search — extract outcome from source metadata when available
+    similar_cases = []
+    for r in search_result.results[:5]:
+        # Try to extract outcome from chunk text or source metadata
+        outcome = "Non déterminé"
+        text_lower = r.chunk_text.lower()
+        if any(w in text_lower for w in ["condamné", "coupable", "rejeté"]):
+            outcome = "Défavorable"
+        elif any(w in text_lower for w in ["acquitté", "accueilli", "favorable"]):
+            outcome = "Favorable"
+        elif any(w in text_lower for w in ["partiel", "mitigé"]):
+            outcome = "Partiellement favorable"
+
+        similar_cases.append(
+            {
+                "source": r.source,
+                "similarity_score": float(r.score),
+                "outcome": outcome,
+                "date": r.date_published.isoformat() if r.date_published else None,
+                "excerpt": r.chunk_text[:200],
+            }
+        )
 
     reasoning = f"""Basé sur l'analyse de {len(similar_cases)} cas similaires dans la jurisprudence belge.
 Les facteurs pris en compte incluent les articles de loi mentionnés et les circonstances factuelles."""

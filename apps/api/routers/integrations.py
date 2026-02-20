@@ -233,7 +233,7 @@ async def trigger_outlook_sync(
         return OutlookSyncResponse(
             status="ok",
             items_synced=0,
-            message="No new emails found (stub — Graph API not yet configured)",
+            message="No new emails — configure Microsoft Graph API credentials to enable sync",
         )
 
     items = await outlook_service.create_inbox_items_from_emails(tenant_id, emails)

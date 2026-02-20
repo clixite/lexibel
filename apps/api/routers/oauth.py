@@ -304,9 +304,13 @@ async def get_oauth_config(
 
     Only returns client IDs (not secrets).
     """
-    # TODO: Add admin role check
-    # if user.role != "admin":
-    #     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    # Admin role check
+    user_role = user.role if hasattr(user, "role") else user.get("role", "")
+    if user_role not in ("admin", "super_admin", "partner"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required",
+        )
 
     result = await session.execute(select(Tenant).where(Tenant.id == tenant_id))
     tenant = result.scalar_one_or_none()
@@ -337,9 +341,13 @@ async def update_oauth_config(
 
     Admin only.
     """
-    # TODO: Add admin role check
-    # if user.role != "admin":
-    #     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    # Admin role check
+    user_role = user.role if hasattr(user, "role") else user.get("role", "")
+    if user_role not in ("admin", "super_admin", "partner"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required",
+        )
 
     result = await session.execute(select(Tenant).where(Tenant.id == tenant_id))
     tenant = result.scalar_one_or_none()

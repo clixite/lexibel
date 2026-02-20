@@ -71,6 +71,48 @@ async def get_event_with_evidence(
     return event, links
 
 
+async def update_event(
+    session: AsyncSession,
+    event_id: uuid.UUID,
+    **kwargs,
+) -> InteractionEvent | None:
+    """Update an event's mutable fields (title, body, event_type, metadata)."""
+    event = await get_event(session, event_id)
+    if event is None:
+        return None
+
+    for key, value in kwargs.items():
+        if value is not None:
+            if key == "metadata":
+                setattr(event, "metadata_", value)
+            else:
+                setattr(event, key, value)
+
+    await session.flush()
+    await session.refresh(event)
+    return event
+
+
+async def delete_event(
+    session: AsyncSession,
+    event_id: uuid.UUID,
+) -> bool:
+    """Delete an event and its evidence links."""
+    event = await get_event(session, event_id)
+    if event is None:
+        return False
+
+    # Delete evidence links first
+    from sqlalchemy import delete as sa_delete
+
+    await session.execute(
+        sa_delete(EvidenceLink).where(EvidenceLink.interaction_event_id == event_id)
+    )
+    await session.delete(event)
+    await session.flush()
+    return True
+
+
 async def list_by_case(
     session: AsyncSession,
     case_id: uuid.UUID,

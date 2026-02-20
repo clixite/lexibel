@@ -131,6 +131,18 @@ async def get_contact_cases(
     }
 
 
+@router.delete("/{contact_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_contact(
+    contact_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db_session),
+) -> None:
+    """Delete a contact."""
+    deleted = await contact_service.delete_contact(session, contact_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Contact not found")
+    await session.commit()
+
+
 @router.patch("/{contact_id}", response_model=ContactResponse)
 async def update_contact(
     contact_id: uuid.UUID,

@@ -158,6 +158,43 @@ async def list_invoices(
     return items, total
 
 
+async def update_invoice(
+    session: AsyncSession,
+    invoice_id: uuid.UUID,
+    **kwargs,
+) -> Invoice | None:
+    """Update a draft invoice. Only draft invoices can be modified."""
+    invoice = await get_invoice(session, invoice_id)
+    if invoice is None:
+        return None
+
+    if invoice.status != "draft":
+        return invoice  # Only draft invoices can be updated
+
+    for key, value in kwargs.items():
+        if value is not None and hasattr(invoice, key):
+            setattr(invoice, key, value)
+
+    await session.flush()
+    await session.refresh(invoice)
+    return invoice
+
+
+async def cancel_invoice(
+    session: AsyncSession,
+    invoice_id: uuid.UUID,
+) -> Invoice | None:
+    """Cancel an invoice (soft delete). Sets status to 'cancelled'."""
+    invoice = await get_invoice(session, invoice_id)
+    if invoice is None:
+        return None
+
+    invoice.status = "cancelled"
+    await session.flush()
+    await session.refresh(invoice)
+    return invoice
+
+
 def generate_peppol_ubl(
     invoice: Invoice,
     lines: list[InvoiceLine],

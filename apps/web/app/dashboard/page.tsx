@@ -185,153 +185,14 @@ const FALLBACK_BRAIN: BrainSummaryResponse = {
   stats: {},
 };
 
-const PLACEHOLDER_DEADLINES: CriticalDeadline[] = [
-  {
-    id: "ph-1",
-    title: "Conclusions -- Dupont c/ Immobel",
-    case_name: "Dupont c/ Immobel SA",
-    due_date: "2026-02-21",
-    days_remaining: 2,
-    urgency: "critical",
-  },
-  {
-    id: "ph-2",
-    title: "Audience -- TPI Bruxelles",
-    case_name: "TPI Bruxelles - Janssens",
-    due_date: "2026-02-24",
-    days_remaining: 5,
-    urgency: "urgent",
-  },
-  {
-    id: "ph-3",
-    title: "Delai d'appel -- Janssens",
-    case_name: "Janssens c/ Etat belge",
-    due_date: "2026-02-28",
-    days_remaining: 9,
-    urgency: "attention",
-  },
-  {
-    id: "ph-4",
-    title: "Depot de bilan -- SA Construct",
-    case_name: "SA Construct - Faillite",
-    due_date: "2026-03-05",
-    days_remaining: 14,
-    urgency: "normal",
-  },
-  {
-    id: "ph-5",
-    title: "Mediation -- Famille Peeters",
-    case_name: "Peeters - Divorce",
-    due_date: "2026-03-10",
-    days_remaining: 19,
-    urgency: "normal",
-  },
-];
-
-const PLACEHOLDER_ACTIONS: BrainAction[] = [
-  {
-    id: "pa-1",
-    type: "alert",
-    title: "Risque de prescription -- Dossier Lambert",
-    description:
-      "Le delai de prescription de 5 ans expire dans 12 jours. Une action en justice doit etre initiee avant le 3 mars 2026.",
-    priority: "critical",
-    case_name: "Lambert c/ AXA Belgium",
-  },
-  {
-    id: "pa-2",
-    type: "draft",
-    title: "Projet de conclusions a relire",
-    description:
-      "Les conclusions de synthese pour le dossier Dupont c/ Immobel sont pretes pour relecture. Echeance de depot : 21 fevrier.",
-    priority: "high",
-    case_name: "Dupont c/ Immobel SA",
-  },
-  {
-    id: "pa-3",
-    type: "suggestion",
-    title: "Jurisprudence pertinente detectee",
-    description:
-      "Un nouvel arret de la Cour de cassation (C.24.0312.F) pourrait renforcer votre argumentation dans le dossier Janssens.",
-    priority: "medium",
-    case_name: "Janssens c/ Etat belge",
-  },
-  {
-    id: "pa-4",
-    type: "follow_up",
-    title: "Relance client -- SA Construct",
-    description:
-      "Aucune reponse du client depuis 14 jours concernant les documents requis pour la procedure de faillite.",
-    priority: "medium",
-    case_name: "SA Construct - Faillite",
-  },
-];
-
-const PLACEHOLDER_INSIGHTS: BrainInsight[] = [
-  {
-    id: "pi-1",
-    severity: "critical",
-    title: "Conflit d'interets potentiel",
-    description:
-      "Le nouveau contact M. Verhoeven est lie a la partie adverse dans le dossier Dupont. Verification recommandee.",
-    case_name: "Dupont c/ Immobel SA",
-  },
-  {
-    id: "pi-2",
-    severity: "high",
-    title: "Surcharge la semaine prochaine",
-    description:
-      "7 echeances concentrees entre le 24 et le 28 fevrier. Envisagez de deleguer ou reporter certaines taches.",
-  },
-  {
-    id: "pi-3",
-    severity: "medium",
-    title: "Honoraires impayees -- 3 dossiers",
-    description:
-      "Les factures des dossiers Lambert, Peeters et SA Construct sont en retard de plus de 30 jours.",
-  },
-  {
-    id: "pi-4",
-    severity: "low",
-    title: "Taux de reussite en hausse",
-    description:
-      "Votre taux de reussite est passe de 72% a 81% ce trimestre. La specialisation en droit commercial semble porter ses fruits.",
-  },
-];
-
-const PLACEHOLDER_WORKLOAD: WorkloadWeek[] = [
-  { week_label: "17-21 fev", deadline_count: 4, capacity: 5 },
-  { week_label: "24-28 fev", deadline_count: 7, capacity: 5 },
-  { week_label: "3-7 mar", deadline_count: 3, capacity: 5 },
-  { week_label: "10-14 mar", deadline_count: 2, capacity: 5 },
-];
-
 const FALLBACK_BILLING: BillingReportResponse = {
-  total_unbilled_hours: 45.5,
-  total_unbilled_amount: 6825.0,
-  recovery_rate: 0.82,
+  total_unbilled_hours: 0,
+  total_unbilled_amount: 0,
+  recovery_rate: 0,
   anomalies: [],
   invoice_suggestions: [],
   recommendations: [],
 };
-
-const MOCK_REVENUE_TREND: RevenueTrendPoint[] = [
-  { month: "Sep", facture: 12500, encaisse: 10800 },
-  { month: "Oct", facture: 14200, encaisse: 11500 },
-  { month: "Nov", facture: 11800, encaisse: 12900 },
-  { month: "Dec", facture: 15600, encaisse: 13200 },
-  { month: "Jan", facture: 13400, encaisse: 12100 },
-  { month: "Fev", facture: 16100, encaisse: 14500 },
-];
-
-const MOCK_CASE_DISTRIBUTION: CaseDistributionSlice[] = [
-  { name: "Civil", value: 12 },
-  { name: "Penal", value: 5 },
-  { name: "Commercial", value: 8 },
-  { name: "Famille", value: 6 },
-  { name: "Administratif", value: 4 },
-  { name: "Immobilier", value: 3 },
-];
 
 const PIE_COLORS = [
   "#6366f1", // accent-500
@@ -342,28 +203,6 @@ const PIE_COLORS = [
   "#06b6d4", // cyan-500
 ];
 
-const MOCK_BILLING_ALERTS: BillingAlert[] = [
-  {
-    id: "ba-1",
-    message: "12 heures non facturees sur Dupont c/ Immobel",
-    severity: "warning",
-  },
-  {
-    id: "ba-2",
-    message: "Facture #2026-008 impayee depuis 45 jours",
-    severity: "danger",
-  },
-  {
-    id: "ba-3",
-    message: "Taux horaire inferieur au seuil sur dossier SA Construct",
-    severity: "warning",
-  },
-  {
-    id: "ba-4",
-    message: "Provision insuffisante -- Janssens c/ Etat belge",
-    severity: "danger",
-  },
-];
 
 /* ─────────────────────────── Helpers ─────────────────────────── */
 
@@ -460,7 +299,6 @@ export default function DashboardPage() {
 
   // Brain data
   const [brainData, setBrainData] = useState<BrainSummaryResponse>(FALLBACK_BRAIN);
-  const [usePlaceholders, setUsePlaceholders] = useState(false);
 
   // Existing data
   const [recentCases, setRecentCases] = useState<RecentCase[]>([]);
@@ -476,6 +314,11 @@ export default function DashboardPage() {
   const [billingReport, setBillingReport] = useState<BillingReportResponse>(FALLBACK_BILLING);
   // New: Today's calendar events
   const [todayEvents, setTodayEvents] = useState<CalendarEvent[]>([]);
+  // Revenue trend & case distribution from API
+  const [revenueTrend, setRevenueTrend] = useState<RevenueTrendPoint[]>([]);
+  const [caseDistribution, setCaseDistribution] = useState<CaseDistributionSlice[]>([]);
+  // Billing alerts from API
+  const [billingAlerts, setBillingAlerts] = useState<BillingAlert[]>([]);
 
   const fetchData = useCallback(async () => {
     if (!accessToken) return;
@@ -491,13 +334,10 @@ export default function DashboardPage() {
       const afterParam = todayStart.toISOString().split("T")[0];
       const beforeParam = tomorrowStart.toISOString().split("T")[0];
 
-      const [brainRes, statsRes, recentRes, inboxRes, billingRes, calendarRes] = await Promise.all([
+      const [brainRes, statsRes, recentRes, inboxRes, billingRes, calendarRes, revenueTrendRes, caseDistRes, billingAlertsRes] = await Promise.all([
         apiFetch<BrainSummaryResponse>("/brain/summary", accessToken, {
           tenantId,
-        }).catch(() => {
-          setUsePlaceholders(true);
-          return FALLBACK_BRAIN;
-        }),
+        }).catch(() => FALLBACK_BRAIN),
         apiFetch<DashboardResponse>("/dashboard/stats", accessToken, {
           tenantId,
         }).catch(() => ({})),
@@ -519,30 +359,21 @@ export default function DashboardPage() {
           accessToken,
           { tenantId }
         ).catch(() => ({ items: [] })),
+        apiFetch<{ items: RevenueTrendPoint[] }>("/dashboard/stats/revenue-trend", accessToken, {
+          tenantId,
+        }).catch(() => ({ items: [] })),
+        apiFetch<{ items: CaseDistributionSlice[] }>("/dashboard/stats/case-distribution", accessToken, {
+          tenantId,
+        }).catch(() => ({ items: [] })),
+        apiFetch<{ items: BillingAlert[] }>("/brain/billing/alerts", accessToken, {
+          tenantId,
+        }).catch(() => ({ items: [] })),
       ]);
 
       setBrainData(brainRes);
 
-      // Determine deadlines, actions, insights - use API data or placeholders
-      const isBrainEmpty =
-        brainRes.critical_deadlines.length === 0 &&
-        brainRes.pending_actions.length === 0 &&
-        brainRes.recent_insights.length === 0;
-
-      if (isBrainEmpty) {
-        setUsePlaceholders(true);
-      }
-
-      setInsights(
-        brainRes.recent_insights.length > 0
-          ? brainRes.recent_insights
-          : PLACEHOLDER_INSIGHTS
-      );
-      setActions(
-        brainRes.pending_actions.length > 0
-          ? brainRes.pending_actions
-          : PLACEHOLDER_ACTIONS
-      );
+      setInsights(brainRes.recent_insights);
+      setActions(brainRes.pending_actions);
 
       setDashboardStats(
         "stats" in statsRes && (statsRes as DashboardResponse).stats
@@ -560,6 +391,9 @@ export default function DashboardPage() {
       setInboxItems(inboxRes.items || []);
       setBillingReport(billingRes);
       setTodayEvents(calendarRes.items || []);
+      setRevenueTrend(revenueTrendRes.items || []);
+      setCaseDistribution(caseDistRes.items || []);
+      setBillingAlerts(billingAlertsRes.items || []);
     } catch {
       setError("Impossible de charger les donnees du tableau de bord");
     } finally {
@@ -637,15 +471,9 @@ export default function DashboardPage() {
     year: "numeric",
   });
 
-  const deadlines =
-    brainData.critical_deadlines.length > 0
-      ? brainData.critical_deadlines
-      : PLACEHOLDER_DEADLINES;
+  const deadlines = brainData.critical_deadlines;
 
-  const workload =
-    brainData.workload_next_weeks.length > 0
-      ? brainData.workload_next_weeks
-      : PLACEHOLDER_WORKLOAD;
+  const workload = brainData.workload_next_weeks;
 
   const totalActiveCases =
     brainData.total_active_cases || dashboardStats?.total_cases || 0;
@@ -653,14 +481,11 @@ export default function DashboardPage() {
   const criticalDeadlinesCount = deadlines.filter(
     (d) => d.days_remaining <= 7
   ).length;
-  const healthScore =
-    brainData.health_score ||
-    (usePlaceholders ? 74 : 0);
+  const healthScore = brainData.health_score || 0;
 
   const riskCases =
     (brainData.risk_distribution.high || 0) +
-    (brainData.risk_distribution.critical || 0) ||
-    (usePlaceholders ? 3 : 0);
+    (brainData.risk_distribution.critical || 0);
 
   const maxWorkload = Math.max(
     ...workload.map((w) => Math.max(w.deadline_count, w.capacity)),
@@ -729,7 +554,7 @@ export default function DashboardPage() {
           </div>
           {riskCases > 0 && (
             <p className="text-xs text-danger-600 mt-2 font-medium">
-              {brainData.risk_distribution.critical || (usePlaceholders ? 1 : 0)}{" "}
+              {brainData.risk_distribution.critical || 0}{" "}
               critique(s)
             </p>
           )}
@@ -1043,59 +868,67 @@ export default function DashboardPage() {
               </div>
             }
           >
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={MOCK_REVENUE_TREND}>
-                  <XAxis
-                    dataKey="month"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 12, fill: "#737373" }}
-                  />
-                  <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 12, fill: "#737373" }}
-                    tickFormatter={(v: number) =>
-                      `${(v / 1000).toFixed(0)}k`
-                    }
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "#fff",
-                      border: "1px solid #e5e5e5",
-                      borderRadius: "8px",
-                      fontSize: "12px",
-                    }}
-                    formatter={(value) => [
-                      new Intl.NumberFormat("fr-BE", {
-                        style: "currency",
-                        currency: "EUR",
-                        minimumFractionDigits: 0,
-                      }).format(value as number),
-                    ]}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="facture"
-                    name="Facture"
-                    stroke="#6366f1"
-                    strokeWidth={2}
-                    dot={{ r: 4, fill: "#6366f1" }}
-                    activeDot={{ r: 6 }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="encaisse"
-                    name="Encaisse"
-                    stroke="#22c55e"
-                    strokeWidth={2}
-                    dot={{ r: 4, fill: "#22c55e" }}
-                    activeDot={{ r: 6 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            {revenueTrend.length === 0 ? (
+              <EmptyState
+                title="Aucune donnee"
+                description="Les donnees de chiffre d'affaires apparaitront ici"
+                icon={<TrendingUp className="h-12 w-12 text-neutral-300" />}
+              />
+            ) : (
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={revenueTrend}>
+                    <XAxis
+                      dataKey="month"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 12, fill: "#737373" }}
+                    />
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 12, fill: "#737373" }}
+                      tickFormatter={(v: number) =>
+                        `${(v / 1000).toFixed(0)}k`
+                      }
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "#fff",
+                        border: "1px solid #e5e5e5",
+                        borderRadius: "8px",
+                        fontSize: "12px",
+                      }}
+                      formatter={(value) => [
+                        new Intl.NumberFormat("fr-BE", {
+                          style: "currency",
+                          currency: "EUR",
+                          minimumFractionDigits: 0,
+                        }).format(value as number),
+                      ]}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="facture"
+                      name="Facture"
+                      stroke="#6366f1"
+                      strokeWidth={2}
+                      dot={{ r: 4, fill: "#6366f1" }}
+                      activeDot={{ r: 6 }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="encaisse"
+                      name="Encaisse"
+                      stroke="#22c55e"
+                      strokeWidth={2}
+                      dot={{ r: 4, fill: "#22c55e" }}
+                      activeDot={{ r: 6 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </Card>
 
           {/* Prochaines echeances */}
@@ -1303,55 +1136,63 @@ export default function DashboardPage() {
                   </h3>
                 </div>
                 <Badge variant="default" size="sm">
-                  {MOCK_CASE_DISTRIBUTION.reduce((s, c) => s + c.value, 0)} total
+                  {caseDistribution.reduce((s, c) => s + c.value, 0)} total
                 </Badge>
               </div>
             }
           >
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={MOCK_CASE_DISTRIBUTION}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    innerRadius={40}
-                    paddingAngle={2}
-                    dataKey="value"
-                    label={({ name, percent }) =>
-                      `${name || ""} ${((percent as number) * 100).toFixed(0)}%`
-                    }
-                    labelLine={{ strokeWidth: 1 }}
-                  >
-                    {MOCK_CASE_DISTRIBUTION.map((_, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={PIE_COLORS[index % PIE_COLORS.length]}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "#fff",
-                      border: "1px solid #e5e5e5",
-                      borderRadius: "8px",
-                      fontSize: "12px",
-                    }}
-                    formatter={(value) => [`${value} dossiers`]}
-                  />
-                  <Legend
-                    verticalAlign="bottom"
-                    height={36}
-                    iconType="circle"
-                    iconSize={8}
-                    formatter={(value: string) => (
-                      <span className="text-xs text-neutral-600">{value}</span>
-                    )}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
+            {caseDistribution.length === 0 ? (
+              <EmptyState
+                title="Aucune donnee"
+                description="La repartition des dossiers apparaitra ici"
+                icon={<Briefcase className="h-12 w-12 text-neutral-300" />}
+              />
+            ) : (
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={caseDistribution}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={80}
+                      innerRadius={40}
+                      paddingAngle={2}
+                      dataKey="value"
+                      label={({ name, percent }) =>
+                        `${name || ""} ${((percent as number) * 100).toFixed(0)}%`
+                      }
+                      labelLine={{ strokeWidth: 1 }}
+                    >
+                      {caseDistribution.map((_, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={PIE_COLORS[index % PIE_COLORS.length]}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "#fff",
+                        border: "1px solid #e5e5e5",
+                        borderRadius: "8px",
+                        fontSize: "12px",
+                      }}
+                      formatter={(value) => [`${value} dossiers`]}
+                    />
+                    <Legend
+                      verticalAlign="bottom"
+                      height={36}
+                      iconType="circle"
+                      iconSize={8}
+                      formatter={(value: string) => (
+                        <span className="text-xs text-neutral-600">{value}</span>
+                      )}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </Card>
 
           {/* Alertes facturation */}
@@ -1375,45 +1216,53 @@ export default function DashboardPage() {
               </div>
             }
           >
-            <div className="space-y-2">
-              {MOCK_BILLING_ALERTS.map((alert) => (
-                <div
-                  key={alert.id}
-                  className={`flex items-start gap-3 p-3 rounded border transition-colors duration-150 ${
-                    alert.severity === "danger"
-                      ? "border-danger-200 bg-danger-50/50"
-                      : "border-warning-200 bg-warning-50/30"
-                  }`}
-                >
+            {billingAlerts.length === 0 ? (
+              <EmptyState
+                title="Aucune alerte"
+                description="Pas d'alertes de facturation pour le moment"
+                icon={<AlertTriangle className="h-12 w-12 text-neutral-300" />}
+              />
+            ) : (
+              <div className="space-y-2">
+                {billingAlerts.map((alert) => (
                   <div
-                    className={`p-1.5 rounded flex-shrink-0 mt-0.5 ${
+                    key={alert.id}
+                    className={`flex items-start gap-3 p-3 rounded border transition-colors duration-150 ${
                       alert.severity === "danger"
-                        ? "bg-danger-100"
-                        : "bg-warning-100"
+                        ? "border-danger-200 bg-danger-50/50"
+                        : "border-warning-200 bg-warning-50/30"
                     }`}
                   >
-                    <AlertTriangle
-                      className={`w-3.5 h-3.5 ${
+                    <div
+                      className={`p-1.5 rounded flex-shrink-0 mt-0.5 ${
                         alert.severity === "danger"
-                          ? "text-danger-600"
-                          : "text-warning-600"
+                          ? "bg-danger-100"
+                          : "bg-warning-100"
                       }`}
-                    />
+                    >
+                      <AlertTriangle
+                        className={`w-3.5 h-3.5 ${
+                          alert.severity === "danger"
+                            ? "text-danger-600"
+                            : "text-warning-600"
+                        }`}
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-neutral-800 leading-relaxed">
+                        {alert.message}
+                      </p>
+                    </div>
+                    <Badge
+                      variant={alert.severity === "danger" ? "danger" : "warning"}
+                      size="sm"
+                    >
+                      {alert.severity === "danger" ? "Critique" : "Attention"}
+                    </Badge>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-neutral-800 leading-relaxed">
-                      {alert.message}
-                    </p>
-                  </div>
-                  <Badge
-                    variant={alert.severity === "danger" ? "danger" : "warning"}
-                    size="sm"
-                  >
-                    {alert.severity === "danger" ? "Critique" : "Attention"}
-                  </Badge>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </Card>
 
           {/* Insights IA */}
@@ -1610,6 +1459,13 @@ export default function DashboardPage() {
           </div>
         }
       >
+        {workload.length === 0 ? (
+          <EmptyState
+            title="Aucune donnee"
+            description="Les donnees de charge de travail apparaitront ici"
+            icon={<Briefcase className="h-12 w-12 text-neutral-300" />}
+          />
+        ) : (
         <div className="space-y-4">
           {workload.map((week, index) => {
             const isOverloaded = week.deadline_count > week.capacity;
@@ -1664,6 +1520,7 @@ export default function DashboardPage() {
             );
           })}
         </div>
+        )}
       </Card>
     </div>
   );

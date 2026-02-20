@@ -71,122 +71,6 @@ interface BrainData {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Mock data generator                                                */
-/* ------------------------------------------------------------------ */
-
-function generateMockBrainData(): BrainData {
-  return {
-    pending_actions: [
-      {
-        id: "mock-1",
-        case_id: "mock-case-1",
-        action_type: "draft",
-        title: "Rediger conclusions en reponse",
-        description:
-          "Le delai pour les conclusions en reponse expire dans 5 jours. Il est recommande de preparer un brouillon.",
-        priority: "urgent",
-        confidence_score: 0.87,
-        trigger_source: "deadline",
-        status: "pending",
-        created_at: new Date().toISOString(),
-      },
-      {
-        id: "mock-2",
-        case_id: "mock-case-2",
-        action_type: "alert",
-        title: "Contact client requis",
-        description:
-          "Aucun contact avec le client depuis 14 jours. Un suivi est recommande.",
-        priority: "normal",
-        confidence_score: 0.75,
-        trigger_source: "communication",
-        status: "pending",
-        created_at: new Date(Date.now() - 3600000).toISOString(),
-      },
-      {
-        id: "mock-3",
-        case_id: "mock-case-3",
-        action_type: "suggestion",
-        title: "Mediation recommandee",
-        description:
-          "L'analyse du ton des communications suggere une escalade. La mediation pourrait etre benefique.",
-        priority: "normal",
-        confidence_score: 0.65,
-        trigger_source: "analysis",
-        status: "pending",
-        created_at: new Date(Date.now() - 7200000).toISOString(),
-      },
-    ],
-    recent_insights: [
-      {
-        id: "insight-1",
-        insight_type: "deadline",
-        severity: "critical",
-        title: "Delai d'appel imminent",
-        description:
-          "Le delai d'appel pour le dossier expire dans 3 jours (Art. 1051 C.J.)",
-        case_id: "mock-case-1",
-        suggested_actions: [
-          "Preparer requete d'appel",
-          "Verifier la signification du jugement",
-        ],
-        dismissed: false,
-      },
-      {
-        id: "insight-2",
-        insight_type: "gap",
-        severity: "high",
-        title: "Documents manquants",
-        description:
-          "Le dossier penal est incomplet: il manque le rapport de police et les declarations de temoins.",
-        case_id: "mock-case-2",
-        suggested_actions: [
-          "Demander le rapport de police",
-          "Convoquer les temoins",
-        ],
-        dismissed: false,
-      },
-      {
-        id: "insight-3",
-        insight_type: "billing",
-        severity: "medium",
-        title: "Heures non facturees",
-        description:
-          "12 heures de prestations n'ont pas encore ete facturees sur ce dossier.",
-        case_id: "mock-case-3",
-        suggested_actions: [
-          "Creer une facture provisionnelle",
-          "Verifier les entrees de temps",
-        ],
-        dismissed: false,
-      },
-      {
-        id: "insight-4",
-        insight_type: "opportunity",
-        severity: "low",
-        title: "Possibilite de transaction",
-        description:
-          "Le ton des echanges avec la partie adverse est devenu cooperatif. Une proposition de transaction pourrait aboutir.",
-        case_id: "mock-case-1",
-        suggested_actions: [
-          "Preparer une proposition de transaction",
-          "Contacter l'avocat adverse",
-        ],
-        dismissed: false,
-      },
-    ],
-    stats: {
-      total_actions: 12,
-      pending_actions: 3,
-      total_insights: 24,
-      active_insights: 8,
-      analyzed_cases: 15,
-      avg_health: 72,
-    },
-  };
-}
-
-/* ------------------------------------------------------------------ */
 /*  Helper: format date/time                                           */
 /* ------------------------------------------------------------------ */
 
@@ -382,8 +266,19 @@ export default function BrainPage() {
         stats,
       });
     } catch {
-      // API not available yet — use mock data
-      setData(generateMockBrainData());
+      // API not available — show empty state
+      setData({
+        pending_actions: [],
+        recent_insights: [],
+        stats: {
+          total_actions: 0,
+          pending_actions: 0,
+          total_insights: 0,
+          active_insights: 0,
+          analyzed_cases: 0,
+          avg_health: 0,
+        },
+      });
     } finally {
       setIsLoading(false);
     }

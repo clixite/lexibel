@@ -96,6 +96,24 @@ async def update_time_entry(
     return TimeEntryResponse.model_validate(entry)
 
 
+@router.delete("/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_time_entry(
+    entry_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db_session),
+) -> None:
+    """Delete a draft time entry."""
+    entry = await time_service.get_time_entry(session, entry_id)
+    if entry is None:
+        raise HTTPException(status_code=404, detail="Time entry not found")
+    if entry.status != "draft":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Only draft entries can be deleted",
+        )
+    await session.delete(entry)
+    await session.commit()
+
+
 @router.post("/{entry_id}/submit", response_model=TimeEntryResponse)
 async def submit_time_entry(
     entry_id: uuid.UUID,

@@ -113,6 +113,82 @@ async def get_transcriptions(
     }
 
 
+@router.post("/{transcription_id}/link-case")
+async def link_transcription_to_case(
+    transcription_id: str,
+    case_id: str,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> dict[str, Any]:
+    """Link a transcription to a case."""
+    tenant_id = current_user["tenant_id"]
+
+    try:
+        trans_uuid = uuid.UUID(transcription_id)
+        case_uuid = uuid.UUID(case_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid UUID format",
+        )
+
+    result = await db.execute(
+        select(Transcription).where(
+            Transcription.id == trans_uuid,
+            Transcription.tenant_id == tenant_id,
+        )
+    )
+    transcription = result.scalar_one_or_none()
+    if not transcription:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Transcription not found",
+        )
+
+    transcription.case_id = case_uuid
+    await db.flush()
+    await db.refresh(transcription)
+
+    return {
+        "id": str(transcription.id),
+        "case_id": str(transcription.case_id),
+        "status": "linked",
+    }
+
+
+@router.delete("/{transcription_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_transcription(
+    transcription_id: str,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> None:
+    """Delete a transcription."""
+    tenant_id = current_user["tenant_id"]
+
+    try:
+        trans_uuid = uuid.UUID(transcription_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid transcription_id format",
+        )
+
+    from sqlalchemy import delete as sa_delete
+
+    result = await db.execute(
+        sa_delete(Transcription).where(
+            Transcription.id == trans_uuid,
+            Transcription.tenant_id == tenant_id,
+        )
+    )
+    if result.rowcount == 0:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Transcription not found",
+        )
+    await db.commit()
+
+
 @router.get("/{transcription_id}")
 async def get_transcription_detail(
     transcription_id: str,

@@ -51,7 +51,7 @@ async def sync_emails(
         total_synced=len(emails),
         message=f"Synced {len(emails)} emails"
         if emails
-        else "No new emails (stub — Graph API not configured)",
+        else "No new emails — configure Microsoft Graph API credentials to enable sync",
     )
 
 

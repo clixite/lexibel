@@ -141,88 +141,6 @@ interface DocumentAnalysis {
   completeness_issues: string[];
 }
 
-function generateMockAnalysis(filename: string): DocumentAnalysis {
-  const isContract =
-    filename.toLowerCase().includes("contrat") ||
-    filename.toLowerCase().includes("convention");
-  const isJudgment =
-    filename.toLowerCase().includes("jugement") ||
-    filename.toLowerCase().includes("arr");
-
-  return {
-    classification: {
-      document_type: isContract
-        ? "contract"
-        : isJudgment
-          ? "judgment"
-          : "correspondence",
-      sub_type: isContract
-        ? "service_contract"
-        : isJudgment
-          ? "tribunal_judgment"
-          : "letter",
-      confidence: 0.82,
-      language: "fr",
-    },
-    key_clauses: isContract
-      ? [
-          {
-            clause_type: "obligation",
-            text: "Le prestataire s'engage a livrer dans les 30 jours",
-            importance: "critical",
-          },
-          {
-            clause_type: "penalty",
-            text: "Penalite de retard de 0.5% par jour",
-            importance: "important",
-          },
-          {
-            clause_type: "termination",
-            text: "Resiliation avec preavis de 3 mois",
-            importance: "normal",
-          },
-        ]
-      : [],
-    parties: ["Partie A", "Partie B"],
-    dates: [
-      {
-        date: "2026-03-15",
-        context: "Date limite de livraison",
-        type: "deadline",
-      },
-    ],
-    amounts: [
-      {
-        amount: "15,000.00",
-        currency: "EUR",
-        context: "Montant total du contrat",
-      },
-    ],
-    legal_references: ["Art. 1134 C.C.", "Art. 1382 C.C."],
-    risks: isContract
-      ? [
-          "Clause penale potentiellement excessive",
-          "Delai de livraison court (30 jours)",
-        ]
-      : [],
-    summary_points: [
-      "Document classifie comme " +
-        (isContract
-          ? "contrat de service"
-          : isJudgment
-            ? "jugement"
-            : "correspondance"),
-      "Langue: Francais",
-    ],
-    completeness_issues: isContract
-      ? [
-          "Pas de clause de confidentialite",
-          "Pas de clause de force majeure",
-        ]
-      : [],
-  };
-}
-
 const DOC_TYPE_LABELS: Record<string, string> = {
   contract: "Contrat",
   judgment: "Jugement",
@@ -685,10 +603,11 @@ export default function DocumentsPage() {
   const [analyzingDocId, setAnalyzingDocId] = useState<string | null>(null);
   const [analyses, setAnalyses] = useState<Record<string, DocumentAnalysis>>({});
   const [expandedAnalysis, setExpandedAnalysis] = useState<string | null>(null);
+  const [failedAnalyses, setFailedAnalyses] = useState<Set<string>>(new Set());
 
   const handleAnalyze = async (doc: CloudDocument) => {
     // If already analyzed, just toggle visibility
-    if (analyses[doc.id]) {
+    if (analyses[doc.id] || failedAnalyses.has(doc.id)) {
       setExpandedAnalysis((prev) => (prev === doc.id ? null : doc.id));
       return;
     }
@@ -711,9 +630,8 @@ export default function DocumentsPage() {
       );
       setAnalyses((prev) => ({ ...prev, [doc.id]: result }));
     } catch {
-      // API not available — use mock data
-      const mockResult = generateMockAnalysis(doc.name);
-      setAnalyses((prev) => ({ ...prev, [doc.id]: mockResult }));
+      // API not available — mark as failed
+      setFailedAnalyses((prev) => new Set(prev).add(doc.id));
     } finally {
       setAnalyzingDocId(null);
     }
@@ -1038,6 +956,19 @@ export default function DocumentsPage() {
                               analysis={analyses[doc.id]}
                               onClose={() => setExpandedAnalysis(null)}
                             />
+                          ) : failedAnalyses.has(doc.id) ? (
+                            <div className="bg-neutral-50 border-t border-gray-200 px-6 py-8 flex items-center justify-center gap-2">
+                              <AlertCircle className="w-5 h-5 text-warning-500" />
+                              <span className="text-sm text-gray-500">
+                                Analyse IA indisponible
+                              </span>
+                              <button
+                                onClick={() => setExpandedAnalysis(null)}
+                                className="ml-4 p-1 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-600"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
                           ) : null}
                         </td>
                       </tr>
@@ -1134,6 +1065,22 @@ export default function DocumentsPage() {
                   <span className="text-sm text-gray-500">
                     Analyse du document en cours...
                   </span>
+                </div>
+              </div>
+            )}
+            {expandedAnalysis && failedAnalyses.has(expandedAnalysis) && !analyses[expandedAnalysis] && analyzingDocId !== expandedAnalysis && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="px-6 py-8 flex items-center justify-center gap-2">
+                  <AlertCircle className="w-5 h-5 text-warning-500" />
+                  <span className="text-sm text-gray-500">
+                    Analyse IA indisponible
+                  </span>
+                  <button
+                    onClick={() => setExpandedAnalysis(null)}
+                    className="ml-4 p-1 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             )}

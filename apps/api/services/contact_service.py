@@ -101,6 +101,23 @@ async def update_contact(
     return contact
 
 
+async def delete_contact(
+    session: AsyncSession,
+    contact_id: uuid.UUID,
+) -> bool:
+    """Delete a contact by ID.
+
+    Returns True if contact was found and deleted, False otherwise.
+    """
+    contact = await get_contact(session, contact_id)
+    if contact is None:
+        return False
+
+    await session.delete(contact)
+    await session.flush()
+    return True
+
+
 async def search_contacts(
     session: AsyncSession,
     q: str,

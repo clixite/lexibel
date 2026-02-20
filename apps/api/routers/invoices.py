@@ -90,6 +90,44 @@ async def get_invoice(
     return resp
 
 
+@router.patch("/{invoice_id}", response_model=InvoiceResponse)
+async def update_invoice(
+    invoice_id: uuid.UUID,
+    body: InvoiceCreate,
+    session: AsyncSession = Depends(get_db_session),
+) -> InvoiceResponse:
+    """Update a draft invoice."""
+    inv = await invoice_service.get_invoice(session, invoice_id)
+    if inv is None:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    if inv.status != "draft":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Only draft invoices can be updated",
+        )
+    update_data = {}
+    if body.due_date:
+        update_data["due_date"] = body.due_date
+    if body.notes is not None:
+        update_data["notes"] = body.notes
+    if body.vat_rate is not None:
+        update_data["vat_rate"] = body.vat_rate
+    inv = await invoice_service.update_invoice(session, invoice_id, **update_data)
+    return InvoiceResponse.model_validate(inv)
+
+
+@router.delete("/{invoice_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def cancel_invoice(
+    invoice_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db_session),
+) -> None:
+    """Cancel an invoice (soft delete)."""
+    inv = await invoice_service.cancel_invoice(session, invoice_id)
+    if inv is None:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    await session.commit()
+
+
 @router.post("/{invoice_id}/generate-peppol", response_model=InvoiceResponse)
 async def generate_peppol(
     invoice_id: uuid.UUID,

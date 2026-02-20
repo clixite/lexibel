@@ -103,6 +103,26 @@ async def upload_document(
     return EvidenceLinkResponse.model_validate(link)
 
 
+@router.delete("/documents/{link_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_document(
+    link_id: uuid.UUID,
+    tenant_id: uuid.UUID = Depends(get_current_tenant),
+    session: AsyncSession = Depends(get_db_session),
+) -> None:
+    """Delete a document (evidence link)."""
+    from sqlalchemy import delete as sa_delete
+
+    result = await session.execute(
+        sa_delete(EvidenceLink).where(
+            EvidenceLink.id == link_id,
+            EvidenceLink.tenant_id == tenant_id,
+        )
+    )
+    if result.rowcount == 0:
+        raise HTTPException(status_code=404, detail="Document not found")
+    await session.commit()
+
+
 @router.get("/documents/{link_id}/download")
 async def download_document(
     link_id: uuid.UUID,

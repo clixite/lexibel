@@ -21,6 +21,7 @@ import {
   Link2,
   Zap,
   Brain,
+  AlertTriangle,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { LoadingSkeleton, ErrorState, EmptyState, Badge, Modal, Card, Tabs, Button } from "@/components/ui";
@@ -235,50 +236,6 @@ function generateReference(): string {
 
 /* --- AI Helpers --- */
 
-function mockClassify(subject: string, body: string): AIClassification {
-  const text = `${subject} ${body}`.toLowerCase();
-  if (text.includes("urgent") || text.includes("delai") || text.includes("tribunal") || text.includes("audience") || text.includes("comparution")) {
-    return { category: "URGENT", confidence: 0.85, reasons: ["Mots-cles urgents detectes", "Delai juridique potentiel"], suggested_priority: 1 };
-  }
-  if (text.includes("reponse") || text.includes("signer") || text.includes("confirmer") || text.includes("approuver") || text.includes("decision")) {
-    return { category: "ACTION_REQUIRED", confidence: 0.78, reasons: ["Action de l'avocat requise", "Confirmation ou signature demandee"], suggested_priority: 2 };
-  }
-  if (text.includes("facture") || text.includes("honoraire") || text.includes("paiement") || text.includes("provision")) {
-    return { category: "DELEGABLE", confidence: 0.72, reasons: ["Element administratif", "Peut etre traite par un assistant"], suggested_priority: 3 };
-  }
-  if (text.includes("newsletter") || text.includes("info") || text.includes("bulletin") || text.includes("communication") || text.includes("mise a jour")) {
-    return { category: "INFO_ONLY", confidence: 0.75, reasons: ["Contenu informatif", "Aucune action requise"], suggested_priority: 4 };
-  }
-  if (text.includes("publicite") || text.includes("promo") || text.includes("unsubscribe") || text.includes("desabonner")) {
-    return { category: "SPAM", confidence: 0.9, reasons: ["Contenu promotionnel", "Non pertinent pour le cabinet"], suggested_priority: 5 };
-  }
-  return { category: "NORMAL", confidence: 0.5, reasons: ["Classification par defaut"], suggested_priority: 3 };
-}
-
-function mockDeadlines(subject: string, body: string): AIDeadline[] {
-  const text = `${subject} ${body}`.toLowerCase();
-  const deadlines: AIDeadline[] = [];
-  if (text.includes("delai") || text.includes("tribunal") || text.includes("audience")) {
-    const futureDate = new Date();
-    futureDate.setDate(futureDate.getDate() + 7);
-    deadlines.push({
-      date: futureDate.toISOString().split("T")[0],
-      description: "Delai de procedure estime",
-      days_remaining: 7,
-    });
-  }
-  if (text.includes("comparution") || text.includes("hearing")) {
-    const futureDate = new Date();
-    futureDate.setDate(futureDate.getDate() + 14);
-    deadlines.push({
-      date: futureDate.toISOString().split("T")[0],
-      description: "Date d'audience estimee",
-      days_remaining: 14,
-    });
-  }
-  return deadlines;
-}
-
 function aiCategoryBorderColor(category: string): string {
   switch (category) {
     case "URGENT":
@@ -420,15 +377,13 @@ export default function InboxPage() {
 
   /* --- AI Triage: classify a single item --- */
   const classifyItem = useCallback(
-    async (item: InboxItem): Promise<AITriageResult> => {
+    async (item: InboxItem): Promise<AITriageResult | null> => {
       const subject = item.raw_payload.subject || item.raw_payload.title || "";
       const body = item.raw_payload.body || "";
       const sender = item.raw_payload.from || "";
 
       if (!accessToken) {
-        const classification = mockClassify(subject, body);
-        const deadlines = mockDeadlines(subject, body);
-        return { classification, deadlines, suggestions: [] };
+        return null;
       }
 
       try {
@@ -461,13 +416,10 @@ export default function InboxPage() {
             method: "POST",
             body: JSON.stringify({ subject, body, sender }),
           });
-          const deadlines = mockDeadlines(subject, body);
-          return { classification: classifyResult, deadlines, suggestions: [] };
+          return { classification: classifyResult, deadlines: [], suggestions: [] };
         } catch {
-          /* Final fallback: mock classification */
-          const classification = mockClassify(subject, body);
-          const deadlines = mockDeadlines(subject, body);
-          return { classification, deadlines, suggestions: [] };
+          /* Classification unavailable */
+          return null;
         }
       }
     },
@@ -495,8 +447,10 @@ export default function InboxPage() {
       const item = unclassified[i];
       try {
         const result = await classifyItem(item);
-        newMap[item.id] = result;
-        setAiTriageMap({ ...newMap });
+        if (result) {
+          newMap[item.id] = result;
+          setAiTriageMap({ ...newMap });
+        }
       } catch {
         /* Skip failed items silently */
       }
@@ -511,6 +465,7 @@ export default function InboxPage() {
   }, [items, aiTriageMap, classifyItem]);
 
   /* --- AI Triage: classify single item on expand --- */
+  const [aiUnavailableItems, setAiUnavailableItems] = useState<Set<string>>(new Set());
   const handleExpandItem = useCallback(
     async (itemId: string) => {
       if (expandedItemId === itemId) {
@@ -520,19 +475,23 @@ export default function InboxPage() {
       setExpandedItemId(itemId);
 
       /* Auto-classify if not already done */
-      if (!aiTriageMap[itemId]) {
+      if (!aiTriageMap[itemId] && !aiUnavailableItems.has(itemId)) {
         const item = items.find((i) => i.id === itemId);
         if (item) {
           try {
             const result = await classifyItem(item);
-            setAiTriageMap((prev) => ({ ...prev, [itemId]: result }));
+            if (result) {
+              setAiTriageMap((prev) => ({ ...prev, [itemId]: result }));
+            } else {
+              setAiUnavailableItems((prev) => new Set(prev).add(itemId));
+            }
           } catch {
-            /* Silently fail — analysis panel will show "not available" */
+            setAiUnavailableItems((prev) => new Set(prev).add(itemId));
           }
         }
       }
     },
-    [expandedItemId, aiTriageMap, items, classifyItem],
+    [expandedItemId, aiTriageMap, aiUnavailableItems, items, classifyItem],
   );
 
   /* --- AI Triage: link to suggested case --- */
@@ -1348,7 +1307,12 @@ export default function InboxPage() {
                             </h4>
                           </div>
 
-                          {!hasTriage ? (
+                          {!hasTriage && aiUnavailableItems.has(item.id) ? (
+                            <div className="flex items-center gap-2 text-sm text-neutral-500">
+                              <AlertTriangle className="w-4 h-4 text-warning" />
+                              <span>Classification IA indisponible</span>
+                            </div>
+                          ) : !hasTriage ? (
                             <div className="flex items-center gap-2 text-sm text-neutral-500">
                               <Loader2 className="w-4 h-4 animate-spin" />
                               <span>Analyse en cours...</span>

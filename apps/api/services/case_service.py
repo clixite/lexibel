@@ -113,6 +113,23 @@ async def update_case(
     return case
 
 
+async def delete_case(
+    session: AsyncSession,
+    case_id: uuid.UUID,
+) -> bool:
+    """Soft-delete a case by setting status to 'archived'.
+
+    Returns True if case was found and archived, False otherwise.
+    """
+    case = await get_case(session, case_id)
+    if case is None:
+        return False
+
+    case.status = "archived"
+    await session.flush()
+    return True
+
+
 async def conflict_check(
     session: AsyncSession,
     case_id: uuid.UUID,

@@ -86,6 +86,126 @@ async def get_calendar_events(
     }
 
 
+@router.post("/events", status_code=201)
+async def create_calendar_event(
+    title: str,
+    start_time: datetime,
+    end_time: datetime | None = None,
+    description: str | None = None,
+    location: str | None = None,
+    is_all_day: bool = False,
+    case_id: uuid.UUID | None = None,
+    tenant_id: uuid.UUID = Depends(get_current_tenant),
+    current_user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+):
+    """Create a new calendar event."""
+    user_id = (
+        current_user["user_id"]
+        if isinstance(current_user["user_id"], uuid.UUID)
+        else uuid.UUID(str(current_user["user_id"]))
+    )
+
+    event = CalendarEvent(
+        tenant_id=tenant_id,
+        user_id=user_id,
+        title=title,
+        description=description,
+        start_time=start_time,
+        end_time=end_time,
+        location=location,
+        provider="manual",
+        is_all_day=is_all_day,
+    )
+    session.add(event)
+    await session.flush()
+    await session.refresh(event)
+
+    return {
+        "id": str(event.id),
+        "title": event.title,
+        "description": event.description,
+        "start_time": event.start_time.isoformat() if event.start_time else None,
+        "end_time": event.end_time.isoformat() if event.end_time else None,
+        "location": event.location,
+        "provider": event.provider,
+        "is_all_day": event.is_all_day,
+    }
+
+
+@router.patch("/events/{event_id}")
+async def update_calendar_event(
+    event_id: uuid.UUID,
+    title: str | None = None,
+    start_time: datetime | None = None,
+    end_time: datetime | None = None,
+    description: str | None = None,
+    location: str | None = None,
+    is_all_day: bool | None = None,
+    tenant_id: uuid.UUID = Depends(get_current_tenant),
+    current_user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+):
+    """Update a calendar event."""
+    result = await session.execute(
+        select(CalendarEvent).where(
+            CalendarEvent.id == event_id,
+            CalendarEvent.tenant_id == tenant_id,
+        )
+    )
+    event = result.scalar_one_or_none()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    if title is not None:
+        event.title = title
+    if start_time is not None:
+        event.start_time = start_time
+    if end_time is not None:
+        event.end_time = end_time
+    if description is not None:
+        event.description = description
+    if location is not None:
+        event.location = location
+    if is_all_day is not None:
+        event.is_all_day = is_all_day
+
+    await session.flush()
+    await session.refresh(event)
+
+    return {
+        "id": str(event.id),
+        "title": event.title,
+        "description": event.description,
+        "start_time": event.start_time.isoformat() if event.start_time else None,
+        "end_time": event.end_time.isoformat() if event.end_time else None,
+        "location": event.location,
+        "provider": event.provider,
+        "is_all_day": event.is_all_day,
+    }
+
+
+@router.delete("/events/{event_id}", status_code=204)
+async def delete_calendar_event(
+    event_id: uuid.UUID,
+    tenant_id: uuid.UUID = Depends(get_current_tenant),
+    current_user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+):
+    """Delete a calendar event."""
+    from sqlalchemy import delete as sa_delete
+
+    result = await session.execute(
+        sa_delete(CalendarEvent).where(
+            CalendarEvent.id == event_id,
+            CalendarEvent.tenant_id == tenant_id,
+        )
+    )
+    if result.rowcount == 0:
+        raise HTTPException(status_code=404, detail="Event not found")
+    await session.commit()
+
+
 @router.get("/stats")
 async def get_calendar_stats(
     tenant_id: uuid.UUID = Depends(get_current_tenant),

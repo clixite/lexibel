@@ -161,7 +161,7 @@ class TestCheckConflict:
             return mock_detector
 
         with patch(
-            "apps.api.services.sentinel.conflict_detector.get_conflict_detector",
+            "apps.api.routes.sentinel.get_conflict_detector",
             mock_get_detector,
         ):
             from apps.api.dependencies import get_db_session
@@ -235,7 +235,7 @@ class TestCheckConflict:
             return mock_detector
 
         with patch(
-            "apps.api.services.sentinel.conflict_detector.get_conflict_detector",
+            "apps.api.routes.sentinel.get_conflict_detector",
             mock_get_detector,
         ):
             from apps.api.dependencies import get_db_session
@@ -330,7 +330,7 @@ class TestCheckConflict:
             return mock_detector
 
         with patch(
-            "apps.api.services.sentinel.conflict_detector.get_conflict_detector",
+            "apps.api.routes.sentinel.get_conflict_detector",
             mock_get_detector,
         ):
             from apps.api.dependencies import get_db_session
@@ -778,7 +778,7 @@ class TestSyncGraph:
             return mock_sync
 
         with patch(
-            "apps.api.services.sentinel.graph_sync.get_graph_sync_service",
+            "apps.api.routes.sentinel.get_graph_sync_service",
             mock_get_sync,
         ):
             from apps.api.dependencies import get_db_session
@@ -823,7 +823,7 @@ class TestSyncGraph:
             return mock_sync
 
         with patch(
-            "apps.api.services.sentinel.graph_sync.get_graph_sync_service",
+            "apps.api.routes.sentinel.get_graph_sync_service",
             mock_get_sync,
         ):
             from apps.api.dependencies import get_db_session
@@ -872,7 +872,7 @@ class TestSyncGraph:
             return mock_sync
 
         with patch(
-            "apps.api.services.sentinel.graph_sync.get_graph_sync_service",
+            "apps.api.routes.sentinel.get_graph_sync_service",
             mock_get_sync,
         ):
             from apps.api.dependencies import get_db_session
@@ -960,7 +960,7 @@ class TestGraphData:
             return mock_detector
 
         with patch(
-            "apps.api.services.sentinel.conflict_detector.get_conflict_detector",
+            "apps.api.routes.sentinel.get_conflict_detector",
             mock_get_detector,
         ):
             from apps.api.dependencies import get_db_session
@@ -1015,7 +1015,7 @@ class TestGraphData:
             return mock_detector
 
         with patch(
-            "apps.api.services.sentinel.conflict_detector.get_conflict_detector",
+            "apps.api.routes.sentinel.get_conflict_detector",
             mock_get_detector,
         ):
             from apps.api.dependencies import get_db_session

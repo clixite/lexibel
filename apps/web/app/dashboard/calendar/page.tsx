@@ -65,54 +65,6 @@ interface Deadline {
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
-const generateMockDeadlines = (): Deadline[] => [
-  {
-    title: "Delai d'appel - Jugement TPI Bruxelles",
-    date: new Date(Date.now() + 2 * 86400000).toISOString().split("T")[0],
-    days_remaining: 2,
-    urgency: "critical",
-    case_id: "mock-1",
-    case_title: "Dupont c/ SA Construct",
-    legal_basis: "Art. 1051 C.J.",
-  },
-  {
-    title: "Depot conclusions en reponse",
-    date: new Date(Date.now() + 5 * 86400000).toISOString().split("T")[0],
-    days_remaining: 5,
-    urgency: "urgent",
-    case_id: "mock-2",
-    case_title: "Janssens - Succession",
-    legal_basis: "Calendrier de mise en etat",
-  },
-  {
-    title: "Delai de citation",
-    date: new Date(Date.now() + 6 * 86400000).toISOString().split("T")[0],
-    days_remaining: 6,
-    urgency: "urgent",
-    case_id: "mock-3",
-    case_title: "SPRL Tech Innov",
-    legal_basis: "Art. 707 C.J.",
-  },
-  {
-    title: "Prescription action civile",
-    date: new Date(Date.now() + 12 * 86400000).toISOString().split("T")[0],
-    days_remaining: 12,
-    urgency: "attention",
-    case_id: "mock-1",
-    case_title: "Dupont c/ SA Construct",
-    legal_basis: "Art. 2262bis C.C.",
-  },
-  {
-    title: "Audience de plaidoirie",
-    date: new Date(Date.now() + 21 * 86400000).toISOString().split("T")[0],
-    days_remaining: 21,
-    urgency: "normal",
-    case_id: "mock-4",
-    case_title: "Maes - Licenciement",
-    legal_basis: null,
-  },
-];
-
 /** Map urgency level to colour classes used throughout the page. */
 const urgencyColor = (urgency: Deadline["urgency"]) => {
   switch (urgency) {
@@ -285,8 +237,8 @@ export default function CalendarPage() {
         );
         setDeadlines(data);
       } catch {
-        // Fallback to mock deadlines
-        setDeadlines(generateMockDeadlines());
+        // API not available -- show empty state
+        setDeadlines([]);
       } finally {
         setDeadlinesLoading(false);
       }

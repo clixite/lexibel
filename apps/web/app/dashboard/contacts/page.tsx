@@ -443,24 +443,11 @@ export default function ContactsPage() {
       );
       setAiResult(result);
     } catch {
-      // Fallback mock data
+      // AI service not available
       setAiResult({
-        compliance_notes: [
-          "RGPD : Assurez-vous d'avoir le consentement du contact pour le traitement de ses donnees personnelles.",
-          "Les donnees du registre national sont des donnees sensibles au regard du RGPD.",
-          "Conservation des donnees : respectez la politique de retention de votre cabinet.",
-        ],
-        duplicate_warnings:
-          form.full_name.trim()
-            ? [
-                `Verification effectuee : aucun doublon exact trouve pour "${form.full_name}".`,
-              ]
-            : ["Veuillez renseigner un nom pour verifier les doublons."],
-        suggestions: [
-          "Pensez a completer les coordonnees bancaires pour faciliter la facturation.",
-          "Ajoutez une categorie pour un meilleur classement du contact.",
-          "Verifiez le numero BCE aupres de la Banque-Carrefour des Entreprises.",
-        ],
+        compliance_notes: [],
+        duplicate_warnings: [],
+        suggestions: ["Assistant IA indisponible. Veuillez reessayer plus tard."],
       });
     } finally {
       setAiLoading(false);

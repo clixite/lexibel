@@ -80,6 +80,38 @@ async def create_event(
     return InteractionEventResponse.model_validate(event)
 
 
+@router.patch("/events/{event_id}", response_model=InteractionEventResponse)
+async def update_event(
+    event_id: uuid.UUID,
+    body: InteractionEventCreate,
+    session: AsyncSession = Depends(get_db_session),
+) -> InteractionEventResponse:
+    """Update an existing event."""
+    event = await timeline_service.update_event(
+        session,
+        event_id,
+        title=body.title,
+        body=body.body,
+        event_type=body.event_type,
+        metadata=body.metadata,
+    )
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+    return InteractionEventResponse.model_validate(event)
+
+
+@router.delete("/events/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_event(
+    event_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db_session),
+) -> None:
+    """Delete an event."""
+    deleted = await timeline_service.delete_event(session, event_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Event not found")
+    await session.commit()
+
+
 @router.get("/events/{event_id}", response_model=InteractionEventResponse)
 async def get_event(
     event_id: uuid.UUID,

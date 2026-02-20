@@ -76,6 +76,23 @@ async def create_inbox_item(
     return InboxItemResponse.model_validate(item)
 
 
+@router.patch("/{item_id}", response_model=InboxItemResponse)
+async def update_inbox_item(
+    item_id: uuid.UUID,
+    suggested_case_id: Optional[uuid.UUID] = None,
+    session: AsyncSession = Depends(get_db_session),
+) -> InboxItemResponse:
+    """Update an inbox item (e.g., link to a case before validation)."""
+    item = await inbox_service.get_inbox_item(session, item_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Inbox item not found")
+    if suggested_case_id is not None:
+        item.suggested_case_id = suggested_case_id
+    await session.flush()
+    await session.refresh(item)
+    return InboxItemResponse.model_validate(item)
+
+
 @router.post("/{item_id}/validate", response_model=InboxItemResponse)
 async def validate_inbox_item(
     item_id: uuid.UUID,
