@@ -36,13 +36,19 @@ def _get_gateway() -> LLMGateway:
 
 class LLMCompleteRequest(BaseModel):
     messages: list[dict] = Field(..., description="Chat messages [{role, content}]")
-    purpose: str = Field(..., description="case_analysis, document_draft, legal_research, etc.")
+    purpose: str = Field(
+        ..., description="case_analysis, document_draft, legal_research, etc."
+    )
     preferred_provider: str | None = Field(None, description="Preferred provider name")
     model: str | None = Field(None, description="Specific model override")
     temperature: float = Field(0.3, ge=0.0, le=2.0)
     max_tokens: int = Field(4096, ge=1, le=128000)
-    data_sensitivity: str | None = Field(None, description="Force sensitivity: public, semi, sensitive, critical")
-    require_human_validation: bool = Field(False, description="Require human validation (AI Act Art. 14)")
+    data_sensitivity: str | None = Field(
+        None, description="Force sensitivity: public, semi, sensitive, critical"
+    )
+    require_human_validation: bool = Field(
+        False, description="Require human validation (AI Act Art. 14)"
+    )
 
 
 class LLMClassifyRequest(BaseModel):
@@ -137,7 +143,9 @@ async def llm_stream(
         try:
             sensitivity = DataSensitivity(body.data_sensitivity)
         except ValueError:
-            raise HTTPException(status_code=400, detail=f"Invalid sensitivity: {body.data_sensitivity}")
+            raise HTTPException(
+                status_code=400, detail=f"Invalid sensitivity: {body.data_sensitivity}"
+            )
 
     async def event_generator() -> AsyncIterator[str]:
         try:
@@ -156,9 +164,9 @@ async def llm_stream(
                 yield f"data: {chunk}\n\n"
             yield "data: [DONE]\n\n"
         except ValueError as e:
-            yield f"data: {{\"error\": \"{str(e)}\"}}\n\n"
+            yield f'data: {{"error": "{str(e)}"}}\n\n'
         except RuntimeError as e:
-            yield f"data: {{\"error\": \"{str(e)}\"}}\n\n"
+            yield f'data: {{"error": "{str(e)}"}}\n\n'
 
     return StreamingResponse(
         event_generator(),
@@ -228,8 +236,14 @@ async def llm_audit_list(
     _require_admin(user)
     audit_logger = AIAuditLogger(session)
 
-    dt_from = datetime.fromisoformat(date_from) if date_from else None
-    dt_to = datetime.fromisoformat(date_to) if date_to else None
+    try:
+        dt_from = datetime.fromisoformat(date_from) if date_from else None
+        dt_to = datetime.fromisoformat(date_to) if date_to else None
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid date format. Use ISO 8601 (e.g., 2025-01-15T00:00:00)",
+        )
 
     logs, total = await audit_logger.get_audit_logs(
         tenant_id=tenant_id,
@@ -254,7 +268,9 @@ async def llm_audit_list(
                 "token_count_input": log.token_count_input,
                 "token_count_output": log.token_count_output,
                 "latency_ms": log.latency_ms,
-                "cost_estimate_eur": float(log.cost_estimate_eur) if log.cost_estimate_eur else None,
+                "cost_estimate_eur": float(log.cost_estimate_eur)
+                if log.cost_estimate_eur
+                else None,
                 "human_validated": log.human_validated,
                 "error": log.error,
                 "created_at": log.created_at.isoformat() if log.created_at else None,
@@ -294,7 +310,11 @@ async def llm_audit_validate(
 
     audit_logger = AIAuditLogger(session)
     await audit_logger.mark_human_validated(log_id, user["user_id"])
-    return {"status": "validated", "audit_id": audit_id, "validator_id": str(user["user_id"])}
+    return {
+        "status": "validated",
+        "audit_id": audit_id,
+        "validator_id": str(user["user_id"]),
+    }
 
 
 @router.get("/audit/dpia-report")

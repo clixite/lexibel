@@ -7,10 +7,12 @@ PATCH  /api/v1/cases/{id}         — update case
 POST   /api/v1/cases/{id}/conflict-check — conflict of interest check
 """
 
+import logging
 import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api.dependencies import get_current_tenant, get_db_session
@@ -21,6 +23,14 @@ from apps.api.schemas.case import (
     CaseUpdate,
 )
 from apps.api.services import case_service
+
+logger = logging.getLogger(__name__)
+
+
+class LinkCaseContactRequest(BaseModel):
+    contact_id: uuid.UUID
+    role: str = Field("client", pattern=r"^(client|adverse|witness|expert|other)$")
+
 
 router = APIRouter(prefix="/api/v1/cases", tags=["cases"])
 
@@ -133,31 +143,32 @@ async def get_case_contacts(
 @router.post("/{case_id}/contacts", status_code=status.HTTP_201_CREATED)
 async def link_case_contact(
     case_id: uuid.UUID,
-    body: dict,
+    body: LinkCaseContactRequest,
     tenant_id: uuid.UUID = Depends(get_current_tenant),
     session: AsyncSession = Depends(get_db_session),
 ) -> dict:
     """Link a contact to a case."""
     from packages.db.models.case_contact import CaseContact
 
-    contact_id = body.get("contact_id")
-    role = body.get("role", "client")
-    if not contact_id:
-        raise HTTPException(status_code=400, detail="contact_id required")
-
-    link = CaseContact(
-        case_id=case_id,
-        contact_id=uuid.UUID(contact_id),
-        tenant_id=tenant_id,
-        role=role,
-    )
-    session.add(link)
-    await session.flush()
+    try:
+        link = CaseContact(
+            case_id=case_id,
+            contact_id=body.contact_id,
+            tenant_id=tenant_id,
+            role=body.role,
+        )
+        session.add(link)
+        await session.flush()
+    except Exception as e:
+        logger.error(
+            "Failed to link contact %s to case %s: %s", body.contact_id, case_id, e
+        )
+        raise HTTPException(status_code=500, detail="Failed to link contact to case")
     return {
         "message": "Contact linked",
         "case_id": str(case_id),
-        "contact_id": contact_id,
-        "role": role,
+        "contact_id": str(body.contact_id),
+        "role": body.role,
     }
 
 

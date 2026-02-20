@@ -50,7 +50,7 @@ class OneDriveSync:
         drive_id: Optional[str] = None,
     ) -> dict:
         """List files from OneDrive or SharePoint folder.
-        
+
         Returns: {"value": [...], "@odata.nextLink": str | None}
         """
         oauth_engine = get_oauth_engine()
@@ -72,8 +72,8 @@ class OneDriveSync:
             endpoint = f"{base}/root/children"
 
         params = {
-            "": "id,name,file,folder,size,webUrl,lastModifiedDateTime,lastModifiedBy,parentReference,@microsoft.graph.downloadUrl",
-            "": 100,
+            "$select": "id,name,file,folder,size,webUrl,lastModifiedDateTime,lastModifiedBy,parentReference,@microsoft.graph.downloadUrl",
+            "$top": 100,
         }
 
         async with httpx.AsyncClient(timeout=GRAPH_TIMEOUT) as client:
@@ -84,6 +84,7 @@ class OneDriveSync:
             )
             response.raise_for_status()
             return response.json()
+
     async def sync_folder(
         self,
         session: AsyncSession,
@@ -120,9 +121,15 @@ class OneDriveSync:
 
                 if recursive and is_folder:
                     sub = await self.sync_folder(
-                        session, token_id, tenant_id,
-                        item["id"], recursive, job_id, file_path,
-                        site_id, drive_id
+                        session,
+                        token_id,
+                        tenant_id,
+                        item["id"],
+                        recursive,
+                        job_id,
+                        file_path,
+                        site_id,
+                        drive_id,
                     )
                     synced += sub["synced"]
                     errors += sub["errors"]
@@ -145,8 +152,12 @@ class OneDriveSync:
                     for item in resp.json().get("value", []):
                         try:
                             await self._upsert_document(
-                                session, token_id, tenant_id, item,
-                                f"{parent_path}/{item['name']}".lstrip("/"), provider
+                                session,
+                                token_id,
+                                tenant_id,
+                                item,
+                                f"{parent_path}/{item['name']}".lstrip("/"),
+                                provider,
                             )
                             synced += 1
                         except Exception as e:
@@ -175,7 +186,9 @@ class OneDriveSync:
             response = await client.get(
                 endpoint,
                 headers={"Authorization": f"Bearer {access_token}"},
-                params={"": "id,name,file,folder,size,webUrl,lastModifiedDateTime,parentReference"},
+                params={
+                    "": "id,name,file,folder,size,webUrl,lastModifiedDateTime,parentReference"
+                },
             )
             response.raise_for_status()
             data = response.json()
@@ -192,6 +205,7 @@ class OneDriveSync:
                 errors += 1
 
         return {"synced": synced, "errors": errors}
+
     async def list_sharepoint_sites(
         self, session: AsyncSession, token_id: UUID
     ) -> list[dict]:
@@ -207,6 +221,7 @@ class OneDriveSync:
             )
             response.raise_for_status()
             return response.json().get("value", [])
+
     async def get_file_content(
         self,
         session: AsyncSession,
@@ -224,6 +239,7 @@ class OneDriveSync:
             )
             response.raise_for_status()
             return response.content
+
     async def search_files(
         self, session: AsyncSession, token_id: UUID, tenant_id: UUID, query: str
     ) -> list[dict]:
@@ -240,6 +256,7 @@ class OneDriveSync:
             )
             response.raise_for_status()
             return response.json().get("value", [])
+
     async def _upsert_document(
         self,
         session: AsyncSession,
@@ -255,7 +272,7 @@ class OneDriveSync:
         mime_type = None
         if "file" in item:
             mime_type = item["file"].get("mimeType")
-        
+
         # Modified time
         modified_time = None
         if item.get("lastModifiedDateTime"):
@@ -319,6 +336,7 @@ class OneDriveSync:
             session.add(doc)
             await session.flush()
             return doc
+
     async def _update_job_progress(
         self, session: AsyncSession, job_id: UUID, processed: int
     ) -> None:

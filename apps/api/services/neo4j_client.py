@@ -1,11 +1,19 @@
 """Neo4j client for SENTINEL graph operations."""
+
 import asyncio
 import logging
 import os
-from neo4j import AsyncGraphDatabase, AsyncDriver
 from typing import Optional
 
 logger = logging.getLogger(__name__)
+
+try:
+    from neo4j import AsyncGraphDatabase, AsyncDriver
+except ImportError:
+    AsyncGraphDatabase = None  # type: ignore[assignment,misc]
+    AsyncDriver = None  # type: ignore[assignment,misc]
+    logger.info("neo4j package not installed. Neo4j features will be unavailable.")
+
 
 class Neo4jClient:
     """Async Neo4j client."""
@@ -18,10 +26,13 @@ class Neo4jClient:
 
     async def connect(self):
         """Connect to Neo4j."""
+        if AsyncGraphDatabase is None:
+            raise RuntimeError(
+                "neo4j package is not installed. Install it with: pip install neo4j"
+            )
         try:
             self._driver = AsyncGraphDatabase.driver(
-                self.uri,
-                auth=(self.user, self.password)
+                self.uri, auth=(self.user, self.password)
             )
             await self._driver.verify_connectivity()
         except Exception as e:
@@ -61,6 +72,7 @@ class Neo4jClient:
 # Singleton
 _neo4j_client: Optional[Neo4jClient] = None
 _lock = asyncio.Lock()
+
 
 async def get_neo4j_client() -> Neo4jClient:
     """Get Neo4j client singleton."""

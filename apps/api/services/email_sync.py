@@ -93,7 +93,9 @@ class EmailSyncService:
             )
 
             if response.status_code != 200:
-                raise ValueError(f"Gmail API error: {response.status_code} {response.text}")
+                raise ValueError(
+                    f"Gmail API error: {response.status_code} {response.text}"
+                )
 
             data = response.json()
             messages = data.get("messages", [])
@@ -118,7 +120,10 @@ class EmailSyncService:
 
                 # Parse message
                 thread_id = msg_data.get("threadId")
-                headers = {h["name"]: h["value"] for h in msg_data.get("payload", {}).get("headers", [])}
+                headers = {
+                    h["name"]: h["value"]
+                    for h in msg_data.get("payload", {}).get("headers", [])
+                }
 
                 subject = headers.get("Subject", "(No subject)")
                 from_email = headers.get("From", "")
@@ -128,6 +133,7 @@ class EmailSyncService:
                 # Parse date
                 try:
                     from email.utils import parsedate_to_datetime
+
                     received_at = parsedate_to_datetime(date_str)
                 except Exception:
                     received_at = datetime.now(timezone.utc)
@@ -207,9 +213,13 @@ class EmailSyncService:
         if "parts" in payload:
             # Multi-part message - find text/plain part
             for part in payload["parts"]:
-                if part.get("mimeType") == "text/plain" and part.get("body", {}).get("data"):
+                if part.get("mimeType") == "text/plain" and part.get("body", {}).get(
+                    "data"
+                ):
                     body_data = part["body"]["data"]
-                    return base64.urlsafe_b64decode(body_data).decode("utf-8", errors="ignore")
+                    return base64.urlsafe_b64decode(body_data).decode(
+                        "utf-8", errors="ignore"
+                    )
 
         return ""
 
@@ -238,7 +248,9 @@ class EmailSyncService:
             )
 
             if response.status_code != 200:
-                raise ValueError(f"Graph API error: {response.status_code} {response.text}")
+                raise ValueError(
+                    f"Graph API error: {response.status_code} {response.text}"
+                )
 
             data = response.json()
             messages = data.get("value", [])
@@ -252,7 +264,9 @@ class EmailSyncService:
                 msg_id = msg.get("id")
 
                 subject = msg.get("subject", "(No subject)")
-                from_email = msg.get("from", {}).get("emailAddress", {}).get("address", "")
+                from_email = (
+                    msg.get("from", {}).get("emailAddress", {}).get("address", "")
+                )
                 to_recipients = msg.get("toRecipients", [])
                 to_email = (
                     to_recipients[0].get("emailAddress", {}).get("address", "")
@@ -263,13 +277,23 @@ class EmailSyncService:
                 # Parse date
                 received_str = msg.get("receivedDateTime")
                 try:
-                    received_at = datetime.fromisoformat(received_str.replace("Z", "+00:00"))
+                    received_at = datetime.fromisoformat(
+                        received_str.replace("Z", "+00:00")
+                    )
                 except Exception:
                     received_at = datetime.now(timezone.utc)
 
                 # Get body
-                body_text = msg.get("body", {}).get("content", "") if msg.get("body", {}).get("contentType") == "text" else ""
-                body_html = msg.get("body", {}).get("content", "") if msg.get("body", {}).get("contentType") == "html" else None
+                body_text = (
+                    msg.get("body", {}).get("content", "")
+                    if msg.get("body", {}).get("contentType") == "text"
+                    else ""
+                )
+                body_html = (
+                    msg.get("body", {}).get("content", "")
+                    if msg.get("body", {}).get("contentType") == "html"
+                    else None
+                )
 
                 # Check if thread exists
                 thread_result = await session.execute(
@@ -414,7 +438,9 @@ class EmailSyncService:
             )
 
             if response.status_code != 200:
-                raise ValueError(f"Gmail send failed: {response.status_code} {response.text}")
+                raise ValueError(
+                    f"Gmail send failed: {response.status_code} {response.text}"
+                )
 
             data = response.json()
             return {"message_id": data["id"], "provider": "gmail"}
@@ -454,7 +480,9 @@ class EmailSyncService:
             )
 
             if response.status_code != 202:  # Graph API returns 202 Accepted
-                raise ValueError(f"Graph send failed: {response.status_code} {response.text}")
+                raise ValueError(
+                    f"Graph send failed: {response.status_code} {response.text}"
+                )
 
             return {"message_id": "sent", "provider": "outlook"}
 

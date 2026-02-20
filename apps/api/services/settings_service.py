@@ -99,9 +99,7 @@ async def get_settings_by_category(
     return settings
 
 
-async def get_all_settings(
-    session: AsyncSession, tenant_id: uuid.UUID
-) -> list[dict]:
+async def get_all_settings(session: AsyncSession, tenant_id: uuid.UUID) -> list[dict]:
     """Get all settings for a tenant, grouped by category.
 
     Encrypted values are masked for display.
@@ -184,9 +182,7 @@ async def upsert_setting(
     return setting
 
 
-async def delete_setting(
-    session: AsyncSession, tenant_id: uuid.UUID, key: str
-) -> bool:
+async def delete_setting(session: AsyncSession, tenant_id: uuid.UUID, key: str) -> bool:
     """Delete a setting. Returns True if found and deleted."""
     result = await session.execute(
         select(TenantSetting).where(
@@ -290,10 +286,16 @@ async def _test_llm(settings: dict) -> dict:
     import httpx
 
     providers = {
-        "ANTHROPIC_API_KEY": ("Anthropic Claude", "https://api.anthropic.com/v1/messages"),
+        "ANTHROPIC_API_KEY": (
+            "Anthropic Claude",
+            "https://api.anthropic.com/v1/messages",
+        ),
         "OPENAI_API_KEY": ("OpenAI GPT", "https://api.openai.com/v1/models"),
         "MISTRAL_API_KEY": ("Mistral AI", "https://api.mistral.ai/v1/models"),
-        "GEMINI_API_KEY": ("Google Gemini", "https://generativelanguage.googleapis.com/v1beta/models"),
+        "GEMINI_API_KEY": (
+            "Google Gemini",
+            "https://generativelanguage.googleapis.com/v1beta/models",
+        ),
     }
     results = []
     async with httpx.AsyncClient(timeout=10) as client:
@@ -318,7 +320,11 @@ async def _test_llm(settings: dict) -> dict:
                     results.append({"provider": name, "success": True})
                 else:
                     results.append(
-                        {"provider": name, "success": False, "error": f"HTTP {r.status_code}"}
+                        {
+                            "provider": name,
+                            "success": False,
+                            "error": f"HTTP {r.status_code}",
+                        }
                     )
             except Exception as e:
                 results.append({"provider": name, "success": False, "error": str(e)})

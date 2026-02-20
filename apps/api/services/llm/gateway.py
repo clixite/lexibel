@@ -18,6 +18,8 @@ GLM, Kimi, or DeepSeek, anonymization MUST succeed before sending.
 If anonymization fails, the request is BLOCKED.
 """
 
+from __future__ import annotations
+
 import logging
 import os
 import time
@@ -26,9 +28,12 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from decimal import Decimal
 from enum import Enum
-from typing import AsyncIterator
+from typing import TYPE_CHECKING, AsyncIterator
 
 import httpx
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api.services.llm.anonymizer import DataAnonymizer
 from apps.api.services.llm.audit_logger import AIAuditLogger
@@ -174,7 +179,9 @@ class LLMProviderBase(ABC):
     def __init__(self, config: ProviderConfig):
         self.config = config
         self.api_key = os.getenv(config.api_key_env, "")
-        self._status = ProviderStatus.HEALTHY if self.api_key else ProviderStatus.DISABLED
+        self._status = (
+            ProviderStatus.HEALTHY if self.api_key else ProviderStatus.DISABLED
+        )
         self._client: httpx.AsyncClient | None = None
 
     def set_api_key(self, key: str) -> None:
@@ -187,9 +194,10 @@ class LLMProviderBase(ABC):
 
     @property
     def is_available(self) -> bool:
-        return self._status in (ProviderStatus.HEALTHY, ProviderStatus.DEGRADED) and bool(
-            self.api_key
-        )
+        return self._status in (
+            ProviderStatus.HEALTHY,
+            ProviderStatus.DEGRADED,
+        ) and bool(self.api_key)
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None or self._client.is_closed:
@@ -239,15 +247,16 @@ class LLMProviderBase(ABC):
                 timeout=5.0,
             )
             self._status = (
-                ProviderStatus.HEALTHY if resp.status_code < 500 else ProviderStatus.UNHEALTHY
+                ProviderStatus.HEALTHY
+                if resp.status_code < 500
+                else ProviderStatus.UNHEALTHY
             )
         except Exception:
             self._status = ProviderStatus.UNHEALTHY
         return self._status
 
     @abstractmethod
-    def _auth_headers(self) -> dict[str, str]:
-        ...
+    def _auth_headers(self) -> dict[str, str]: ...
 
 
 class OpenAICompatibleProvider(LLMProviderBase):
@@ -384,7 +393,8 @@ class AnthropicProvider(LLMProviderBase):
             "usage": {
                 "prompt_tokens": usage.get("input_tokens", 0),
                 "completion_tokens": usage.get("output_tokens", 0),
-                "total_tokens": usage.get("input_tokens", 0) + usage.get("output_tokens", 0),
+                "total_tokens": usage.get("input_tokens", 0)
+                + usage.get("output_tokens", 0),
             },
             "model": data.get("model", model or self.config.default_model),
         }
@@ -458,10 +468,7 @@ class GeminiProvider(LLMProviderBase):
 
     def _get_url(self, model: str, stream: bool = False) -> str:
         action = "streamGenerateContent" if stream else "generateContent"
-        return (
-            f"{self.config.base_url}/models/{model}:{action}"
-            f"?key={self.api_key}"
-        )
+        return f"{self.config.base_url}/models/{model}:{action}?key={self.api_key}"
 
     @staticmethod
     def _convert_messages(messages: list[dict]) -> tuple[str | None, list[dict]]:
@@ -475,10 +482,12 @@ class GeminiProvider(LLMProviderBase):
                 system_instruction = text
             else:
                 gemini_role = "user" if role == "user" else "model"
-                contents.append({
-                    "role": gemini_role,
-                    "parts": [{"text": text}],
-                })
+                contents.append(
+                    {
+                        "role": gemini_role,
+                        "parts": [{"text": text}],
+                    }
+                )
         return system_instruction, contents
 
     async def complete(
@@ -500,9 +509,7 @@ class GeminiProvider(LLMProviderBase):
             },
         }
         if system_instruction:
-            payload["systemInstruction"] = {
-                "parts": [{"text": system_instruction}]
-            }
+            payload["systemInstruction"] = {"parts": [{"text": system_instruction}]}
 
         resp = await client.post(
             self._get_url(use_model),
@@ -549,9 +556,7 @@ class GeminiProvider(LLMProviderBase):
             },
         }
         if system_instruction:
-            payload["systemInstruction"] = {
-                "parts": [{"text": system_instruction}]
-            }
+            payload["systemInstruction"] = {"parts": [{"text": system_instruction}]}
 
         import json as _json
 
@@ -587,7 +592,9 @@ class GeminiProvider(LLMProviderBase):
                 timeout=5.0,
             )
             self._status = (
-                ProviderStatus.HEALTHY if resp.status_code < 400 else ProviderStatus.UNHEALTHY
+                ProviderStatus.HEALTHY
+                if resp.status_code < 400
+                else ProviderStatus.UNHEALTHY
             )
         except Exception:
             self._status = ProviderStatus.UNHEALTHY
@@ -624,7 +631,9 @@ class LLMGateway:
             self.providers[name] = _create_provider(config)
 
     async def load_tenant_keys(
-        self, session: "AsyncSession", tenant_id: "uuid.UUID"
+        self,
+        session: AsyncSession,
+        tenant_id: uuid.UUID,
     ) -> None:
         """Load API keys from tenant_settings DB for all providers.
 
@@ -660,7 +669,10 @@ class LLMGateway:
         """Select provider order: preferred first, then by availability and cost."""
         ordered = []
         if preferred_provider and preferred_provider in allowed_providers:
-            if self.providers.get(preferred_provider, None) and self.providers[preferred_provider].is_available:
+            if (
+                self.providers.get(preferred_provider, None)
+                and self.providers[preferred_provider].is_available
+            ):
                 ordered.append(preferred_provider)
 
         # Add remaining available providers sorted by tier (lowest first), then cost
@@ -732,7 +744,9 @@ class LLMGateway:
 
             if needs_anonymization:
                 try:
-                    work_messages, anon_mapping = self.anonymizer.anonymize_messages(messages)
+                    work_messages, anon_mapping = self.anonymizer.anonymize_messages(
+                        messages
+                    )
                     was_anonymized = True
 
                     # CRITICAL: verify that anonymization actually removed all entities
@@ -861,9 +875,7 @@ class LLMGateway:
             except Exception as e:
                 latency_ms = int((time.monotonic() - start_time) * 1000)
                 last_error = e
-                logger.warning(
-                    "Provider %s failed, trying next: %s", provider_name, e
-                )
+                logger.warning("Provider %s failed, trying next: %s", provider_name, e)
                 await audit_logger.log_error(audit_id, str(e)[:500])
                 continue
 
@@ -902,7 +914,9 @@ class LLMGateway:
 
         provider_chain = self._select_provider(allowed, preferred_provider)
         if not provider_chain:
-            raise ValueError(f"No available provider for sensitivity={data_sensitivity.value}")
+            raise ValueError(
+                f"No available provider for sensitivity={data_sensitivity.value}"
+            )
 
         for provider_name in provider_chain:
             provider = self.providers[provider_name]
@@ -919,7 +933,9 @@ class LLMGateway:
 
             if needs_anonymization:
                 try:
-                    work_messages, anon_mapping = self.anonymizer.anonymize_messages(messages)
+                    work_messages, anon_mapping = self.anonymizer.anonymize_messages(
+                        messages
+                    )
                 except Exception as anon_err:
                     logger.error("Anonymization failed for streaming: %s", anon_err)
                     audit_id = await audit_logger.log_request(
@@ -984,7 +1000,9 @@ class LLMGateway:
                 await audit_logger.log_error(audit_id, str(e)[:500])
                 continue
 
-        raise RuntimeError(f"All providers failed for streaming. Tried: {provider_chain}")
+        raise RuntimeError(
+            f"All providers failed for streaming. Tried: {provider_chain}"
+        )
 
     async def get_provider_status(self) -> dict[str, dict]:
         """Get health status of all providers."""

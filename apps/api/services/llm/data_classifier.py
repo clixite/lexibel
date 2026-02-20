@@ -65,7 +65,9 @@ _NISS_PATTERN = re.compile(r"\b\d{2}\.\d{2}\.\d{2}[-–]\d{3}\.\d{2}\b")
 _BCE_PATTERN = re.compile(r"\b(?:BE)?0\d{3}[.\s]\d{3}[.\s]\d{3}\b")
 
 # Belgian phone: +32 or 0032 followed by digits
-_PHONE_BE_PATTERN = re.compile(r"(?:\+32|0032)[\s.\-/]?\d[\s.\-/]?\d{2,3}[\s.\-/]?\d{2}[\s.\-/]?\d{2}")
+_PHONE_BE_PATTERN = re.compile(
+    r"(?:\+32|0032)[\s.\-/]?\d[\s.\-/]?\d{2,3}[\s.\-/]?\d{2}[\s.\-/]?\d{2}"
+)
 
 # Belgian IBAN: BE## #### #### ####
 _IBAN_BE_PATTERN = re.compile(r"\bBE\d{2}[\s]?\d{4}[\s]?\d{4}[\s]?\d{4}\b")
@@ -178,8 +180,22 @@ _PROPER_NAME_PATTERN = re.compile(
 _PROVIDER_RULES: dict[DataSensitivity, list[str]] = {
     DataSensitivity.CRITICAL: ["mistral", "gemini"],
     DataSensitivity.SENSITIVE: ["mistral", "gemini", "anthropic", "openai"],
-    DataSensitivity.SEMI_SENSITIVE: ["mistral", "gemini", "anthropic", "openai", "deepseek"],
-    DataSensitivity.PUBLIC: ["mistral", "gemini", "anthropic", "openai", "deepseek", "glm", "kimi"],
+    DataSensitivity.SEMI_SENSITIVE: [
+        "mistral",
+        "gemini",
+        "anthropic",
+        "openai",
+        "deepseek",
+    ],
+    DataSensitivity.PUBLIC: [
+        "mistral",
+        "gemini",
+        "anthropic",
+        "openai",
+        "deepseek",
+        "glm",
+        "kimi",
+    ],
 }
 
 
@@ -236,9 +252,7 @@ class DataClassifier:
 
         # NISS (always CRITICAL — this is the Belgian equivalent of SSN)
         for m in _NISS_PATTERN.finditer(text):
-            entities.append(
-                DetectedEntity("niss", m.group(), m.start(), m.end())
-            )
+            entities.append(DetectedEntity("niss", m.group(), m.start(), m.end()))
             reasons.append(f"Belgian NISS detected: {m.group()[:5]}***")
 
         # ── Detect SENSITIVE patterns ──
@@ -246,7 +260,9 @@ class DataClassifier:
         # Person names (legal context)
         for m in _LEGAL_CONTEXT_NAME.finditer(text):
             entities.append(
-                DetectedEntity("person_name", m.group(), m.start(), m.end(), confidence=0.9)
+                DetectedEntity(
+                    "person_name", m.group(), m.start(), m.end(), confidence=0.9
+                )
             )
             reasons.append(f"Person name in legal context: '{m.group()[:10]}...'")
 
@@ -255,11 +271,17 @@ class DataClassifier:
             name = m.group(1)
             # Filter out common legal terms that look like proper names
             if name.lower() not in {
-                "code civil", "code pénal", "cour appel", "conseil état",
-                "moniteur belge", "union européenne",
+                "code civil",
+                "code pénal",
+                "cour appel",
+                "conseil état",
+                "moniteur belge",
+                "union européenne",
             }:
                 entities.append(
-                    DetectedEntity("person_name", name, m.start(1), m.end(1), confidence=0.6)
+                    DetectedEntity(
+                        "person_name", name, m.start(1), m.end(1), confidence=0.6
+                    )
                 )
 
         # Internal references
@@ -280,30 +302,22 @@ class DataClassifier:
 
         # BCE/TVA numbers
         for m in _BCE_PATTERN.finditer(text):
-            entities.append(
-                DetectedEntity("bce", m.group(), m.start(), m.end())
-            )
+            entities.append(DetectedEntity("bce", m.group(), m.start(), m.end()))
             reasons.append(f"BCE/TVA number: {m.group()}")
 
         # Phone numbers
         for m in _PHONE_BE_PATTERN.finditer(text):
-            entities.append(
-                DetectedEntity("phone", m.group(), m.start(), m.end())
-            )
+            entities.append(DetectedEntity("phone", m.group(), m.start(), m.end()))
             reasons.append("Belgian phone number detected")
 
         # IBAN
         for m in _IBAN_BE_PATTERN.finditer(text):
-            entities.append(
-                DetectedEntity("iban", m.group(), m.start(), m.end())
-            )
+            entities.append(DetectedEntity("iban", m.group(), m.start(), m.end()))
             reasons.append("Belgian IBAN detected")
 
         # Email
         for m in _EMAIL_PATTERN.finditer(text):
-            entities.append(
-                DetectedEntity("email", m.group(), m.start(), m.end())
-            )
+            entities.append(DetectedEntity("email", m.group(), m.start(), m.end()))
             reasons.append("Email address detected")
 
         # Addresses
@@ -335,8 +349,10 @@ class DataClassifier:
         # Text is "substantive" if it has meaningful content beyond whitespace
         # and generic instructions. Empty/trivial text → PUBLIC.
         stripped = text.strip()
-        text_has_substance = len(stripped) > 20 and not stripped.isascii() or any(
-            c.isalpha() for c in stripped
+        text_has_substance = (
+            len(stripped) > 20
+            and not stripped.isascii()
+            or any(c.isalpha() for c in stripped)
         )
         # Also consider purely legal reference text as public
         has_only_legal_refs = (has_jurisprudence or has_legal_codes) and not entities

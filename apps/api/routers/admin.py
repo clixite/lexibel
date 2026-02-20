@@ -1,10 +1,12 @@
 """Admin endpoints — health, tenants, users, stats."""
 
+import logging
 import os
-import uuid
 from datetime import datetime, timezone
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,6 +18,25 @@ from packages.db.models.invoice import Invoice
 from packages.db.models.tenant import Tenant
 from packages.db.models.user import User
 from packages.db.session import async_session_factory
+
+logger = logging.getLogger(__name__)
+
+
+class CreateTenantRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=200)
+    slug: Optional[str] = Field(None, max_length=200, pattern=r"^[a-z0-9-]+$")
+    plan: str = Field("solo", pattern=r"^(solo|team|enterprise)$")
+    locale: str = Field("fr-BE", max_length=10)
+
+
+class InviteUserRequest(BaseModel):
+    email: str = Field(..., min_length=5, max_length=254)
+    role: str = Field(
+        "junior",
+        pattern=r"^(admin|partner|associate|junior|secretary|accountant|super_admin)$",
+    )
+    full_name: Optional[str] = Field(None, max_length=200)
+
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
@@ -80,49 +101,54 @@ async def list_tenants(user: dict = Depends(get_current_user)):
 
 @router.post("/tenants")
 async def create_tenant(
-    body: dict,
+    body: CreateTenantRequest,
     user: dict = Depends(get_current_user),
 ):
     """Create a new tenant."""
     _require_super_admin(user)
 
-    name = body.get("name")
-    if not name:
-        raise HTTPException(status_code=400, detail="Tenant name required")
+    slug = body.slug or body.name.lower().replace(" ", "-")
 
-    slug = body.get("slug") or name.lower().replace(" ", "-")
-
-    async with async_session_factory() as session:
-        async with session.begin():
-            # Check for duplicate slug
-            result = await session.execute(select(Tenant).where(Tenant.slug == slug))
-            if result.scalar_one_or_none() is not None:
-                raise HTTPException(
-                    status_code=409, detail=f"Tenant slug '{slug}' already exists"
+    try:
+        async with async_session_factory() as session:
+            async with session.begin():
+                # Check for duplicate slug
+                result = await session.execute(
+                    select(Tenant).where(Tenant.slug == slug)
                 )
+                if result.scalar_one_or_none() is not None:
+                    raise HTTPException(
+                        status_code=409,
+                        detail=f"Tenant slug '{slug}' already exists",
+                    )
 
-            tenant = Tenant(
-                name=name,
-                slug=slug,
-                plan=body.get("plan", "solo"),
-                locale=body.get("locale", "fr-BE"),
-                config={},
-                status="active",
-            )
-            session.add(tenant)
-            await session.flush()
-            await session.refresh(tenant)
+                tenant = Tenant(
+                    name=body.name,
+                    slug=slug,
+                    plan=body.plan,
+                    locale=body.locale,
+                    config={},
+                    status="active",
+                )
+                session.add(tenant)
+                await session.flush()
+                await session.refresh(tenant)
 
-            return {
-                "id": str(tenant.id),
-                "name": tenant.name,
-                "slug": tenant.slug,
-                "plan": tenant.plan,
-                "status": tenant.status,
-                "created_at": tenant.created_at.isoformat()
-                if tenant.created_at
-                else None,
-            }
+                return {
+                    "id": str(tenant.id),
+                    "name": tenant.name,
+                    "slug": tenant.slug,
+                    "plan": tenant.plan,
+                    "status": tenant.status,
+                    "created_at": tenant.created_at.isoformat()
+                    if tenant.created_at
+                    else None,
+                }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to create tenant: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to create tenant")
 
 
 @router.get("/stats")
@@ -187,74 +213,67 @@ async def list_users(user: dict = Depends(get_current_user)):
 
 @router.post("/users/invite")
 async def invite_user(
-    body: dict,
+    body: InviteUserRequest,
     user: dict = Depends(get_current_user),
 ):
     """Invite a user to the current tenant."""
-    email = body.get("email")
-    role = body.get("role", "junior")
-    full_name = body.get("full_name", email.split("@")[0] if email else "")
-    if not email:
-        raise HTTPException(status_code=400, detail="Email required")
-
-    valid_roles = {
-        "admin",
-        "partner",
-        "associate",
-        "junior",
-        "secretary",
-        "accountant",
-        "super_admin",
-    }
-    if role not in valid_roles:
-        raise HTTPException(
-            status_code=400, detail=f"Invalid role. Valid: {valid_roles}"
-        )
-
+    full_name = body.full_name or body.email.split("@")[0]
     tenant_id = user.get("tenant_id")
 
-    async with async_session_factory() as session:
-        async with session.begin():
-            # Check for duplicate email in tenant
-            result = await session.execute(
-                select(User).where(User.tenant_id == tenant_id, User.email == email)
-            )
-            if result.scalar_one_or_none() is not None:
-                raise HTTPException(
-                    status_code=409,
-                    detail=f"User with email '{email}' already exists in this tenant",
+    try:
+        async with async_session_factory() as session:
+            async with session.begin():
+                # Check for duplicate email in tenant
+                result = await session.execute(
+                    select(User).where(
+                        User.tenant_id == tenant_id, User.email == body.email
+                    )
                 )
+                if result.scalar_one_or_none() is not None:
+                    raise HTTPException(
+                        status_code=409,
+                        detail=f"User with email '{body.email}' already exists in this tenant",
+                    )
 
-            # Create user with a temporary password (they'll need to reset)
-            temp_password = f"Temp{uuid.uuid4().hex[:8]}!"
-            new_user = User(
-                tenant_id=tenant_id,
-                email=email,
-                full_name=full_name,
-                role=role,
-                hashed_password=hash_password(temp_password),
-                auth_provider="local",
-                mfa_enabled=False,
-                is_active=True,
-            )
-            session.add(new_user)
-            await session.flush()
-            await session.refresh(new_user)
+                # Create user with a secure temporary password (they'll need to reset)
+                import secrets
 
-            return {
-                "message": f"User created: {email}",
-                "user": {
-                    "id": str(new_user.id),
-                    "email": new_user.email,
-                    "full_name": new_user.full_name,
-                    "role": new_user.role,
-                    "tenant_id": str(new_user.tenant_id),
-                    "is_active": new_user.is_active,
-                    "created_at": (
-                        new_user.created_at.isoformat() if new_user.created_at else None
-                    ),
-                },
-            }
+                temp_password = secrets.token_urlsafe(16)
+                new_user = User(
+                    tenant_id=tenant_id,
+                    email=body.email,
+                    full_name=full_name,
+                    role=body.role,
+                    hashed_password=hash_password(temp_password),
+                    auth_provider="local",
+                    mfa_enabled=False,
+                    is_active=True,
+                )
+                session.add(new_user)
+                await session.flush()
+                await session.refresh(new_user)
+
+                return {
+                    "message": f"User created: {body.email}",
+                    "user": {
+                        "id": str(new_user.id),
+                        "email": new_user.email,
+                        "full_name": new_user.full_name,
+                        "role": new_user.role,
+                        "tenant_id": str(new_user.tenant_id),
+                        "is_active": new_user.is_active,
+                        "created_at": (
+                            new_user.created_at.isoformat()
+                            if new_user.created_at
+                            else None
+                        ),
+                    },
+                }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to invite user: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to invite user")
 
 
 # ── Service health checkers ──

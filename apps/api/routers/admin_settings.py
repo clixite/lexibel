@@ -53,7 +53,11 @@ async def get_all_settings(
     Encrypted values are masked (e.g. 'sk-ant-***').
     """
     _require_super_admin(user)
-    tenant_id = user["tenant_id"] if isinstance(user["tenant_id"], uuid.UUID) else uuid.UUID(str(user["tenant_id"]))
+    tenant_id = (
+        user["tenant_id"]
+        if isinstance(user["tenant_id"], uuid.UUID)
+        else uuid.UUID(str(user["tenant_id"]))
+    )
 
     settings = await settings_service.get_all_settings(session, tenant_id)
 
@@ -73,7 +77,11 @@ async def get_settings_by_category(
 ):
     """Get settings for a specific category."""
     _require_super_admin(user)
-    tenant_id = user["tenant_id"] if isinstance(user["tenant_id"], uuid.UUID) else uuid.UUID(str(user["tenant_id"]))
+    tenant_id = (
+        user["tenant_id"]
+        if isinstance(user["tenant_id"], uuid.UUID)
+        else uuid.UUID(str(user["tenant_id"]))
+    )
 
     all_settings = await settings_service.get_all_settings(session, tenant_id)
     filtered = [s for s in all_settings if s["category"] == category]
@@ -89,8 +97,16 @@ async def upsert_settings(
 ):
     """Batch upsert settings. Sensitive keys are auto-encrypted."""
     _require_super_admin(user)
-    tenant_id = user["tenant_id"] if isinstance(user["tenant_id"], uuid.UUID) else uuid.UUID(str(user["tenant_id"]))
-    user_id = user["user_id"] if isinstance(user["user_id"], uuid.UUID) else uuid.UUID(str(user["user_id"]))
+    tenant_id = (
+        user["tenant_id"]
+        if isinstance(user["tenant_id"], uuid.UUID)
+        else uuid.UUID(str(user["tenant_id"]))
+    )
+    user_id = (
+        user["user_id"]
+        if isinstance(user["user_id"], uuid.UUID)
+        else uuid.UUID(str(user["user_id"]))
+    )
 
     results = []
     for item in body.settings:
@@ -126,7 +142,11 @@ async def test_connection(
 ):
     """Test credentials for a category by making real API calls."""
     _require_super_admin(user)
-    tenant_id = user["tenant_id"] if isinstance(user["tenant_id"], uuid.UUID) else uuid.UUID(str(user["tenant_id"]))
+    tenant_id = (
+        user["tenant_id"]
+        if isinstance(user["tenant_id"], uuid.UUID)
+        else uuid.UUID(str(user["tenant_id"]))
+    )
 
     # Get decrypted settings for the category
     decrypted = await settings_service.get_settings_by_category(
@@ -145,7 +165,11 @@ async def delete_setting(
 ):
     """Delete a single setting by key."""
     _require_super_admin(user)
-    tenant_id = user["tenant_id"] if isinstance(user["tenant_id"], uuid.UUID) else uuid.UUID(str(user["tenant_id"]))
+    tenant_id = (
+        user["tenant_id"]
+        if isinstance(user["tenant_id"], uuid.UUID)
+        else uuid.UUID(str(user["tenant_id"]))
+    )
 
     deleted = await settings_service.delete_setting(session, tenant_id, key)
     if not deleted:

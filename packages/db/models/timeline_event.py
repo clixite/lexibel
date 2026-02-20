@@ -1,4 +1,5 @@
 """TIMELINE event model."""
+
 import uuid
 from datetime import date, time
 

@@ -1,13 +1,14 @@
 """Tests for graph sync service."""
+
 import pytest
 import uuid
-from datetime import date, datetime
+from datetime import date
 from unittest.mock import AsyncMock, patch, MagicMock
 
-from apps.api.services.sentinel.graph_sync import GraphSyncService, get_graph_sync_service
-from packages.db.models.contact import Contact, ContactType
-from packages.db.models.case import Case
-from packages.db.models.user import User, UserRole
+from apps.api.services.sentinel.graph_sync import (
+    GraphSyncService,
+    get_graph_sync_service,
+)
 
 
 @pytest.mark.asyncio
@@ -33,7 +34,9 @@ async def test_sync_person_creates_node():
     mock_person.language = "fr"
     mock_person.address = None
 
-    with patch('apps.api.services.sentinel.graph_sync.get_superadmin_session') as mock_session:
+    with patch(
+        "apps.api.services.sentinel.graph_sync.get_superadmin_session"
+    ) as mock_session:
         mock_result = MagicMock()
         mock_result.scalar_one_or_none = MagicMock(return_value=mock_person)
 
@@ -81,7 +84,9 @@ async def test_sync_company_with_bce():
     mock_company.language = "fr"
     mock_company.address = None
 
-    with patch('apps.api.services.sentinel.graph_sync.get_superadmin_session') as mock_session:
+    with patch(
+        "apps.api.services.sentinel.graph_sync.get_superadmin_session"
+    ) as mock_session:
         mock_result = MagicMock()
         mock_result.scalar_one_or_none = MagicMock(return_value=mock_company)
 
@@ -114,7 +119,9 @@ async def test_sync_case_node():
 
     # Mock the Neo4j client
     mock_neo4j = AsyncMock()
-    mock_neo4j.execute_query = AsyncMock(return_value=[{"case": {"reference": "2026/001"}}])
+    mock_neo4j.execute_query = AsyncMock(
+        return_value=[{"case": {"reference": "2026/001"}}]
+    )
     service.neo4j_client = mock_neo4j
 
     # Mock database query
@@ -130,7 +137,9 @@ async def test_sync_case_node():
     mock_case.opened_at = date(2026, 1, 15)
     mock_case.closed_at = None
 
-    with patch('apps.api.services.sentinel.graph_sync.get_superadmin_session') as mock_session:
+    with patch(
+        "apps.api.services.sentinel.graph_sync.get_superadmin_session"
+    ) as mock_session:
         mock_result = MagicMock()
         mock_result.scalar_one_or_none = MagicMock(return_value=mock_case)
 
@@ -210,13 +219,17 @@ async def test_sync_relationships():
     mock_company.type = "legal"
     mock_company.full_name = "ACME Corp"
 
-    with patch('apps.api.services.sentinel.graph_sync.get_superadmin_session') as mock_session:
+    with patch(
+        "apps.api.services.sentinel.graph_sync.get_superadmin_session"
+    ) as mock_session:
         # Create a sequence of mock results for different queries
         mock_case_result = MagicMock()
         mock_case_result.scalar_one_or_none = MagicMock(return_value=mock_case)
 
         mock_scalars_obj = MagicMock()
-        mock_scalars_obj.all = MagicMock(return_value=[mock_client_contact, mock_adverse_contact])
+        mock_scalars_obj.all = MagicMock(
+            return_value=[mock_client_contact, mock_adverse_contact]
+        )
         mock_contacts_result = MagicMock()
         mock_contacts_result.scalars = MagicMock(return_value=mock_scalars_obj)
 
@@ -271,7 +284,9 @@ async def test_batch_sync_performance():
     mock_neo4j.execute_query = AsyncMock(return_value=[])
     service.neo4j_client = mock_neo4j
 
-    with patch('apps.api.services.sentinel.graph_sync.get_superadmin_session') as mock_session:
+    with patch(
+        "apps.api.services.sentinel.graph_sync.get_superadmin_session"
+    ) as mock_session:
         # Mock empty results
         mock_scalars_obj = MagicMock()
         mock_scalars_obj.all = MagicMock(return_value=[])
@@ -318,7 +333,9 @@ async def test_sync_nonexistent_person():
 
     fake_id = uuid.uuid4()
 
-    with patch('apps.api.services.sentinel.graph_sync.get_superadmin_session') as mock_session:
+    with patch(
+        "apps.api.services.sentinel.graph_sync.get_superadmin_session"
+    ) as mock_session:
         mock_result = MagicMock()
         mock_result.scalar_one_or_none = MagicMock(return_value=None)
 
@@ -347,7 +364,9 @@ async def test_sync_nonexistent_company():
 
     fake_id = uuid.uuid4()
 
-    with patch('apps.api.services.sentinel.graph_sync.get_superadmin_session') as mock_session:
+    with patch(
+        "apps.api.services.sentinel.graph_sync.get_superadmin_session"
+    ) as mock_session:
         mock_result = MagicMock()
         mock_result.scalar_one_or_none = MagicMock(return_value=None)
 
@@ -376,7 +395,9 @@ async def test_sync_nonexistent_case():
 
     fake_id = uuid.uuid4()
 
-    with patch('apps.api.services.sentinel.graph_sync.get_superadmin_session') as mock_session:
+    with patch(
+        "apps.api.services.sentinel.graph_sync.get_superadmin_session"
+    ) as mock_session:
         mock_result = MagicMock()
         mock_result.scalar_one_or_none = MagicMock(return_value=None)
 
@@ -398,7 +419,9 @@ async def test_sync_nonexistent_case():
 async def test_service_initialization():
     """Test service singleton initialization."""
     # This will use mocked Neo4j client
-    with patch('apps.api.services.sentinel.graph_sync.get_neo4j_client') as mock_get_client:
+    with patch(
+        "apps.api.services.sentinel.graph_sync.get_neo4j_client"
+    ) as mock_get_client:
         mock_client = AsyncMock()
         mock_get_client.return_value = mock_client
 

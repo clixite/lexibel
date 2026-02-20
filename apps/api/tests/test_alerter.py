@@ -1,6 +1,6 @@
 """Tests for SENTINEL alerter service."""
+
 import pytest
-from datetime import datetime
 from uuid import uuid4
 
 from apps.api.services.sentinel.alerter import ConflictAlerter, AlertSeverity
@@ -32,7 +32,7 @@ async def test_create_conflict_alert():
         severity_score=95,
         description="Client opposes new contact in active case",
         conflicting_entity_id=uuid4(),
-        conflicting_entity_type="company"
+        conflicting_entity_type="company",
     )
 
     alert = await alerter.create_conflict_alert(conflict, uuid4())

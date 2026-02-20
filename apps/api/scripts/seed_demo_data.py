@@ -31,7 +31,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import text
 
 from packages.db.models import (
     Tenant,
@@ -55,8 +54,10 @@ from packages.db.models import (
 )
 
 # Database URL from environment or default to production
-import os
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://lexibel:lexibel_dev_2026@localhost:5432/lexibel")
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql+asyncpg://lexibel:lexibel_dev_2026@localhost:5432/lexibel",
+)
 
 
 async def seed_data():
@@ -72,10 +73,11 @@ async def seed_data():
         # ── 1. Tenant ──
         print("\n📦 Creating/updating tenant...")
         from sqlalchemy import select, text
-        from sqlalchemy.dialects.postgresql import insert
 
         # Check if tenant exists
-        result = await session.execute(select(Tenant).where(Tenant.slug == "cabinet-demo"))
+        result = await session.execute(
+            select(Tenant).where(Tenant.slug == "cabinet-demo")
+        )
         tenant = result.scalar_one_or_none()
 
         if tenant:
@@ -101,7 +103,9 @@ async def seed_data():
         print("\n👤 Creating/updating admin user...")
 
         # Check if user exists
-        result = await session.execute(select(User).where(User.email == "nicolas@clixite.be"))
+        result = await session.execute(
+            select(User).where(User.email == "nicolas@clixite.be")
+        )
         admin_user = result.scalar_one_or_none()
 
         if admin_user:
@@ -489,7 +493,9 @@ async def seed_data():
             ("DPA_JBOX", "REFUSED", None, None),
         ]
 
-        for i, (source, status, suggested_case, confidence) in enumerate(inbox_items_data):
+        for i, (source, status, suggested_case, confidence) in enumerate(
+            inbox_items_data
+        ):
             item = InboxItem(
                 id=uuid4(),
                 tenant_id=tenant.id,
@@ -505,7 +511,9 @@ async def seed_data():
                 suggested_case_id=suggested_case,
                 confidence=confidence,
                 validated_by=admin_user.id if status == "VALIDATED" else None,
-                validated_at=datetime.now() - timedelta(hours=i) if status == "VALIDATED" else None,
+                validated_at=datetime.now() - timedelta(hours=i)
+                if status == "VALIDATED"
+                else None,
             )
             session.add(item)
 
@@ -1724,17 +1732,19 @@ Deadline: signature prévue pour fin mars."""
 
         await session.flush()
         contacts.extend(extra_contacts)
-        print(f"✅ {len(extra_contacts)} additional contacts created (total: {len(contacts)})")
+        print(
+            f"✅ {len(extra_contacts)} additional contacts created (total: {len(contacts)})"
+        )
 
         # ── 18. Extra case-contact links ──
         print("\n🔗 Linking extra contacts to extra cases...")
         extra_links = [
             (extra_cases[0], extra_contacts[0], "client"),  # Janssens → Divorce
             (extra_cases[0], extra_contacts[1], "client"),  # Peters → Divorce
-            (extra_cases[1], contacts[7], "client"),        # SCS Invest → Fiscal
+            (extra_cases[1], contacts[7], "client"),  # SCS Invest → Fiscal
             (extra_cases[2], extra_contacts[4], "client"),  # Maes → Accident
-            (extra_cases[3], contacts[5], "client"),        # Immobel → Bail
-            (extra_cases[4], contacts[7], "client"),        # SCS Invest → ASBL
+            (extra_cases[3], contacts[5], "client"),  # Immobel → Bail
+            (extra_cases[4], contacts[7], "client"),  # SCS Invest → ASBL
         ]
 
         for case, contact, role in extra_links:
@@ -1812,12 +1822,26 @@ Deadline: signature prévue pour fin mars."""
         # ── 20. Additional inbox items ──
         print("\n📥 Creating 3 additional inbox items...")
         extra_inbox = [
-            ("DPA_JBOX", "DRAFT", None, None, "Communication judiciaire — Tribunal de Namur"),
+            (
+                "DPA_JBOX",
+                "DRAFT",
+                None,
+                None,
+                "Communication judiciaire — Tribunal de Namur",
+            ),
             ("OUTLOOK", "DRAFT", extra_cases[1].id, 0.88, "Rapport fiscal BelgaTech"),
-            ("RINGOVER", "VALIDATED", extra_cases[2].id, 0.92, "Message vocal — Sophie Maes"),
+            (
+                "RINGOVER",
+                "VALIDATED",
+                extra_cases[2].id,
+                0.92,
+                "Message vocal — Sophie Maes",
+            ),
         ]
 
-        for i, (source, item_status, suggested_case, confidence, subject) in enumerate(extra_inbox):
+        for i, (source, item_status, suggested_case, confidence, subject) in enumerate(
+            extra_inbox
+        ):
             item = InboxItem(
                 id=uuid4(),
                 tenant_id=tenant.id,
@@ -1833,7 +1857,9 @@ Deadline: signature prévue pour fin mars."""
                 suggested_case_id=suggested_case,
                 confidence=confidence,
                 validated_by=admin_user.id if item_status == "VALIDATED" else None,
-                validated_at=datetime.now() - timedelta(hours=i) if item_status == "VALIDATED" else None,
+                validated_at=datetime.now() - timedelta(hours=i)
+                if item_status == "VALIDATED"
+                else None,
             )
             session.add(item)
 

@@ -58,6 +58,7 @@ async def create_contact(
         phone_e164=body.phone_e164,
         address=body.address,
         language=body.language,
+        metadata_=body.metadata,
     )
     response = ContactResponse.model_validate(contact).model_dump()
 
@@ -137,6 +138,9 @@ async def update_contact(
     session: AsyncSession = Depends(get_db_session),
 ) -> ContactResponse:
     update_data = body.model_dump(exclude_unset=True)
+    # Map schema field 'metadata' to model attribute 'metadata_'
+    if "metadata" in update_data:
+        update_data["metadata_"] = update_data.pop("metadata")
     contact = await contact_service.update_contact(session, contact_id, **update_data)
     if contact is None:
         raise HTTPException(status_code=404, detail="Contact not found")

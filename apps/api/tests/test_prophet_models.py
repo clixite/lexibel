@@ -1,7 +1,7 @@
 """Tests for PROPHET models."""
+
 import uuid
 
-import pytest
 
 from packages.db.models.prophet_prediction import ProphetPrediction
 from packages.db.models.prophet_simulation import ProphetSimulation

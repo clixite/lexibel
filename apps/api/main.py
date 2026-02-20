@@ -1,4 +1,4 @@
-﻿"""LexiBel API — FastAPI Application Factory"""
+"""LexiBel API — FastAPI Application Factory"""
 
 import logging
 import os
@@ -27,7 +27,11 @@ from apps.api.webhooks.ringover import router as ringover_webhook_router
 from apps.api.webhooks.plaud import router as plaud_webhook_router
 from apps.api.routers.integrations import router as integrations_router
 from apps.api.routers.events import router as events_router
-from apps.api.routers.bootstrap import router as bootstrap_router, ensure_admin_user, seed_demo_data
+from apps.api.routers.bootstrap import (
+    router as bootstrap_router,
+    ensure_admin_user,
+    seed_demo_data,
+)
 from apps.api.routers.search import router as search_router
 from apps.api.routers.ai import router as ai_router
 from apps.api.routers.migration import router as migration_router
@@ -45,6 +49,7 @@ from apps.api.routers.calendar import router as calendar_router
 from apps.api.routers.emails import router as emails_router
 from apps.api.routers.calls import router as calls_router
 from apps.api.routers.transcriptions import router as transcriptions_router
+from apps.api.routers.brain import router as brain_router
 from apps.api.routers.dashboard import router as dashboard_router
 from apps.api.routers.oauth import router as oauth_router
 from apps.api.routers.cloud_documents import router as cloud_documents_router
@@ -53,6 +58,7 @@ from apps.api.routers.llm import router as llm_router
 # Optional routers (defensive imports)
 try:
     from apps.api.routes.sentinel import router as sentinel_router
+
     SENTINEL_AVAILABLE = True
 except ImportError as e:
     logger = logging.getLogger(__name__)
@@ -179,6 +185,7 @@ def create_app() -> FastAPI:
     app.include_router(emails_router)
     app.include_router(calls_router)
     app.include_router(transcriptions_router)
+    app.include_router(brain_router)
     app.include_router(dashboard_router)
     app.include_router(oauth_router)
     app.include_router(cloud_documents_router)

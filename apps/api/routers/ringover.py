@@ -7,6 +7,7 @@ POST   /api/v1/ringover/calls/{id}/summary — regenerate AI summary
 GET    /api/v1/ringover/stats              — call statistics (volume, duration, sentiment)
 """
 
+import logging
 import os
 import uuid
 from datetime import datetime, timedelta
@@ -23,6 +24,8 @@ from apps.api.services import ringover_service
 from apps.api.services.ringover_client import RingoverClient, RingoverAPIError
 from packages.db.models.contact import Contact
 from packages.db.models.interaction_event import InteractionEvent
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/ringover", tags=["ringover"])
 
@@ -184,7 +187,7 @@ async def list_calls(
 
         except RingoverAPIError as e:
             # Log and fallback to DB
-            print(f"Ringover API error, falling back to DB: {e}")
+            logger.warning("Ringover API error, falling back to DB: %s", e)
 
     # Fallback: DB-only query
     query = select(InteractionEvent).where(
@@ -341,7 +344,7 @@ async def get_call_details(
 
         except RingoverAPIError as e:
             # Log but continue with DB data
-            print(f"Failed to fetch call details from Ringover API: {e}")
+            logger.warning("Failed to fetch call details from Ringover API: %s", e)
 
     # Get contact details
     contact_id_str = metadata.get("contact_id")

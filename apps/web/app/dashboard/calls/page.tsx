@@ -62,7 +62,7 @@ export default function CallsPage() {
         const res = await apiFetch<CallStats>("/calls/stats", accessToken);
         setStats(res);
       } catch (err) {
-        console.error("Erreur stats:", err);
+        // Stats fetch failed silently — non-critical
       }
     }
 

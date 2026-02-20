@@ -1,4 +1,5 @@
 """Tests for BCE enrichment service."""
+
 import pytest
 from apps.api.services.sentinel.enrichment import get_bce_service
 
@@ -68,6 +69,7 @@ async def test_rate_limiting():
     service = await get_bce_service()
 
     import time
+
     start = time.time()
 
     # Make 2 calls

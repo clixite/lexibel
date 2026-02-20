@@ -1,4 +1,4 @@
-﻿"""Cloud documents router - Google Drive, OneDrive, SharePoint integration.
+"""Cloud documents router - Google Drive, OneDrive, SharePoint integration.
 
 GET    /api/v1/cloud-documents                   - list cloud documents
 GET    /api/v1/cloud-documents/{id}              - get document metadata
@@ -13,7 +13,6 @@ POST   /api/v1/oauth/connections/{id}/sync       - trigger sync for a connection
 """
 
 import uuid
-from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
@@ -72,7 +71,9 @@ class CloudDocumentResponse(BaseModel):
             thumbnail_url=doc.thumbnail_url,
             is_folder=doc.is_folder,
             path=doc.path,
-            last_modified_at=doc.last_modified_at.isoformat() if doc.last_modified_at else None,
+            last_modified_at=doc.last_modified_at.isoformat()
+            if doc.last_modified_at
+            else None,
             last_modified_by=doc.last_modified_by,
             is_indexed=doc.is_indexed,
             index_status=doc.index_status,
@@ -128,13 +129,16 @@ class StartSyncRequest(BaseModel):
     folder_id: Optional[str] = None
     job_type: str = "full"  # "full" | "incremental"
 
+
 # --- Cloud Documents Endpoints -----------------------------------------------
 
 
 @router.get("/cloud-documents")
 async def list_cloud_documents(
     connection_id: Optional[uuid.UUID] = Query(None),
-    folder_id: Optional[str] = Query(None, description="Filter by parent folder external_id"),
+    folder_id: Optional[str] = Query(
+        None, description="Filter by parent folder external_id"
+    ),
     case_id: Optional[uuid.UUID] = Query(None),
     provider: Optional[str] = Query(None),
     is_folder: Optional[bool] = Query(None),
@@ -163,9 +167,7 @@ async def list_cloud_documents(
         query = query.where(CloudDocument.name.ilike(f"%{search}%"))
 
     # Count total
-    count_query = select(func.count()).select_from(
-        query.subquery()
-    )
+    count_query = select(func.count()).select_from(query.subquery())
     total_result = await session.execute(count_query)
     total = total_result.scalar() or 0
 
@@ -218,6 +220,7 @@ async def search_cloud_documents(
         "query": q,
         "total": len(documents),
     }
+
 
 @router.get("/cloud-documents/{document_id}")
 async def get_cloud_document(
@@ -272,12 +275,14 @@ async def download_cloud_document(
     try:
         if doc.provider == "google_drive":
             from apps.api.services.google_drive_sync import get_google_drive_sync
+
             sync_service = get_google_drive_sync()
             content = await sync_service.get_file_content(
                 session, doc.oauth_token_id, doc.external_id, doc.mime_type or ""
             )
         else:
             from apps.api.services.microsoft_onedrive_sync import get_onedrive_sync
+
             sync_service = get_onedrive_sync()
             content = await sync_service.get_file_content(
                 session, doc.oauth_token_id, doc.external_id
@@ -290,11 +295,15 @@ async def download_cloud_document(
             content_type = "application/pdf"
 
         import io
+
         return StreamingResponse(
             io.BytesIO(content),
             media_type=content_type,
             headers={
-                "Content-Disposition": "attachment; filename=" + chr(34) + doc.name + chr(34),
+                "Content-Disposition": "attachment; filename="
+                + chr(34)
+                + doc.name
+                + chr(34),
             },
         )
     except Exception as e:
@@ -302,6 +311,7 @@ async def download_cloud_document(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Failed to download from provider: {str(e)}",
         )
+
 
 @router.post("/cloud-documents/{document_id}/link-case")
 async def link_document_to_case(
@@ -386,6 +396,7 @@ async def unlink_document_from_case(
     await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
+
 # --- Sync Endpoints -----------------------------------------------------------
 
 
@@ -436,6 +447,7 @@ async def start_sync(
     # Dispatch to Celery (async)
     try:
         from apps.workers.tasks.sync_tasks import sync_documents
+
         sync_documents.apply_async(
             kwargs={
                 "connection_id": str(body.connection_id),
@@ -448,7 +460,10 @@ async def start_sync(
     except Exception as e:
         # If Celery not available, run inline (dev mode)
         import logging
-        logging.getLogger(__name__).warning(f"Celery not available, skipping async dispatch: {e}")
+
+        logging.getLogger(__name__).warning(
+            f"Celery not available, skipping async dispatch: {e}"
+        )
 
     return {"job_id": str(job.id), "status": "started"}
 
@@ -469,9 +484,11 @@ async def get_sync_history(
     count_q = select(func.count()).select_from(query.subquery())
     total = (await session.execute(count_q)).scalar() or 0
 
-    query = query.order_by(desc(CloudSyncJob.created_at)).offset(
-        (page - 1) * per_page
-    ).limit(per_page)
+    query = (
+        query.order_by(desc(CloudSyncJob.created_at))
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+    )
 
     result = await session.execute(query)
     jobs = result.scalars().all()

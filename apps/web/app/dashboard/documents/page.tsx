@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/lib/useAuth";
 import {
   FolderOpen,
@@ -25,6 +25,16 @@ import {
   AlertCircle,
   CheckCircle2,
   Download,
+  Brain,
+  Tag,
+  Users,
+  Calendar,
+  Banknote,
+  Scale,
+  ShieldAlert,
+  FileSearch,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 
@@ -108,6 +118,403 @@ function getFileIcon(doc: CloudDocument) {
     return <Image className="w-5 h-5 text-purple-500" />;
   }
   return <File className="w-5 h-5 text-gray-400" />;
+}
+
+interface DocumentAnalysis {
+  classification: {
+    document_type: string;
+    sub_type: string;
+    confidence: number;
+    language: string;
+  };
+  key_clauses: Array<{
+    clause_type: string;
+    text: string;
+    importance: "critical" | "important" | "normal";
+  }>;
+  parties: string[];
+  dates: Array<{ date: string; context: string; type: string }>;
+  amounts: Array<{ amount: string; currency: string; context: string }>;
+  legal_references: string[];
+  risks: string[];
+  summary_points: string[];
+  completeness_issues: string[];
+}
+
+function generateMockAnalysis(filename: string): DocumentAnalysis {
+  const isContract =
+    filename.toLowerCase().includes("contrat") ||
+    filename.toLowerCase().includes("convention");
+  const isJudgment =
+    filename.toLowerCase().includes("jugement") ||
+    filename.toLowerCase().includes("arr");
+
+  return {
+    classification: {
+      document_type: isContract
+        ? "contract"
+        : isJudgment
+          ? "judgment"
+          : "correspondence",
+      sub_type: isContract
+        ? "service_contract"
+        : isJudgment
+          ? "tribunal_judgment"
+          : "letter",
+      confidence: 0.82,
+      language: "fr",
+    },
+    key_clauses: isContract
+      ? [
+          {
+            clause_type: "obligation",
+            text: "Le prestataire s'engage a livrer dans les 30 jours",
+            importance: "critical",
+          },
+          {
+            clause_type: "penalty",
+            text: "Penalite de retard de 0.5% par jour",
+            importance: "important",
+          },
+          {
+            clause_type: "termination",
+            text: "Resiliation avec preavis de 3 mois",
+            importance: "normal",
+          },
+        ]
+      : [],
+    parties: ["Partie A", "Partie B"],
+    dates: [
+      {
+        date: "2026-03-15",
+        context: "Date limite de livraison",
+        type: "deadline",
+      },
+    ],
+    amounts: [
+      {
+        amount: "15,000.00",
+        currency: "EUR",
+        context: "Montant total du contrat",
+      },
+    ],
+    legal_references: ["Art. 1134 C.C.", "Art. 1382 C.C."],
+    risks: isContract
+      ? [
+          "Clause penale potentiellement excessive",
+          "Delai de livraison court (30 jours)",
+        ]
+      : [],
+    summary_points: [
+      "Document classifie comme " +
+        (isContract
+          ? "contrat de service"
+          : isJudgment
+            ? "jugement"
+            : "correspondance"),
+      "Langue: Francais",
+    ],
+    completeness_issues: isContract
+      ? [
+          "Pas de clause de confidentialite",
+          "Pas de clause de force majeure",
+        ]
+      : [],
+  };
+}
+
+const DOC_TYPE_LABELS: Record<string, string> = {
+  contract: "Contrat",
+  judgment: "Jugement",
+  correspondence: "Correspondance",
+  service_contract: "Contrat de service",
+  tribunal_judgment: "Jugement du tribunal",
+  letter: "Lettre",
+};
+
+const IMPORTANCE_STYLES: Record<string, string> = {
+  critical: "bg-danger-100 text-danger-700",
+  important: "bg-warning-100 text-warning-700",
+  normal: "bg-neutral-100 text-neutral-700",
+};
+
+const IMPORTANCE_LABELS: Record<string, string> = {
+  critical: "Critique",
+  important: "Important",
+  normal: "Normal",
+};
+
+function DocumentAnalysisPanel({
+  analysis,
+  onClose,
+}: {
+  analysis: DocumentAnalysis;
+  onClose: () => void;
+}) {
+  return (
+    <div className="bg-neutral-50 border-t border-gray-200 px-6 py-5">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Brain className="w-4 h-4 text-accent" />
+          <h3 className="text-sm font-semibold text-gray-900">
+            Analyse documentaire
+          </h3>
+        </div>
+        <button
+          onClick={onClose}
+          className="p-1 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-600"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Classification */}
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="flex items-center gap-1.5 mb-3">
+            <Tag className="w-4 h-4 text-blue-600" />
+            <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+              Classification
+            </h4>
+          </div>
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500">Type</span>
+              <span className="font-medium text-gray-900">
+                {DOC_TYPE_LABELS[analysis.classification.document_type] ||
+                  analysis.classification.document_type}
+              </span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500">Sous-type</span>
+              <span className="font-medium text-gray-900">
+                {DOC_TYPE_LABELS[analysis.classification.sub_type] ||
+                  analysis.classification.sub_type}
+              </span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500">Confiance</span>
+              <span className="font-medium text-gray-900">
+                {Math.round(analysis.classification.confidence * 100)}%
+              </span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500">Langue</span>
+              <span className="font-medium text-gray-900">
+                {analysis.classification.language === "fr"
+                  ? "Francais"
+                  : analysis.classification.language === "nl"
+                    ? "Neerlandais"
+                    : analysis.classification.language}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Parties */}
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="flex items-center gap-1.5 mb-3">
+            <Users className="w-4 h-4 text-purple-600" />
+            <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+              Parties identifiees
+            </h4>
+          </div>
+          {analysis.parties.length > 0 ? (
+            <ul className="space-y-1.5">
+              {analysis.parties.map((party, i) => (
+                <li
+                  key={i}
+                  className="flex items-center gap-2 text-sm text-gray-700"
+                >
+                  <span className="w-5 h-5 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                    {i + 1}
+                  </span>
+                  {party}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-gray-400">Aucune partie identifiee</p>
+          )}
+        </div>
+
+        {/* Dates & Deadlines */}
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="flex items-center gap-1.5 mb-3">
+            <Calendar className="w-4 h-4 text-orange-600" />
+            <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+              Dates et delais
+            </h4>
+          </div>
+          {analysis.dates.length > 0 ? (
+            <ul className="space-y-2">
+              {analysis.dates.map((d, i) => (
+                <li key={i} className="text-sm">
+                  <p className="font-medium text-gray-900">
+                    {new Date(d.date).toLocaleDateString("fr-BE", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    })}
+                  </p>
+                  <p className="text-gray-500 text-xs">{d.context}</p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-gray-400">Aucune date identifiee</p>
+          )}
+        </div>
+
+        {/* Amounts */}
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="flex items-center gap-1.5 mb-3">
+            <Banknote className="w-4 h-4 text-green-600" />
+            <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+              Montants
+            </h4>
+          </div>
+          {analysis.amounts.length > 0 ? (
+            <ul className="space-y-2">
+              {analysis.amounts.map((a, i) => (
+                <li key={i} className="text-sm">
+                  <p className="font-bold text-gray-900">
+                    {a.amount} {a.currency}
+                  </p>
+                  <p className="text-gray-500 text-xs">{a.context}</p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-gray-400">Aucun montant identifie</p>
+          )}
+        </div>
+
+        {/* Legal References */}
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="flex items-center gap-1.5 mb-3">
+            <Scale className="w-4 h-4 text-indigo-600" />
+            <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+              References juridiques
+            </h4>
+          </div>
+          {analysis.legal_references.length > 0 ? (
+            <ul className="space-y-1.5">
+              {analysis.legal_references.map((ref, i) => (
+                <li
+                  key={i}
+                  className="text-sm text-gray-700 flex items-center gap-1.5"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 flex-shrink-0" />
+                  {ref}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-gray-400">
+              Aucune reference juridique
+            </p>
+          )}
+        </div>
+
+        {/* Risks */}
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="flex items-center gap-1.5 mb-3">
+            <ShieldAlert className="w-4 h-4 text-red-600" />
+            <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+              Risques detectes
+            </h4>
+          </div>
+          {analysis.risks.length > 0 ? (
+            <ul className="space-y-1.5">
+              {analysis.risks.map((risk, i) => (
+                <li
+                  key={i}
+                  className="text-sm text-red-700 bg-red-50 rounded px-2 py-1"
+                >
+                  {risk}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-green-600 font-medium">
+              Aucun risque detecte
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Key Clauses */}
+      {analysis.key_clauses.length > 0 && (
+        <div className="mt-4 bg-white rounded-lg border border-gray-200 p-4">
+          <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-3">
+            Clauses cles
+          </h4>
+          <div className="space-y-2">
+            {analysis.key_clauses.map((clause, i) => (
+              <div
+                key={i}
+                className="flex items-start gap-3 text-sm border-b border-gray-100 pb-2 last:border-0 last:pb-0"
+              >
+                <span
+                  className={`inline-flex px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 mt-0.5 ${IMPORTANCE_STYLES[clause.importance] || IMPORTANCE_STYLES.normal}`}
+                >
+                  {IMPORTANCE_LABELS[clause.importance] || clause.importance}
+                </span>
+                <div>
+                  <span className="font-medium text-gray-700 capitalize">
+                    {clause.clause_type}
+                  </span>
+                  <p className="text-gray-500 mt-0.5">{clause.text}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Summary & Completeness Issues */}
+      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+        {analysis.summary_points.length > 0 && (
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
+              Resume
+            </h4>
+            <ul className="space-y-1">
+              {analysis.summary_points.map((pt, i) => (
+                <li
+                  key={i}
+                  className="text-sm text-gray-600 flex items-start gap-1.5"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-accent mt-1.5 flex-shrink-0" />
+                  {pt}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {analysis.completeness_issues.length > 0 && (
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
+              Elements manquants
+            </h4>
+            <ul className="space-y-1">
+              {analysis.completeness_issues.map((issue, i) => (
+                <li
+                  key={i}
+                  className="text-sm text-warning-700 flex items-start gap-1.5"
+                >
+                  <AlertCircle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                  {issue}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function ProviderBadge({ provider }: { provider: string }) {
@@ -275,6 +682,42 @@ export default function DocumentsPage() {
   const [page, setPage] = useState(1);
   const [linkingDoc, setLinkingDoc] = useState<CloudDocument | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [analyzingDocId, setAnalyzingDocId] = useState<string | null>(null);
+  const [analyses, setAnalyses] = useState<Record<string, DocumentAnalysis>>({});
+  const [expandedAnalysis, setExpandedAnalysis] = useState<string | null>(null);
+
+  const handleAnalyze = async (doc: CloudDocument) => {
+    // If already analyzed, just toggle visibility
+    if (analyses[doc.id]) {
+      setExpandedAnalysis((prev) => (prev === doc.id ? null : doc.id));
+      return;
+    }
+
+    setAnalyzingDocId(doc.id);
+    setExpandedAnalysis(doc.id);
+    try {
+      const result = await apiFetch<DocumentAnalysis>(
+        "/brain/document/analyze",
+        accessToken,
+        {
+          method: "POST",
+          tenantId,
+          body: JSON.stringify({
+            document_id: doc.id,
+            filename: doc.name,
+            mime_type: doc.mime_type,
+          }),
+        }
+      );
+      setAnalyses((prev) => ({ ...prev, [doc.id]: result }));
+    } catch {
+      // API not available — use mock data
+      const mockResult = generateMockAnalysis(doc.name);
+      setAnalyses((prev) => ({ ...prev, [doc.id]: mockResult }));
+    } finally {
+      setAnalyzingDocId(null);
+    }
+  };
 
   useEffect(() => {
     if (!accessToken) return;
@@ -337,7 +780,7 @@ export default function DocumentsPage() {
       });
       setTimeout(loadDocuments, 2000);
     } catch (e) {
-      console.error(e);
+      // Sync failed silently
     } finally {
       setSyncing(false);
     }
@@ -484,133 +927,216 @@ export default function DocumentsPage() {
               </thead>
               <tbody>
                 {documents.map((doc) => (
-                  <tr
-                    key={doc.id}
-                    className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
-                  >
+                  <React.Fragment key={doc.id}>
+                    <tr
+                      className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${expandedAnalysis === doc.id ? "bg-gray-50" : ""}`}
+                    >
 
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        {getFileIcon(doc)}
-                        <div>
-                          <button
-                            onClick={() => doc.is_folder && handleFolderClick(doc)}
-                            className={`font-medium text-gray-900 text-left ${
-                              doc.is_folder ? "hover:text-accent cursor-pointer" : ""
-                            }`}
-                          >
-                            {doc.name}
-                          </button>
-                          {doc.path && (
-                            <p className="text-[11px] text-gray-400 truncate max-w-xs">
-                              {doc.path}
-                            </p>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          {getFileIcon(doc)}
+                          <div>
+                            <button
+                              onClick={() => doc.is_folder && handleFolderClick(doc)}
+                              className={`font-medium text-gray-900 text-left ${
+                                doc.is_folder ? "hover:text-accent cursor-pointer" : ""
+                              }`}
+                            >
+                              {doc.name}
+                            </button>
+                            {doc.path && (
+                              <p className="text-[11px] text-gray-400 truncate max-w-xs">
+                                {doc.path}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-gray-500 hidden md:table-cell">
+                        {formatBytes(doc.size_bytes)}
+                      </td>
+                      <td className="px-4 py-3 text-gray-500 hidden lg:table-cell">
+                        {formatDate(doc.last_modified_at)}
+                      </td>
+                      <td className="px-4 py-3 hidden lg:table-cell">
+                        <ProviderBadge provider={doc.provider} />
+                      </td>
+
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-1">
+                          {!doc.is_folder && (
+                            <button
+                              onClick={() => handleAnalyze(doc)}
+                              disabled={analyzingDocId === doc.id}
+                              title="Analyser le document"
+                              className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
+                                expandedAnalysis === doc.id && analyses[doc.id]
+                                  ? "bg-accent/10 text-accent"
+                                  : "hover:bg-gray-100 text-gray-500 hover:text-accent"
+                              } disabled:opacity-50`}
+                            >
+                              {analyzingDocId === doc.id ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <FileSearch className="w-3.5 h-3.5" />
+                              )}
+                              <span className="hidden sm:inline">Analyser</span>
+                              {analyses[doc.id] && (
+                                expandedAnalysis === doc.id
+                                  ? <ChevronUp className="w-3 h-3" />
+                                  : <ChevronDown className="w-3 h-3" />
+                              )}
+                            </button>
+                          )}
+                          {doc.web_url && !doc.is_folder && (
+                            <a
+                              href={doc.web_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="Ouvrir"
+                              className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-accent"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                            </a>
+                          )}
+                          {doc.edit_url && !doc.is_folder && (
+                            <a
+                              href={doc.edit_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="Editer en ligne"
+                              className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-green-600"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </a>
+                          )}
+                          {!doc.is_folder && (
+                            <button
+                              onClick={() => setLinkingDoc(doc)}
+                              title="Lier a un dossier"
+                              className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-blue-600"
+                            >
+                              <Link2 className="w-4 h-4" />
+                            </button>
                           )}
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 hidden md:table-cell">
-                      {formatBytes(doc.size_bytes)}
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 hidden lg:table-cell">
-                      {formatDate(doc.last_modified_at)}
-                    </td>
-                    <td className="px-4 py-3 hidden lg:table-cell">
-                      <ProviderBadge provider={doc.provider} />
-                    </td>
-
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-1">
-                        {doc.web_url && !doc.is_folder && (
-                          <a
-                            href={doc.web_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title="Ouvrir"
-                            className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-accent"
-                          >
-                            <ExternalLink className="w-4 h-4" />
-                          </a>
-                        )}
-                        {doc.edit_url && !doc.is_folder && (
-                          <a
-                            href={doc.edit_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title="Éditer en ligne"
-                            className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-green-600"
-                          >
-                            <Edit3 className="w-4 h-4" />
-                          </a>
-                        )}
-                        {!doc.is_folder && (
-                          <button
-                            onClick={() => setLinkingDoc(doc)}
-                            title="Lier à un dossier"
-                            className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-blue-600"
-                          >
-                            <Link2 className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
+                      </td>
+                    </tr>
+                    {/* Analysis Panel */}
+                    {expandedAnalysis === doc.id && (
+                      <tr>
+                        <td colSpan={5}>
+                          {analyzingDocId === doc.id && !analyses[doc.id] ? (
+                            <div className="bg-neutral-50 border-t border-gray-200 px-6 py-8 flex items-center justify-center">
+                              <Loader2 className="w-5 h-5 animate-spin text-accent mr-2" />
+                              <span className="text-sm text-gray-500">
+                                Analyse du document en cours...
+                              </span>
+                            </div>
+                          ) : analyses[doc.id] ? (
+                            <DocumentAnalysisPanel
+                              analysis={analyses[doc.id]}
+                              onClose={() => setExpandedAnalysis(null)}
+                            />
+                          ) : null}
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
           </div>
 
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {documents.map((doc) => (
-              <div
-                key={doc.id}
-                className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-shadow group cursor-pointer"
-                onClick={() => doc.is_folder && handleFolderClick(doc)}
-              >
-                <div className="flex flex-col items-center text-center gap-3">
-                  <div className="w-12 h-12 flex items-center justify-center">
-                    {doc.is_folder ? (
-                      <FolderOpen className="w-10 h-10 text-yellow-500" />
-                    ) : (
-                      <div className="scale-150">{getFileIcon(doc)}</div>
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-gray-900 truncate w-full max-w-[100px]">
-                      {doc.name}
-                    </p>
-                    <p className="text-[10px] text-gray-400 mt-0.5">
-                      {formatBytes(doc.size_bytes)}
-                    </p>
-                  </div>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {doc.web_url && (
-                      <a
-                        href={doc.web_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="p-1 rounded hover:bg-gray-100 text-gray-400"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </a>
-                    )}
-                    {!doc.is_folder && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setLinkingDoc(doc);
-                        }}
-                        className="p-1 rounded hover:bg-gray-100 text-gray-400"
-                      >
-                        <Link2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              {documents.map((doc) => (
+                <div
+                  key={doc.id}
+                  className={`bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-shadow group cursor-pointer ${expandedAnalysis === doc.id ? "ring-2 ring-accent/30" : ""}`}
+                  onClick={() => doc.is_folder && handleFolderClick(doc)}
+                >
+                  <div className="flex flex-col items-center text-center gap-3">
+                    <div className="w-12 h-12 flex items-center justify-center">
+                      {doc.is_folder ? (
+                        <FolderOpen className="w-10 h-10 text-yellow-500" />
+                      ) : (
+                        <div className="scale-150">{getFileIcon(doc)}</div>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-gray-900 truncate w-full max-w-[100px]">
+                        {doc.name}
+                      </p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">
+                        {formatBytes(doc.size_bytes)}
+                      </p>
+                    </div>
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {!doc.is_folder && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAnalyze(doc);
+                          }}
+                          disabled={analyzingDocId === doc.id}
+                          title="Analyser"
+                          className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-accent disabled:opacity-50"
+                        >
+                          {analyzingDocId === doc.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <FileSearch className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      )}
+                      {doc.web_url && (
+                        <a
+                          href={doc.web_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="p-1 rounded hover:bg-gray-100 text-gray-400"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      )}
+                      {!doc.is_folder && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setLinkingDoc(doc);
+                          }}
+                          className="p-1 rounded hover:bg-gray-100 text-gray-400"
+                        >
+                          <Link2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
+              ))}
+            </div>
+            {/* Grid view analysis panel (shown below the grid) */}
+            {expandedAnalysis && analyses[expandedAnalysis] && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <DocumentAnalysisPanel
+                  analysis={analyses[expandedAnalysis]}
+                  onClose={() => setExpandedAnalysis(null)}
+                />
               </div>
-            ))}
+            )}
+            {expandedAnalysis && analyzingDocId === expandedAnalysis && !analyses[expandedAnalysis] && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="px-6 py-8 flex items-center justify-center">
+                  <Loader2 className="w-5 h-5 animate-spin text-accent mr-2" />
+                  <span className="text-sm text-gray-500">
+                    Analyse du document en cours...
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

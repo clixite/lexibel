@@ -5,9 +5,10 @@ POST   /api/v1/cases/{case_id}/third-party          — create entry
 GET    /api/v1/cases/{case_id}/third-party/balance   — get balance
 """
 
+import logging
 import uuid
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api.dependencies import get_current_tenant, get_current_user, get_db_session
@@ -18,6 +19,8 @@ from apps.api.schemas.billing import (
     ThirdPartyListResponse,
 )
 from apps.api.services import third_party_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/cases", tags=["third-party"])
 
@@ -52,17 +55,23 @@ async def create_third_party_entry(
     user: dict = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ) -> ThirdPartyEntryResponse:
-    entry = await third_party_service.create_entry(
-        session,
-        tenant_id,
-        case_id=case_id,
-        entry_type=body.entry_type,
-        amount_cents=body.amount_cents,
-        description=body.description,
-        reference=body.reference,
-        entry_date=body.entry_date,
-        created_by=user["user_id"],
-    )
+    try:
+        entry = await third_party_service.create_entry(
+            session,
+            tenant_id,
+            case_id=case_id,
+            entry_type=body.entry_type,
+            amount_cents=body.amount_cents,
+            description=body.description,
+            reference=body.reference,
+            entry_date=body.entry_date,
+            created_by=user["user_id"],
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error("Failed to create third-party entry for case %s: %s", case_id, e)
+        raise HTTPException(status_code=500, detail="Failed to create entry")
     return ThirdPartyEntryResponse.model_validate(entry)
 
 

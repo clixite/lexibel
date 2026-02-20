@@ -10,19 +10,15 @@ Tests all 7 SENTINEL API endpoints:
 7. GET /api/sentinel/alerts/stream - SSE alert streaming
 """
 
-import asyncio
-import json
 import pytest
 from datetime import datetime
-from uuid import UUID, uuid4
+from uuid import uuid4
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from httpx import ASGITransport, AsyncClient
 
 from apps.api.auth.jwt import create_access_token
 from apps.api.main import app
-from packages.db.models.sentinel_conflict import SentinelConflict
-from packages.db.models.contact import Contact
 
 
 # ── Test Data ──
@@ -164,7 +160,10 @@ class TestCheckConflict:
         async def mock_get_detector():
             return mock_detector
 
-        with patch("apps.api.services.sentinel.conflict_detector.get_conflict_detector", mock_get_detector):
+        with patch(
+            "apps.api.services.sentinel.conflict_detector.get_conflict_detector",
+            mock_get_detector,
+        ):
             from apps.api.dependencies import get_db_session
 
             app.dependency_overrides[get_db_session] = override_db
@@ -235,7 +234,10 @@ class TestCheckConflict:
         async def mock_get_detector():
             return mock_detector
 
-        with patch("apps.api.services.sentinel.conflict_detector.get_conflict_detector", mock_get_detector):
+        with patch(
+            "apps.api.services.sentinel.conflict_detector.get_conflict_detector",
+            mock_get_detector,
+        ):
             from apps.api.dependencies import get_db_session
 
             app.dependency_overrides[get_db_session] = override_db
@@ -327,7 +329,10 @@ class TestCheckConflict:
         async def mock_get_detector():
             return mock_detector
 
-        with patch("apps.api.services.sentinel.conflict_detector.get_conflict_detector", mock_get_detector):
+        with patch(
+            "apps.api.services.sentinel.conflict_detector.get_conflict_detector",
+            mock_get_detector,
+        ):
             from apps.api.dependencies import get_db_session
 
             app.dependency_overrides[get_db_session] = override_db
@@ -772,7 +777,10 @@ class TestSyncGraph:
         async def mock_get_sync():
             return mock_sync
 
-        with patch("apps.api.services.sentinel.graph_sync.get_graph_sync_service", mock_get_sync):
+        with patch(
+            "apps.api.services.sentinel.graph_sync.get_graph_sync_service",
+            mock_get_sync,
+        ):
             from apps.api.dependencies import get_db_session
 
             app.dependency_overrides[get_db_session] = override_db
@@ -814,7 +822,10 @@ class TestSyncGraph:
         async def mock_get_sync():
             return mock_sync
 
-        with patch("apps.api.services.sentinel.graph_sync.get_graph_sync_service", mock_get_sync):
+        with patch(
+            "apps.api.services.sentinel.graph_sync.get_graph_sync_service",
+            mock_get_sync,
+        ):
             from apps.api.dependencies import get_db_session
 
             app.dependency_overrides[get_db_session] = override_db
@@ -860,7 +871,10 @@ class TestSyncGraph:
         async def mock_get_sync():
             return mock_sync
 
-        with patch("apps.api.services.sentinel.graph_sync.get_graph_sync_service", mock_get_sync):
+        with patch(
+            "apps.api.services.sentinel.graph_sync.get_graph_sync_service",
+            mock_get_sync,
+        ):
             from apps.api.dependencies import get_db_session
 
             app.dependency_overrides[get_db_session] = override_db
@@ -945,7 +959,10 @@ class TestGraphData:
         async def mock_get_detector():
             return mock_detector
 
-        with patch("apps.api.services.sentinel.conflict_detector.get_conflict_detector", mock_get_detector):
+        with patch(
+            "apps.api.services.sentinel.conflict_detector.get_conflict_detector",
+            mock_get_detector,
+        ):
             from apps.api.dependencies import get_db_session
 
             app.dependency_overrides[get_db_session] = override_db
@@ -997,7 +1014,10 @@ class TestGraphData:
         async def mock_get_detector():
             return mock_detector
 
-        with patch("apps.api.services.sentinel.conflict_detector.get_conflict_detector", mock_get_detector):
+        with patch(
+            "apps.api.services.sentinel.conflict_detector.get_conflict_detector",
+            mock_get_detector,
+        ):
             from apps.api.dependencies import get_db_session
 
             app.dependency_overrides[get_db_session] = override_db

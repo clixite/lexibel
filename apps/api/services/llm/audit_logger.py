@@ -82,7 +82,9 @@ class AIAuditLogger:
         if log is None:
             return
 
-        log.response_hash = self.hash_content(response_content) if response_content else None
+        log.response_hash = (
+            self.hash_content(response_content) if response_content else None
+        )
         log.token_count_input = token_count_input
         log.token_count_output = token_count_output
         log.latency_ms = latency_ms
@@ -245,12 +247,9 @@ class AIAuditLogger:
         validated = (await self.session.execute(validated_q)).scalar_one()
 
         # Total cost
-        total_cost_q = (
-            select(func.sum(AIAuditLog.cost_estimate_eur))
-            .where(
-                AIAuditLog.tenant_id == tenant_id,
-                AIAuditLog.created_at >= cutoff,
-            )
+        total_cost_q = select(func.sum(AIAuditLog.cost_estimate_eur)).where(
+            AIAuditLog.tenant_id == tenant_id,
+            AIAuditLog.created_at >= cutoff,
         )
         total_cost = (await self.session.execute(total_cost_q)).scalar_one()
 
@@ -259,7 +258,9 @@ class AIAuditLogger:
             "total_requests": total,
             "total_cost_eur": float(total_cost) if total_cost else 0.0,
             "human_validated_count": validated,
-            "human_validation_rate": round(validated / total * 100, 1) if total > 0 else 0.0,
+            "human_validation_rate": round(validated / total * 100, 1)
+            if total > 0
+            else 0.0,
             "by_provider": by_provider,
             "by_sensitivity": by_sensitivity,
         }
@@ -277,26 +278,34 @@ class AIAuditLogger:
             .where(AIAuditLog.tenant_id == tenant_id)
             .distinct()
         )
-        providers = [
-            r[0] for r in (await self.session.execute(providers_q)).all()
-        ]
+        providers = [r[0] for r in (await self.session.execute(providers_q)).all()]
 
         # Anonymization stats
-        total_q = select(func.count()).select_from(AIAuditLog).where(
-            AIAuditLog.tenant_id == tenant_id
+        total_q = (
+            select(func.count())
+            .select_from(AIAuditLog)
+            .where(AIAuditLog.tenant_id == tenant_id)
         )
         total_all = (await self.session.execute(total_q)).scalar_one()
 
-        anon_count_q = select(func.count()).select_from(AIAuditLog).where(
-            AIAuditLog.tenant_id == tenant_id,
-            AIAuditLog.was_anonymized.is_(True),
+        anon_count_q = (
+            select(func.count())
+            .select_from(AIAuditLog)
+            .where(
+                AIAuditLog.tenant_id == tenant_id,
+                AIAuditLog.was_anonymized.is_(True),
+            )
         )
         anon_count = (await self.session.execute(anon_count_q)).scalar_one()
 
         # Error rate
-        error_q = select(func.count()).select_from(AIAuditLog).where(
-            AIAuditLog.tenant_id == tenant_id,
-            AIAuditLog.error.isnot(None),
+        error_q = (
+            select(func.count())
+            .select_from(AIAuditLog)
+            .where(
+                AIAuditLog.tenant_id == tenant_id,
+                AIAuditLog.error.isnot(None),
+            )
         )
         error_count = (await self.session.execute(error_q)).scalar_one()
 
@@ -392,9 +401,13 @@ class AIAuditLogger:
             "statistics": {
                 "total_requests": total_all,
                 "anonymized_requests": anon_count,
-                "anonymization_rate": round(anon_count / total_all * 100, 1) if total_all > 0 else 0.0,
+                "anonymization_rate": round(anon_count / total_all * 100, 1)
+                if total_all > 0
+                else 0.0,
                 "error_count": error_count,
-                "error_rate": round(error_count / total_all * 100, 1) if total_all > 0 else 0.0,
+                "error_rate": round(error_count / total_all * 100, 1)
+                if total_all > 0
+                else 0.0,
                 "usage_by_provider": stats["by_provider"],
                 "usage_by_sensitivity": stats["by_sensitivity"],
                 "human_validation_rate": stats["human_validation_rate"],
@@ -430,9 +443,7 @@ class AIAuditLogger:
             .where(AIAuditLog.tenant_id == tenant_id)
             .distinct()
         )
-        providers_used = [
-            r[0] for r in (await self.session.execute(providers_q)).all()
-        ]
+        providers_used = [r[0] for r in (await self.session.execute(providers_q)).all()]
 
         # Get distinct purposes
         purposes_q = (
@@ -440,9 +451,7 @@ class AIAuditLogger:
             .where(AIAuditLog.tenant_id == tenant_id)
             .distinct()
         )
-        purposes_used = [
-            r[0] for r in (await self.session.execute(purposes_q)).all()
-        ]
+        purposes_used = [r[0] for r in (await self.session.execute(purposes_q)).all()]
 
         provider_details = {
             "mistral": {
@@ -500,7 +509,8 @@ class AIAuditLogger:
             "processing_activities": [
                 {
                     "activity": "AI-assisted legal document analysis and generation",
-                    "purposes": purposes_used or [
+                    "purposes": purposes_used
+                    or [
                         "case_analysis",
                         "document_draft",
                         "legal_research",
@@ -523,21 +533,21 @@ class AIAuditLogger:
                         "Health data (if relevant to case, Art. 9 GDPR)",
                     ],
                     "recipients": {
-                        p: provider_details.get(p, {"name": p})
-                        for p in providers_used
+                        p: provider_details.get(p, {"name": p}) for p in providers_used
                     },
                     "international_transfers": [
                         {
                             "provider": p,
-                            "country": provider_details.get(p, {}).get("country", "Unknown"),
+                            "country": provider_details.get(p, {}).get(
+                                "country", "Unknown"
+                            ),
                             "mechanism": provider_details.get(p, {}).get(
                                 "transfer_mechanism", "Unknown"
                             ),
                         }
                         for p in providers_used
-                        if provider_details.get(p, {}).get("country", "") not in (
-                            "France", "Belgium (Saint-Ghislain)"
-                        )
+                        if provider_details.get(p, {}).get("country", "")
+                        not in ("France", "Belgium (Saint-Ghislain)")
                     ],
                     "retention_period": "Audit logs: 5 years (Belgian limitation period). "
                     "Prompt/response content: NOT stored (professional secrecy Art. 458 C.P.).",

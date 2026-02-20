@@ -169,7 +169,7 @@ export default function IntegrationsPage() {
         });
         setConnectedTokens(tokens || []);
       } catch (error) {
-        console.error("Failed to fetch tokens:", error);
+        // Token fetch failed silently — list will remain empty
       }
     };
 
@@ -224,7 +224,7 @@ export default function IntegrationsPage() {
         `width=${width},height=${height},left=${left},top=${top}`
       );
     } catch (error) {
-      console.error("Failed to start OAuth flow:", error);
+      // OAuth flow start failed — loading spinner will dismiss
     } finally {
       setLoading(false);
     }

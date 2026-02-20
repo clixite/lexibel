@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Building2, User, Loader2, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { sentinelAPI, GraphNode, GraphEdge } from "@/lib/sentinel/api-client";
@@ -9,6 +9,7 @@ import SentinelGraphVisualization from "@/components/sentinel/SentinelGraphVisua
 
 export default function EntityDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const entityId = params.id as string;
 
   const [graphData, setGraphData] = useState<{ nodes: GraphNode[]; edges: GraphEdge[] } | null>(
@@ -108,11 +109,9 @@ export default function EntityDetailPage() {
             edges={graphData.edges}
             entityId={entityId}
             height={700}
-            onNodeClick={(node) => {
-              console.log("Node clicked:", node);
-            }}
+            onNodeClick={() => {}}
             onExpandNode={(nodeId) => {
-              window.location.href = `/dashboard/sentinel/entity/${nodeId}`;
+              router.push(`/dashboard/sentinel/entity/${nodeId}`);
             }}
           />
         </div>

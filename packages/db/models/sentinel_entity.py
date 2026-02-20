@@ -1,4 +1,5 @@
 """SENTINEL entity model."""
+
 import uuid
 from datetime import datetime
 

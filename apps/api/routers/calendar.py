@@ -25,7 +25,11 @@ async def get_calendar_events(
     session: AsyncSession = Depends(get_db_session),
 ):
     """Get calendar events."""
-    user_id = current_user["user_id"] if isinstance(current_user["user_id"], uuid.UUID) else uuid.UUID(str(current_user["user_id"]))
+    user_id = (
+        current_user["user_id"]
+        if isinstance(current_user["user_id"], uuid.UUID)
+        else uuid.UUID(str(current_user["user_id"]))
+    )
 
     query = select(CalendarEvent).where(
         CalendarEvent.tenant_id == tenant_id,
@@ -89,7 +93,11 @@ async def get_calendar_stats(
     session: AsyncSession = Depends(get_db_session),
 ):
     """Get calendar statistics."""
-    user_id = current_user["user_id"] if isinstance(current_user["user_id"], uuid.UUID) else uuid.UUID(str(current_user["user_id"]))
+    user_id = (
+        current_user["user_id"]
+        if isinstance(current_user["user_id"], uuid.UUID)
+        else uuid.UUID(str(current_user["user_id"]))
+    )
 
     # Total events
     total_query = (
@@ -150,7 +158,11 @@ async def trigger_calendar_sync(
     session: AsyncSession = Depends(get_db_session),
 ):
     """Trigger calendar synchronization from Google and Outlook."""
-    user_id = current_user["user_id"] if isinstance(current_user["user_id"], uuid.UUID) else uuid.UUID(str(current_user["user_id"]))
+    user_id = (
+        current_user["user_id"]
+        if isinstance(current_user["user_id"], uuid.UUID)
+        else uuid.UUID(str(current_user["user_id"]))
+    )
 
     calendar_sync = get_calendar_sync_service()
 

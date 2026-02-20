@@ -1,7 +1,22 @@
+import { refreshAccessToken, logout } from "@/lib/auth-core";
+
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
-export async function apiFetch<T = any>(
+/** Structured API error with status and detail */
+export class ApiFetchError extends Error {
+  status: number;
+  detail: string;
+
+  constructor(status: number, detail: string) {
+    super(`API ${status}: ${detail}`);
+    this.name = "ApiFetchError";
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
+export async function apiFetch<T = unknown>(
   path: string,
   accessToken: string,
   init?: RequestInit & { tenantId?: string },
@@ -20,11 +35,27 @@ export async function apiFetch<T = any>(
     headers,
   });
 
+  // Auto-refresh on 401, then retry once
   if (res.status === 401) {
-    if (typeof window !== "undefined") {
-      window.location.href = "/login";
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      // Retry with refreshed token — get fresh token from storage
+      const { getAccessToken } = await import("@/lib/auth-core");
+      const newToken = getAccessToken();
+      if (newToken) {
+        headers["Authorization"] = `Bearer ${newToken}`;
+        const retryRes = await fetch(`${API_BASE}${path}`, {
+          ...restInit,
+          headers,
+        });
+        if (retryRes.ok) {
+          return retryRes.json();
+        }
+      }
     }
-    throw new Error("Session expirée. Veuillez vous reconnecter.");
+    // Refresh failed — redirect to login
+    logout();
+    throw new ApiFetchError(401, "Session expirée. Veuillez vous reconnecter.");
   }
 
   if (!res.ok) {
@@ -37,7 +68,7 @@ export async function apiFetch<T = any>(
     } catch {
       // response body wasn't JSON — keep statusText
     }
-    throw new Error(`API ${res.status}: ${detail}`);
+    throw new ApiFetchError(res.status, detail);
   }
 
   return res.json();

@@ -1,10 +1,10 @@
 """SENTINEL company enrichment service using BCE."""
+
 import asyncio
 import logging
 from typing import Optional, Dict, List
-from datetime import datetime, timedelta
+from datetime import datetime
 import httpx
-from uuid import UUID
 
 logger = logging.getLogger(__name__)
 
@@ -22,8 +22,7 @@ class BCEEnrichmentService:
     async def initialize(self):
         """Initialize HTTP client."""
         self.client = httpx.AsyncClient(
-            timeout=httpx.Timeout(30.0),
-            headers={"User-Agent": "LexiBel/1.0"}
+            timeout=httpx.Timeout(30.0), headers={"User-Agent": "LexiBel/1.0"}
         )
 
     async def close(self):
@@ -96,34 +95,20 @@ class BCEEnrichmentService:
                 "street": "Rue de la Loi 123",
                 "postal_code": "1000",
                 "city": "Brussels",
-                "country": "Belgium"
+                "country": "Belgium",
             },
             "directors": [
-                {
-                    "name": "Jean Dupont",
-                    "role": "CEO",
-                    "appointed_date": "2015-03-20"
-                },
-                {
-                    "name": "Marie Martin",
-                    "role": "CFO",
-                    "appointed_date": "2018-06-10"
-                }
+                {"name": "Jean Dupont", "role": "CEO", "appointed_date": "2015-03-20"},
+                {"name": "Marie Martin", "role": "CFO", "appointed_date": "2018-06-10"},
             ],
             "ubos": [  # Ultimate Beneficial Owners
-                {
-                    "name": "Jean Dupont",
-                    "ownership_percent": 55.0
-                },
-                {
-                    "name": "Investment Fund Alpha",
-                    "ownership_percent": 45.0
-                }
+                {"name": "Jean Dupont", "ownership_percent": 55.0},
+                {"name": "Investment Fund Alpha", "ownership_percent": 45.0},
             ],
             "activity_codes": ["62010", "62020"],  # NACE-BEL codes
             "activity_description": "Computer programming activities",
             "employees_range": "10-49",
-            "last_updated": datetime.now().isoformat()
+            "last_updated": datetime.now().isoformat(),
         }
 
     async def get_company_structure(self, bce_number: str) -> Optional[Dict]:
@@ -139,7 +124,7 @@ class BCEEnrichmentService:
             "directors": data.get("directors", []),
             # In production, fetch subsidiaries via additional API calls
             "subsidiaries": [],  # TODO: Query for subsidiaries
-            "parent_company": None  # TODO: Query for parent
+            "parent_company": None,  # TODO: Query for parent
         }
 
     async def verify_bce_number(self, bce_number: str) -> bool:
@@ -163,7 +148,7 @@ class BCEEnrichmentService:
                 "legal_name": company_name,
                 "vat_number": "BE0123456789",
                 "city": "Brussels",
-                "match_score": 0.95
+                "match_score": 0.95,
             }
         ]
 

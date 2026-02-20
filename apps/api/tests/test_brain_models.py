@@ -1,7 +1,7 @@
 """Tests for BRAIN models."""
+
 import uuid
 
-import pytest
 
 from packages.db.models.brain_action import BrainAction
 from packages.db.models.brain_insight import BrainInsight

@@ -1,4 +1,5 @@
 """SENTINEL conflict model."""
+
 import uuid
 from datetime import datetime
 

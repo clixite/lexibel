@@ -16,29 +16,29 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(
-    name='sync_documents',
+    name="sync_documents",
     bind=True,
     max_retries=3,
     default_retry_delay=60,
-    queue='indexing',
+    queue="indexing",
 )
 def sync_documents(
     self,
     connection_id: str,
     job_id: str,
-    job_type: str = 'full_sync',
+    job_type: str = "full_sync",
     folder_id: Optional[str] = None,
 ):
-    '''Sync documents from Google Drive or OneDrive.
-    
+    """Sync documents from Google Drive or OneDrive.
+
     Args:
         connection_id: UUID string of the OAuth token (connection)
         job_id: UUID string of the CloudSyncJob record
         job_type: 'full_sync' | 'incremental_sync' | 'folder_sync'
         folder_id: Optional folder ID to sync (for folder_sync)
-    '''
+    """
     import asyncio
-    
+
     async def _run():
         from packages.db.session import async_session_factory
         from packages.db.models.oauth_token import OAuthToken
@@ -55,7 +55,7 @@ def sync_documents(
                 )
                 token = token_result.scalar_one_or_none()
                 if not token:
-                    logger.error(f'OAuth token {connection_id} not found')
+                    logger.error(f"OAuth token {connection_id} not found")
                     return
 
                 # Load job
@@ -64,72 +64,90 @@ def sync_documents(
                 )
                 job = job_result.scalar_one_or_none()
                 if not job:
-                    logger.error(f'Sync job {job_id} not found')
+                    logger.error(f"Sync job {job_id} not found")
                     return
 
                 # Mark job as running
-                job.status = 'running'
+                job.status = "running"
                 job.started_at = datetime.now(timezone.utc)
                 await session.flush()
                 try:
-                    if token.provider == 'google':
-                        from apps.api.services.google_drive_sync import get_google_drive_sync
+                    if token.provider == "google":
+                        from apps.api.services.google_drive_sync import (
+                            get_google_drive_sync,
+                        )
+
                         sync_service = get_google_drive_sync()
 
-                        if job_type == 'incremental_sync':
+                        if job_type == "incremental_sync":
                             result = await sync_service.incremental_sync(
-                                session, token.id, token.tenant_id,
-                                since=token.last_sync_at if hasattr(token, 'last_sync_at') else None,
+                                session,
+                                token.id,
+                                token.tenant_id,
+                                since=token.last_sync_at
+                                if hasattr(token, "last_sync_at")
+                                else None,
                             )
                         else:
                             result = await sync_service.sync_folder(
-                                session, token.id, token.tenant_id,
-                                folder_id=folder_id or 'root',
+                                session,
+                                token.id,
+                                token.tenant_id,
+                                folder_id=folder_id or "root",
                                 recursive=True,
                                 job_id=job_uuid,
                             )
 
                     else:  # microsoft
-                        from apps.api.services.microsoft_onedrive_sync import get_onedrive_sync
+                        from apps.api.services.microsoft_onedrive_sync import (
+                            get_onedrive_sync,
+                        )
+
                         sync_service = get_onedrive_sync()
 
-                        if job_type == 'incremental_sync':
+                        if job_type == "incremental_sync":
                             result = await sync_service.incremental_sync(
-                                session, token.id, token.tenant_id,
-                                )
+                                session,
+                                token.id,
+                                token.tenant_id,
+                            )
                         else:
                             result = await sync_service.sync_folder(
-                                session, token.id, token.tenant_id,
+                                session,
+                                token.id,
+                                token.tenant_id,
                                 item_id=folder_id,
                                 recursive=True,
                                 job_id=job_uuid,
                             )
 
                     # Mark job as completed
-                    job.status = 'completed'
+                    job.status = "completed"
                     job.completed_at = datetime.now(timezone.utc)
-                    job.processed_items = result.get('synced', 0)
-                    job.error_count = result.get('errors', 0)
-                    
+                    job.processed_items = result.get("synced", 0)
+                    job.error_count = result.get("errors", 0)
+
                     # Update last_sync_at on token
-                    if hasattr(token, 'sync_status'):
-                        token.sync_status = 'idle'
-                    if hasattr(token, 'last_sync_at'):
+                    if hasattr(token, "sync_status"):
+                        token.sync_status = "idle"
+                    if hasattr(token, "last_sync_at"):
                         token.last_sync_at = datetime.now(timezone.utc)
 
+                    synced_count = result.get("synced", 0)
+                    error_count = result.get("errors", 0)
                     logger.info(
-                        f'Sync completed for {connection_id}: '
-                        f'{result.get(\'synced\', 0)} synced, {result.get(\'errors\', 0)} errors'
-                        )
+                        f"Sync completed for {connection_id}: "
+                        f"{synced_count} synced, {error_count} errors"
+                    )
 
                 except Exception as e:
-                    logger.error(f'Sync failed for {connection_id}: {e}', exc_info=True)
-                    job.status = 'failed'
+                    logger.error(f"Sync failed for {connection_id}: {e}", exc_info=True)
+                    job.status = "failed"
                     job.completed_at = datetime.now(timezone.utc)
                     job.error_message = str(e)
-                    if hasattr(token, 'sync_status'):
-                        token.sync_status = 'error'
-                    if hasattr(token, 'sync_error'):
+                    if hasattr(token, "sync_status"):
+                        token.sync_status = "error"
+                    if hasattr(token, "sync_error"):
                         token.sync_error = str(e)
                     raise
 
@@ -137,23 +155,23 @@ def sync_documents(
 
 
 @shared_task(
-    name='sync_emails',
+    name="sync_emails",
     bind=True,
     max_retries=3,
     default_retry_delay=60,
-    queue='default',
+    queue="default",
 )
 def sync_emails(
     self,
     connection_id: str,
     since_iso: Optional[str] = None,
 ):
-    '''Sync emails from Gmail or Outlook.
-    
+    """Sync emails from Gmail or Outlook.
+
     Args:
         connection_id: UUID string of the OAuth token
         since_iso: ISO datetime string for incremental sync
-    '''
+    """
     import asyncio
 
     async def _run():
@@ -170,12 +188,15 @@ def sync_emails(
                 )
                 token = token_result.scalar_one_or_none()
                 if not token:
-                    logger.error(f'OAuth token {connection_id} not found')
+                    logger.error(f"OAuth token {connection_id} not found")
                     return
 
                 try:
-                    if token.provider == 'google':
-                        from apps.api.services.gmail_sync_service import get_gmail_sync_service
+                    if token.provider == "google":
+                        from apps.api.services.gmail_sync_service import (
+                            get_gmail_sync_service,
+                        )
+
                         gmail_sync = get_gmail_sync_service()
                         result = await gmail_sync.sync_emails(
                             session, token.tenant_id, token.user_id, max_results=100
@@ -184,16 +205,22 @@ def sync_emails(
                         from apps.api.services.microsoft_outlook_sync_service import (
                             get_microsoft_outlook_sync_service,
                         )
+
                         outlook_sync = get_microsoft_outlook_sync_service()
                         result = await outlook_sync.sync_to_db(
-                            session, token.tenant_id, token.user_id,
-                            since_date=since, max_results=100
+                            session,
+                            token.tenant_id,
+                            token.user_id,
+                            since_date=since,
+                            max_results=100,
                         )
 
-                    logger.info(f'Email sync completed for {connection_id}: {result}')
+                    logger.info(f"Email sync completed for {connection_id}: {result}")
 
                 except Exception as e:
-                    logger.error(f'Email sync failed for {connection_id}: {e}', exc_info=True)
+                    logger.error(
+                        f"Email sync failed for {connection_id}: {e}", exc_info=True
+                    )
                     raise
 
     asyncio.run(_run())
@@ -223,7 +250,9 @@ def scheduled_incremental_sync():
                     job_id=str(uuid.uuid4()),
                     job_type="incremental",
                 )
-            logger.info(f"Dispatched incremental sync for {len(connections)} connections")
+            logger.info(
+                f"Dispatched incremental sync for {len(connections)} connections"
+            )
 
     asyncio.run(_run())
 

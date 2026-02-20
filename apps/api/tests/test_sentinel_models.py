@@ -1,7 +1,7 @@
 """Tests for SENTINEL models."""
+
 import uuid
 
-import pytest
 
 from packages.db.models.sentinel_conflict import SentinelConflict
 from packages.db.models.sentinel_entity import SentinelEntity

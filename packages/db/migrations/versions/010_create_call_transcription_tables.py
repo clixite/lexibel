@@ -57,7 +57,10 @@ def upgrade() -> None:
         sa.Column("sentiment_score", sa.Numeric(3, 2), nullable=True),
         sa.Column("sentiment_label", sa.String(50), nullable=True),
         sa.Column(
-            "extracted_tasks", JSONB, nullable=False, server_default=sa.text("'[]'::jsonb")
+            "extracted_tasks",
+            JSONB,
+            nullable=False,
+            server_default=sa.text("'[]'::jsonb"),
         ),
         sa.Column(
             "metadata", JSONB, nullable=False, server_default=sa.text("'{}'::jsonb")
@@ -115,7 +118,9 @@ def upgrade() -> None:
             nullable=True,
             index=True,
         ),
-        sa.Column("external_id", sa.String(255), nullable=False, index=True, unique=True),
+        sa.Column(
+            "external_id", sa.String(255), nullable=False, index=True, unique=True
+        ),
         sa.Column("direction", sa.String(50), nullable=False, index=True),
         sa.Column("caller_number", sa.String(50), nullable=True),
         sa.Column("callee_number", sa.String(50), nullable=True),

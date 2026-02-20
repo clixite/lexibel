@@ -41,7 +41,9 @@ class ConflictDetail(BaseModel):
     """Detailed information about a detected conflict."""
 
     id: uuid.UUID = Field(..., description="Unique conflict identifier")
-    conflict_type: ConflictType = Field(..., description="Type of conflict detected (8 patterns)")
+    conflict_type: ConflictType = Field(
+        ..., description="Type of conflict detected (8 patterns)"
+    )
     severity_score: int = Field(
         ..., ge=0, le=100, description="Severity score from 0 (low) to 100 (critical)"
     )
@@ -123,14 +125,18 @@ class ConflictResolveRequest(BaseModel):
     resolution: Literal["refused", "waiver_obtained", "false_positive"] = Field(
         ..., description="Type of resolution applied"
     )
-    notes: Optional[str] = Field(None, max_length=5000, description="Optional resolution notes")
+    notes: Optional[str] = Field(
+        None, max_length=5000, description="Optional resolution notes"
+    )
 
 
 class ConflictResolveResponse(BaseModel):
     """Response after resolving a conflict."""
 
     id: uuid.UUID = Field(..., description="Conflict identifier")
-    status: Literal["active", "resolved", "dismissed"] = Field(..., description="New status after resolution")
+    status: Literal["active", "resolved", "dismissed"] = Field(
+        ..., description="New status after resolution"
+    )
     resolved_at: datetime = Field(..., description="When the conflict was resolved")
     resolved_by: uuid.UUID = Field(..., description="User who resolved it")
 
@@ -142,7 +148,9 @@ class SyncRequest(BaseModel):
     """Request to synchronize entities to the knowledge graph."""
 
     entity_ids: Optional[List[uuid.UUID]] = Field(
-        None, max_length=10000, description="Specific entities to sync (if not syncing all)"
+        None,
+        max_length=10000,
+        description="Specific entities to sync (if not syncing all)",
     )
     sync_all: bool = Field(False, description="Sync all entities in tenant")
     limit: int = Field(

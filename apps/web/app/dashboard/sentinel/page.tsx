@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Shield, AlertTriangle, CheckCircle, Clock, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { sentinelAPI, ConflictSummary } from "@/lib/sentinel/api-client";
@@ -9,6 +10,7 @@ import ConflictCheckForm from "@/components/sentinel/ConflictCheckForm";
 import { useSentinelAlerts } from "@/hooks/useSentinelAlerts";
 
 export default function SentinelDashboard() {
+  const router = useRouter();
   const [stats, setStats] = useState({
     total: 0,
     active: 0,
@@ -52,7 +54,7 @@ export default function SentinelDashboard() {
         resolved: resolvedConflicts.pagination.total,
       });
     } catch (error) {
-      console.error("Failed to load SENTINEL data:", error);
+      // SENTINEL data load failed — stats will show zeros
     } finally {
       setIsLoading(false);
     }
@@ -178,7 +180,7 @@ export default function SentinelDashboard() {
                 key={conflict.id}
                 conflict={conflict}
                 onClick={() => {
-                  window.location.href = `/dashboard/sentinel/conflicts?id=${conflict.id}`;
+                  router.push(`/dashboard/sentinel/conflicts?id=${conflict.id}`);
                 }}
               />
             ))}

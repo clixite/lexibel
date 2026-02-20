@@ -135,9 +135,7 @@ def upgrade() -> None:
     op.create_index(
         "idx_brain_actions_tenant_case", "brain_actions", ["tenant_id", "case_id"]
     )
-    op.create_index(
-        "idx_brain_actions_status", "brain_actions", ["status"]
-    )
+    op.create_index("idx_brain_actions_status", "brain_actions", ["status"])
 
     # ── brain_insights ──
     op.create_table(
@@ -242,9 +240,7 @@ def upgrade() -> None:
     op.create_index(
         "idx_brain_insights_tenant_case", "brain_insights", ["tenant_id", "case_id"]
     )
-    op.create_index(
-        "idx_brain_insights_severity", "brain_insights", ["severity"]
-    )
+    op.create_index("idx_brain_insights_severity", "brain_insights", ["severity"])
 
     # ── brain_memories ──
     op.create_table(
