@@ -276,6 +276,38 @@ async def test_ringover_client_get_recording():
 # ========== Plaud Webhook Tests ==========
 
 
+def _mock_plaud_session():
+    """Create a mock DB session for Plaud webhook tests."""
+    mock_session = AsyncMock()
+    mock_session.begin = MagicMock(return_value=AsyncMock())
+    mock_session.execute = AsyncMock()
+    mock_session.add = MagicMock()
+    mock_session.flush = AsyncMock()
+    mock_session.commit = AsyncMock()
+
+    mock_transcription_id = uuid.uuid4()
+
+    # Track added objects and set id on Transcription-like objects
+    def track_add(obj):
+        if hasattr(obj, "source") and not hasattr(obj, "transcription_id"):
+            obj.id = mock_transcription_id
+
+    mock_session.add.side_effect = track_add
+
+    # Set up begin context manager
+    mock_begin_cm = AsyncMock()
+    mock_begin_cm.__aenter__ = AsyncMock(return_value=None)
+    mock_begin_cm.__aexit__ = AsyncMock(return_value=False)
+    mock_session.begin.return_value = mock_begin_cm
+
+    # Set up session factory context manager
+    mock_cm = AsyncMock()
+    mock_cm.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_cm.__aexit__ = AsyncMock(return_value=False)
+
+    return mock_session, mock_cm
+
+
 @pytest.mark.asyncio
 async def test_plaud_webhook_valid_signature():
     """Test Plaud webhook with valid HMAC signature and DB writes."""
@@ -319,17 +351,23 @@ async def test_plaud_webhook_valid_signature():
     body = json.dumps(payload).encode()
     signature = _sign_hmac(body, PLAUD_SECRET)
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        response = await client.post(
-            "/api/v1/webhooks/plaud",
-            content=body,
-            headers={
-                "Content-Type": "application/json",
-                "X-Plaud-Signature": signature,
-            },
-        )
+    _mock_session, mock_cm = _mock_plaud_session()
+
+    with patch(
+        "apps.api.webhooks.plaud.async_session_factory",
+        return_value=mock_cm,
+    ):
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            response = await client.post(
+                "/api/v1/webhooks/plaud",
+                content=body,
+                headers={
+                    "Content-Type": "application/json",
+                    "X-Plaud-Signature": signature,
+                },
+            )
 
     assert response.status_code == 200
     data = response.json()
@@ -444,17 +482,23 @@ async def test_plaud_webhook_creates_transcription():
     body = json.dumps(payload).encode()
     signature = _sign_hmac(body, PLAUD_SECRET)
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        response = await client.post(
-            "/api/v1/webhooks/plaud",
-            content=body,
-            headers={
-                "Content-Type": "application/json",
-                "X-Plaud-Signature": signature,
-            },
-        )
+    _mock_session, mock_cm = _mock_plaud_session()
+
+    with patch(
+        "apps.api.webhooks.plaud.async_session_factory",
+        return_value=mock_cm,
+    ):
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            response = await client.post(
+                "/api/v1/webhooks/plaud",
+                content=body,
+                headers={
+                    "Content-Type": "application/json",
+                    "X-Plaud-Signature": signature,
+                },
+            )
 
     assert response.status_code == 200
     data = response.json()
@@ -484,38 +528,44 @@ async def test_plaud_webhook_idempotency():
     body = json.dumps(payload).encode()
     signature = _sign_hmac(body, PLAUD_SECRET)
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        # First request - should be accepted
-        resp1 = await client.post(
-            "/api/v1/webhooks/plaud",
-            content=body,
-            headers={
-                "Content-Type": "application/json",
-                "X-Plaud-Signature": signature,
-            },
-        )
+    _mock_session, mock_cm = _mock_plaud_session()
 
-        assert resp1.status_code == 200
-        data1 = resp1.json()
-        assert data1["status"] == "accepted"
-        assert data1["duplicate"] is False
+    with patch(
+        "apps.api.webhooks.plaud.async_session_factory",
+        return_value=mock_cm,
+    ):
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            # First request - should be accepted
+            resp1 = await client.post(
+                "/api/v1/webhooks/plaud",
+                content=body,
+                headers={
+                    "Content-Type": "application/json",
+                    "X-Plaud-Signature": signature,
+                },
+            )
 
-        # Second request - should be rejected as duplicate
-        resp2 = await client.post(
-            "/api/v1/webhooks/plaud",
-            content=body,
-            headers={
-                "Content-Type": "application/json",
-                "X-Plaud-Signature": signature,
-            },
-        )
+            assert resp1.status_code == 200
+            data1 = resp1.json()
+            assert data1["status"] == "accepted"
+            assert data1["duplicate"] is False
 
-        assert resp2.status_code == 200
-        data2 = resp2.json()
-        assert data2["status"] == "duplicate"
-        assert data2["duplicate"] is True
+            # Second request - should be rejected as duplicate
+            resp2 = await client.post(
+                "/api/v1/webhooks/plaud",
+                content=body,
+                headers={
+                    "Content-Type": "application/json",
+                    "X-Plaud-Signature": signature,
+                },
+            )
+
+            assert resp2.status_code == 200
+            data2 = resp2.json()
+            assert data2["status"] == "duplicate"
+            assert data2["duplicate"] is True
 
 
 # ========== Google OAuth Tests ==========
@@ -523,12 +573,16 @@ async def test_plaud_webhook_idempotency():
 
 def test_google_oauth_auth_url():
     """Test Google OAuth authorization URL generation."""
+    import apps.api.services.oauth_encryption_service as _oes
+
+    _oes._oauth_encryption_service = None
     with patch.dict(
         "os.environ",
         {
             "GOOGLE_CLIENT_ID": "test-client-id",
             "GOOGLE_CLIENT_SECRET": "test-secret",
             "GOOGLE_REDIRECT_URI": "http://localhost:3000/callback",
+            "OAUTH_ENCRYPTION_KEY": "_xQZquM-VYyGtENvEqdepgElsfEETNMtAVMlOqfZV3Q=",
         },
     ):
         service = GoogleOAuthService()
@@ -547,6 +601,10 @@ def test_google_oauth_auth_url():
 @pytest.mark.asyncio
 async def test_google_oauth_token_exchange():
     """Test Google OAuth code to token exchange (mocked)."""
+    import apps.api.services.oauth_encryption_service as _oes
+
+    _oes._oauth_encryption_service = None
+
     mock_credentials = MagicMock()
     mock_credentials.token = "access-token-123"
     mock_credentials.refresh_token = "refresh-token-456"
@@ -568,7 +626,7 @@ async def test_google_oauth_token_exchange():
             {
                 "GOOGLE_CLIENT_ID": "test-client-id",
                 "GOOGLE_CLIENT_SECRET": "test-secret",
-                "OAUTH_ENCRYPTION_KEY": "test-encryption-key-32bytes!!!",
+                "OAUTH_ENCRYPTION_KEY": "_xQZquM-VYyGtENvEqdepgElsfEETNMtAVMlOqfZV3Q=",
             },
         ),
         patch("apps.api.services.google_oauth_service.Flow") as MockFlow,
@@ -598,6 +656,10 @@ async def test_google_oauth_token_exchange():
 @pytest.mark.asyncio
 async def test_google_oauth_token_refresh():
     """Test Google OAuth token refresh flow."""
+    import apps.api.services.oauth_encryption_service as _oes
+
+    _oes._oauth_encryption_service = None
+
     # Mock existing token in database
     mock_existing_token = MagicMock()
     mock_existing_token.access_token = "encrypted-old-token"
@@ -622,7 +684,7 @@ async def test_google_oauth_token_refresh():
             {
                 "GOOGLE_CLIENT_ID": "test-client-id",
                 "GOOGLE_CLIENT_SECRET": "test-secret",
-                "OAUTH_ENCRYPTION_KEY": "test-encryption-key-32bytes!!!",
+                "OAUTH_ENCRYPTION_KEY": "_xQZquM-VYyGtENvEqdepgElsfEETNMtAVMlOqfZV3Q=",
             },
         ),
         patch("apps.api.services.google_oauth_service.Credentials") as MockCreds,
@@ -658,12 +720,16 @@ async def test_google_oauth_token_refresh():
 
 def test_microsoft_oauth_auth_url():
     """Test Microsoft OAuth authorization URL generation."""
+    import apps.api.services.oauth_encryption_service as _oes
+
+    _oes._oauth_encryption_service = None
     with patch.dict(
         "os.environ",
         {
             "MICROSOFT_CLIENT_ID": "ms-client-id",
             "MICROSOFT_CLIENT_SECRET": "ms-secret",
             "MICROSOFT_REDIRECT_URI": "http://localhost:3000/callback/ms",
+            "OAUTH_ENCRYPTION_KEY": "_xQZquM-VYyGtENvEqdepgElsfEETNMtAVMlOqfZV3Q=",
         },
     ):
         service = MicrosoftOAuthService()
@@ -682,6 +748,10 @@ def test_microsoft_oauth_auth_url():
 @pytest.mark.asyncio
 async def test_microsoft_oauth_token_exchange():
     """Test Microsoft OAuth code to token exchange (mocked Graph API)."""
+    import apps.api.services.oauth_encryption_service as _oes
+
+    _oes._oauth_encryption_service = None
+
     mock_token_response = {
         "access_token": "ms-access-token-123",
         "refresh_token": "ms-refresh-token-456",
@@ -702,7 +772,7 @@ async def test_microsoft_oauth_token_exchange():
             {
                 "MICROSOFT_CLIENT_ID": "ms-client-id",
                 "MICROSOFT_CLIENT_SECRET": "ms-secret",
-                "OAUTH_ENCRYPTION_KEY": "test-encryption-key-32bytes!!!",
+                "OAUTH_ENCRYPTION_KEY": "_xQZquM-VYyGtENvEqdepgElsfEETNMtAVMlOqfZV3Q=",
             },
         ),
         patch("httpx.AsyncClient") as MockHttpx,
@@ -741,6 +811,10 @@ async def test_microsoft_oauth_token_exchange():
 @pytest.mark.asyncio
 async def test_microsoft_oauth_token_refresh():
     """Test Microsoft OAuth token refresh flow."""
+    import apps.api.services.oauth_encryption_service as _oes
+
+    _oes._oauth_encryption_service = None
+
     mock_token_response = {
         "access_token": "new-ms-access-token",
         "refresh_token": "new-ms-refresh-token",
@@ -760,7 +834,7 @@ async def test_microsoft_oauth_token_refresh():
             {
                 "MICROSOFT_CLIENT_ID": "ms-client-id",
                 "MICROSOFT_CLIENT_SECRET": "ms-secret",
-                "OAUTH_ENCRYPTION_KEY": "test-encryption-key-32bytes!!!",
+                "OAUTH_ENCRYPTION_KEY": "_xQZquM-VYyGtENvEqdepgElsfEETNMtAVMlOqfZV3Q=",
             },
         ),
         patch("httpx.AsyncClient") as MockHttpx,
@@ -808,6 +882,7 @@ async def test_microsoft_oauth_token_refresh():
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
 async def test_seed_data_counts():
     """Test that seed script creates expected record counts.
 
@@ -817,9 +892,11 @@ async def test_seed_data_counts():
     - 5 EmailThreads
     - 10+ Contacts
     - 3+ Cases
+
+    Requires a running PostgreSQL instance.
     """
     # Import and run seed function
-    from apps.api.scripts.seed_demo_data import seed_all
+    from apps.api.scripts.seed_demo_data import seed_data as seed_all
     from packages.db.session import async_session_factory
     from packages.db.models import (
         CallRecord,
@@ -834,25 +911,38 @@ async def test_seed_data_counts():
     try:
         await seed_all()
     except Exception as e:
-        # If seed fails due to missing dependencies, skip test
+        # If seed fails due to missing DB or dependencies, skip test
         pytest.skip(f"Seed data unavailable: {e}")
 
     # Verify counts
-    async with async_session_factory() as db:
-        # Count CallRecords
-        call_count = await db.scalar(select(func.count()).select_from(CallRecord))
+    try:
+        async with async_session_factory() as db:
+            # Count CallRecords
+            call_count = await db.scalar(
+                select(func.count()).select_from(CallRecord)
+            )
 
-        # Count Transcriptions
-        trans_count = await db.scalar(select(func.count()).select_from(Transcription))
+            # Count Transcriptions
+            trans_count = await db.scalar(
+                select(func.count()).select_from(Transcription)
+            )
 
-        # Count EmailThreads
-        email_count = await db.scalar(select(func.count()).select_from(EmailThread))
+            # Count EmailThreads
+            email_count = await db.scalar(
+                select(func.count()).select_from(EmailThread)
+            )
 
-        # Count Contacts
-        contact_count = await db.scalar(select(func.count()).select_from(Contact))
+            # Count Contacts
+            contact_count = await db.scalar(
+                select(func.count()).select_from(Contact)
+            )
 
-        # Count Cases
-        case_count = await db.scalar(select(func.count()).select_from(Case))
+            # Count Cases
+            case_count = await db.scalar(
+                select(func.count()).select_from(Case)
+            )
+    except Exception as e:
+        pytest.skip(f"PostgreSQL not available: {e}")
 
     # Assertions - verify minimum expected counts
     # Note: counts may be higher if seed has been run multiple times

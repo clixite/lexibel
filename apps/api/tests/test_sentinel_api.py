@@ -10,6 +10,8 @@ Tests all 7 SENTINEL API endpoints:
 7. GET /api/sentinel/alerts/stream - SSE alert streaming
 """
 
+import asyncio
+
 import pytest
 from datetime import datetime
 from uuid import uuid4
@@ -374,15 +376,15 @@ class TestListConflicts:
         contact1 = _make_contact(id=CONTACT_ID)
         contact2 = _make_contact(id=CONTACT_ID_2, full_name="ACME Corp", type="legal")
 
-        # Mock conflict query
+        # Mock count query (called first in router)
+        mock_count_result = AsyncMock()
+        mock_count_result.scalar = MagicMock(return_value=1)
+
+        # Mock conflict query (called second in router)
         mock_result = AsyncMock()
         mock_result.scalars = MagicMock(
             return_value=MagicMock(all=MagicMock(return_value=[conflict]))
         )
-
-        # Mock count query
-        mock_count_result = AsyncMock()
-        mock_count_result.scalar = MagicMock(return_value=1)
 
         # Mock contact batch query
         mock_contact_result = AsyncMock()
@@ -394,10 +396,10 @@ class TestListConflicts:
 
         async def mock_execute(query):
             call_count[0] += 1
-            if call_count[0] == 1:  # First call is conflict query
-                return mock_result
-            elif call_count[0] == 2:  # Second call is count query
+            if call_count[0] == 1:  # First call is count query
                 return mock_count_result
+            elif call_count[0] == 2:  # Second call is conflict query
+                return mock_result
             else:  # Third call is contact batch query
                 return mock_contact_result
 
@@ -432,22 +434,22 @@ class TestListConflicts:
         """Test listing conflicts with status filter."""
         mock_session, override_db = _patch_db()
 
+        mock_count_result = AsyncMock()
+        mock_count_result.scalar = MagicMock(return_value=0)
+
         mock_result = AsyncMock()
         mock_result.scalars = MagicMock(
             return_value=MagicMock(all=MagicMock(return_value=[]))
         )
 
-        mock_count_result = AsyncMock()
-        mock_count_result.scalar = MagicMock(return_value=0)
-
         call_count = [0]
 
         async def mock_execute(query):
             call_count[0] += 1
-            if call_count[0] == 1:
-                return mock_result
-            else:
+            if call_count[0] == 1:  # Count query first
                 return mock_count_result
+            else:  # Conflict list query second
+                return mock_result
 
         mock_session.execute = mock_execute
 
@@ -478,13 +480,13 @@ class TestListConflicts:
         conflict = _make_conflict(severity_score=90)
         contact = _make_contact()
 
+        mock_count_result = AsyncMock()
+        mock_count_result.scalar = MagicMock(return_value=1)
+
         mock_result = AsyncMock()
         mock_result.scalars = MagicMock(
             return_value=MagicMock(all=MagicMock(return_value=[conflict]))
         )
-
-        mock_count_result = AsyncMock()
-        mock_count_result.scalar = MagicMock(return_value=1)
 
         mock_contact_result = AsyncMock()
         mock_contact_result.scalars = MagicMock(
@@ -495,11 +497,11 @@ class TestListConflicts:
 
         async def mock_execute(query):
             call_count[0] += 1
-            if call_count[0] == 1:
-                return mock_result
-            elif call_count[0] == 2:
+            if call_count[0] == 1:  # Count query first
                 return mock_count_result
-            else:
+            elif call_count[0] == 2:  # Conflict list query second
+                return mock_result
+            else:  # Contact batch query third
                 return mock_contact_result
 
         mock_session.execute = mock_execute
@@ -530,22 +532,22 @@ class TestListConflicts:
         """Test listing conflicts with no results."""
         mock_session, override_db = _patch_db()
 
+        mock_count_result = AsyncMock()
+        mock_count_result.scalar = MagicMock(return_value=0)
+
         mock_result = AsyncMock()
         mock_result.scalars = MagicMock(
             return_value=MagicMock(all=MagicMock(return_value=[]))
         )
 
-        mock_count_result = AsyncMock()
-        mock_count_result.scalar = MagicMock(return_value=0)
-
         call_count = [0]
 
         async def mock_execute(query):
             call_count[0] += 1
-            if call_count[0] == 1:
-                return mock_result
-            else:
+            if call_count[0] == 1:  # Count query first
                 return mock_count_result
+            else:  # Conflict list query second
+                return mock_result
 
         mock_session.execute = mock_execute
 
@@ -592,7 +594,9 @@ class TestResolveConflict:
     async def test_resolve_conflict_refused(self):
         """Test resolving conflict as refused."""
         mock_session, override_db = _patch_db()
-        conflict = _make_conflict(resolution="refused", resolved_at=datetime.now())
+        conflict = _make_conflict(
+            resolution="refused", resolved_at=datetime.now(), resolved_by=USER_ID
+        )
 
         mock_result = AsyncMock()
         mock_result.scalar_one_or_none = MagicMock(return_value=conflict)
@@ -632,7 +636,9 @@ class TestResolveConflict:
         """Test resolving conflict with waiver obtained."""
         mock_session, override_db = _patch_db()
         conflict = _make_conflict(
-            resolution="waiver_obtained", resolved_at=datetime.now()
+            resolution="waiver_obtained",
+            resolved_at=datetime.now(),
+            resolved_by=USER_ID,
         )
 
         mock_result = AsyncMock()
@@ -672,7 +678,9 @@ class TestResolveConflict:
         """Test resolving conflict as false positive."""
         mock_session, override_db = _patch_db()
         conflict = _make_conflict(
-            resolution="false_positive", resolved_at=datetime.now()
+            resolution="false_positive",
+            resolved_at=datetime.now(),
+            resolved_by=USER_ID,
         )
 
         mock_result = AsyncMock()
@@ -1315,7 +1323,12 @@ class TestAlertsStream:
 
     @pytest.mark.asyncio
     async def test_stream_connection_established(self):
-        """Test SSE connection is established."""
+        """Test SSE connection is established and returns correct content type.
+
+        We patch asyncio.sleep in the SSE generator to immediately raise
+        an exception, so the generator yields the initial 'connected' event
+        and then terminates instead of looping forever.
+        """
         mock_session, override_db = _patch_db()
 
         from apps.api.dependencies import get_db_session
@@ -1323,35 +1336,44 @@ class TestAlertsStream:
         app.dependency_overrides[get_db_session] = override_db
 
         try:
-            async with AsyncClient(
-                transport=ASGITransport(app=app), base_url="http://test", timeout=5.0
-            ) as client:
-                # Open SSE connection
-                async with client.stream(
-                    "GET",
-                    "/api/sentinel/alerts/stream",
-                    headers={"Authorization": f"Bearer {TOKEN}"},
-                ) as response:
-                    assert response.status_code == 200
-                    assert "text/event-stream" in response.headers.get(
-                        "content-type", ""
-                    )
+            # Patch asyncio.sleep in the sentinel module to break the SSE loop
+            async def mock_sleep(seconds):
+                raise asyncio.CancelledError()
 
-                    # Read first event (connection established)
-                    first_chunk = None
-                    async for chunk in response.aiter_bytes():
-                        if chunk:
-                            first_chunk = chunk
-                            break
+            with patch("apps.api.routes.sentinel.asyncio.sleep", mock_sleep):
+                async with AsyncClient(
+                    transport=ASGITransport(app=app),
+                    base_url="http://test",
+                    timeout=10.0,
+                ) as client:
+                    async with client.stream(
+                        "GET",
+                        "/api/sentinel/alerts/stream",
+                        headers={"Authorization": f"Bearer {TOKEN}"},
+                    ) as response:
+                        assert response.status_code == 200
+                        assert "text/event-stream" in response.headers.get(
+                            "content-type", ""
+                        )
 
-                    assert first_chunk is not None
+                        first_chunk = None
+                        async for chunk in response.aiter_bytes():
+                            if chunk:
+                                first_chunk = chunk
+                                break
+
+                        assert first_chunk is not None
 
         finally:
             app.dependency_overrides = {}
 
     @pytest.mark.asyncio
     async def test_stream_heartbeat_events(self):
-        """Test SSE heartbeat events are sent."""
+        """Test SSE stream sends initial event data.
+
+        We patch asyncio.sleep to break the loop after the initial event,
+        so the generator terminates cleanly.
+        """
         mock_session, override_db = _patch_db()
 
         from apps.api.dependencies import get_db_session
@@ -1359,26 +1381,30 @@ class TestAlertsStream:
         app.dependency_overrides[get_db_session] = override_db
 
         try:
-            async with AsyncClient(
-                transport=ASGITransport(app=app), base_url="http://test", timeout=5.0
-            ) as client:
-                async with client.stream(
-                    "GET",
-                    "/api/sentinel/alerts/stream",
-                    headers={"Authorization": f"Bearer {TOKEN}"},
-                ) as response:
-                    assert response.status_code == 200
+            async def mock_sleep(seconds):
+                raise asyncio.CancelledError()
 
-                    # We just verify the connection is established
-                    # Full heartbeat testing would require waiting 30s
-                    chunks_received = 0
-                    async for chunk in response.aiter_bytes():
-                        if chunk:
-                            chunks_received += 1
-                            if chunks_received >= 1:
-                                break
+            with patch("apps.api.routes.sentinel.asyncio.sleep", mock_sleep):
+                async with AsyncClient(
+                    transport=ASGITransport(app=app),
+                    base_url="http://test",
+                    timeout=10.0,
+                ) as client:
+                    async with client.stream(
+                        "GET",
+                        "/api/sentinel/alerts/stream",
+                        headers={"Authorization": f"Bearer {TOKEN}"},
+                    ) as response:
+                        assert response.status_code == 200
 
-                    assert chunks_received >= 1
+                        chunks_received = 0
+                        async for chunk in response.aiter_bytes():
+                            if chunk:
+                                chunks_received += 1
+                                if chunks_received >= 1:
+                                    break
+
+                        assert chunks_received >= 1
 
         finally:
             app.dependency_overrides = {}

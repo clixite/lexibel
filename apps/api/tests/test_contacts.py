@@ -41,6 +41,7 @@ def _make_contact_obj(**overrides):
             "country": "BE",
         },
         "language": "fr",
+        "metadata_": {},
         "created_at": NOW,
         "updated_at": NOW,
     }

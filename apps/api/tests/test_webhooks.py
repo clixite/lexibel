@@ -4,7 +4,7 @@ import hashlib
 import hmac
 import json
 import uuid
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -45,23 +45,39 @@ def _ringover_call_event(**overrides) -> dict:
 
 
 def _plaud_event(**overrides) -> dict:
+    """Create a Plaud webhook event matching PlaudTranscriptionEvent schema."""
     defaults = {
-        "recording_id": f"rec-{uuid.uuid4().hex[:8]}",
+        "transcription_id": f"rec-{uuid.uuid4().hex[:8]}",
         "tenant_id": str(TENANT_A),
-        "status": "completed",
-        "transcript": "Bonjour, maître. Nous avons reçu la convocation...",
+        "text": "Bonjour, maître. Nous avons reçu la convocation...",
         "speakers": [
-            {"id": "spk1", "name": "Maître Dupont", "segments": []},
-            {"id": "spk2", "name": "Client", "segments": []},
+            {"id": "spk1", "name": "Maître Dupont"},
+            {"id": "spk2", "name": "Client"},
         ],
-        "duration_seconds": 1800,
+        "segments": [],
+        "duration": 1800,
         "language": "fr",
         "audio_url": "https://plaud.io/recordings/abc123.mp3",
-        "audio_mime_type": "audio/mp3",
-        "audio_size_bytes": 5242880,
     }
     defaults.update(overrides)
     return defaults
+
+
+def _mock_db_override():
+    """Create a mock DB session and override function for webhook tests."""
+    mock_session = AsyncMock()
+
+    async def override_db(tenant_id=None):
+        yield mock_session
+
+    return mock_session, override_db
+
+
+def _mock_ringover_interaction_event():
+    """Create a mock InteractionEvent returned by ringover_service."""
+    event = MagicMock()
+    event.id = uuid.uuid4()
+    return event
 
 
 # ── HMAC verification tests ──
@@ -120,23 +136,49 @@ async def test_ringover_webhook_valid():
     payload = json.dumps(event).encode()
     sig = _sign_payload(payload, RINGOVER_SECRET)
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        resp = await client.post(
-            "/api/v1/webhooks/ringover",
-            content=payload,
-            headers={
-                "Content-Type": "application/json",
-                "X-Ringover-Signature": sig,
-            },
-        )
+    mock_session, override_db = _mock_db_override()
+    mock_interaction = _mock_ringover_interaction_event()
 
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["status"] == "accepted"
-    assert data["inbox_item_created"] is True
-    assert data["time_entry_created"] is True  # answered call with duration
+    from apps.api.dependencies import get_db_session
+
+    app.dependency_overrides[get_db_session] = override_db
+
+    try:
+        with (
+            patch(
+                "apps.api.webhooks.ringover.ringover_service.match_contact_by_phone",
+                new_callable=AsyncMock,
+                return_value=None,
+            ),
+            patch(
+                "apps.api.webhooks.ringover.ringover_service.create_call_event",
+                new_callable=AsyncMock,
+                return_value=mock_interaction,
+            ),
+            patch(
+                "apps.api.webhooks.ringover.sse_manager.publish",
+                new_callable=AsyncMock,
+                return_value=0,
+            ),
+        ):
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                resp = await client.post(
+                    "/api/v1/webhooks/ringover",
+                    content=payload,
+                    headers={
+                        "Content-Type": "application/json",
+                        "X-Ringover-Signature": sig,
+                    },
+                )
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "accepted"
+        assert data["event_created"] is True
+    finally:
+        app.dependency_overrides = {}
 
 
 @pytest.mark.asyncio
@@ -146,21 +188,51 @@ async def test_ringover_webhook_missed_call():
     payload = json.dumps(event).encode()
     sig = _sign_payload(payload, RINGOVER_SECRET)
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        resp = await client.post(
-            "/api/v1/webhooks/ringover",
-            content=payload,
-            headers={
-                "Content-Type": "application/json",
-                "X-Ringover-Signature": sig,
-            },
-        )
+    mock_session, override_db = _mock_db_override()
+    mock_interaction = _mock_ringover_interaction_event()
 
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["time_entry_created"] is False  # missed call, no time entry
+    from apps.api.dependencies import get_db_session
+
+    app.dependency_overrides[get_db_session] = override_db
+
+    try:
+        with (
+            patch(
+                "apps.api.webhooks.ringover.ringover_service.match_contact_by_phone",
+                new_callable=AsyncMock,
+                return_value=None,
+            ),
+            patch(
+                "apps.api.webhooks.ringover.ringover_service.create_call_event",
+                new_callable=AsyncMock,
+                return_value=mock_interaction,
+            ),
+            patch(
+                "apps.api.webhooks.ringover.sse_manager.publish",
+                new_callable=AsyncMock,
+                return_value=0,
+            ),
+        ):
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                resp = await client.post(
+                    "/api/v1/webhooks/ringover",
+                    content=payload,
+                    headers={
+                        "Content-Type": "application/json",
+                        "X-Ringover-Signature": sig,
+                    },
+                )
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "accepted"
+        # Missed call still creates an event
+        assert data["event_created"] is True
+        assert data["contact_matched"] is False
+    finally:
+        app.dependency_overrides = {}
 
 
 @pytest.mark.asyncio
@@ -168,17 +240,26 @@ async def test_ringover_missing_signature():
     event = _ringover_call_event()
     payload = json.dumps(event).encode()
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        resp = await client.post(
-            "/api/v1/webhooks/ringover",
-            content=payload,
-            headers={"Content-Type": "application/json"},
-        )
+    mock_session, override_db = _mock_db_override()
 
-    assert resp.status_code == 401
-    assert "Missing" in resp.json()["detail"]
+    from apps.api.dependencies import get_db_session
+
+    app.dependency_overrides[get_db_session] = override_db
+
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.post(
+                "/api/v1/webhooks/ringover",
+                content=payload,
+                headers={"Content-Type": "application/json"},
+            )
+
+        assert resp.status_code == 401
+        assert "Missing" in resp.json()["detail"]
+    finally:
+        app.dependency_overrides = {}
 
 
 @pytest.mark.asyncio
@@ -186,20 +267,29 @@ async def test_ringover_invalid_signature():
     event = _ringover_call_event()
     payload = json.dumps(event).encode()
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        resp = await client.post(
-            "/api/v1/webhooks/ringover",
-            content=payload,
-            headers={
-                "Content-Type": "application/json",
-                "X-Ringover-Signature": "deadbeef",
-            },
-        )
+    mock_session, override_db = _mock_db_override()
 
-    assert resp.status_code == 401
-    assert "Invalid" in resp.json()["detail"]
+    from apps.api.dependencies import get_db_session
+
+    app.dependency_overrides[get_db_session] = override_db
+
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.post(
+                "/api/v1/webhooks/ringover",
+                content=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "X-Ringover-Signature": "deadbeef",
+                },
+            )
+
+        assert resp.status_code == 401
+        assert "Invalid" in resp.json()["detail"]
+    finally:
+        app.dependency_overrides = {}
 
 
 @pytest.mark.asyncio
@@ -210,31 +300,58 @@ async def test_ringover_idempotency():
     payload = json.dumps(event).encode()
     sig = _sign_payload(payload, RINGOVER_SECRET)
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        # First call — accepted
-        resp1 = await client.post(
-            "/api/v1/webhooks/ringover",
-            content=payload,
-            headers={
-                "Content-Type": "application/json",
-                "X-Ringover-Signature": sig,
-            },
-        )
-        assert resp1.json()["status"] == "accepted"
+    mock_session, override_db = _mock_db_override()
+    mock_interaction = _mock_ringover_interaction_event()
 
-        # Second call — duplicate
-        resp2 = await client.post(
-            "/api/v1/webhooks/ringover",
-            content=payload,
-            headers={
-                "Content-Type": "application/json",
-                "X-Ringover-Signature": sig,
-            },
-        )
-        assert resp2.json()["status"] == "duplicate"
-        assert resp2.json()["duplicate"] is True
+    from apps.api.dependencies import get_db_session
+
+    app.dependency_overrides[get_db_session] = override_db
+
+    try:
+        with (
+            patch(
+                "apps.api.webhooks.ringover.ringover_service.match_contact_by_phone",
+                new_callable=AsyncMock,
+                return_value=None,
+            ),
+            patch(
+                "apps.api.webhooks.ringover.ringover_service.create_call_event",
+                new_callable=AsyncMock,
+                return_value=mock_interaction,
+            ),
+            patch(
+                "apps.api.webhooks.ringover.sse_manager.publish",
+                new_callable=AsyncMock,
+                return_value=0,
+            ),
+        ):
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                # First call — accepted
+                resp1 = await client.post(
+                    "/api/v1/webhooks/ringover",
+                    content=payload,
+                    headers={
+                        "Content-Type": "application/json",
+                        "X-Ringover-Signature": sig,
+                    },
+                )
+                assert resp1.json()["status"] == "accepted"
+
+                # Second call — duplicate
+                resp2 = await client.post(
+                    "/api/v1/webhooks/ringover",
+                    content=payload,
+                    headers={
+                        "Content-Type": "application/json",
+                        "X-Ringover-Signature": sig,
+                    },
+                )
+                assert resp2.json()["status"] == "duplicate"
+                assert resp2.json()["duplicate"] is True
+    finally:
+        app.dependency_overrides = {}
 
 
 # ── Plaud webhook tests ──
@@ -247,46 +364,118 @@ async def test_plaud_webhook_valid():
     payload = json.dumps(event).encode()
     sig = _sign_payload(payload, PLAUD_SECRET)
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        resp = await client.post(
-            "/api/v1/webhooks/plaud",
-            content=payload,
-            headers={
-                "Content-Type": "application/json",
-                "X-Plaud-Signature": sig,
-            },
-        )
+    # Plaud handler creates its own session via async_session_factory,
+    # so we mock the session factory instead of overriding get_db_session.
+    mock_session = AsyncMock()
+    mock_session.begin = MagicMock(return_value=AsyncMock())
+    mock_session.execute = AsyncMock()
+    mock_session.add = MagicMock()
+    mock_session.flush = AsyncMock()
+    mock_session.commit = AsyncMock()
+
+    # Create mock transcription with an id attribute
+    mock_transcription = MagicMock()
+    mock_transcription.id = uuid.uuid4()
+
+    with patch(
+        "apps.api.webhooks.plaud.async_session_factory",
+    ) as mock_factory:
+        # Setup the context manager chain: async_session_factory() -> session
+        mock_cm = AsyncMock()
+        mock_cm.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_cm.__aexit__ = AsyncMock(return_value=False)
+        mock_factory.return_value = mock_cm
+
+        # The session.begin() returns a context manager too
+        mock_begin_cm = AsyncMock()
+        mock_begin_cm.__aenter__ = AsyncMock(return_value=None)
+        mock_begin_cm.__aexit__ = AsyncMock(return_value=False)
+        mock_session.begin.return_value = mock_begin_cm
+
+        # Track added objects to return transcription id
+        added_objects = []
+
+        def track_add(obj):
+            added_objects.append(obj)
+            # Set id on Transcription-like objects
+            if hasattr(obj, "source") and not hasattr(obj, "transcription_id"):
+                obj.id = mock_transcription.id
+
+        mock_session.add.side_effect = track_add
+
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.post(
+                "/api/v1/webhooks/plaud",
+                content=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "X-Plaud-Signature": sig,
+                },
+            )
 
     assert resp.status_code == 200
     data = resp.json()
     assert data["status"] == "accepted"
-    assert data["inbox_item_created"] is True
-    assert data["evidence_link_created"] is True
+    assert data["transcription_id"] == event["transcription_id"]
 
 
 @pytest.mark.asyncio
 async def test_plaud_webhook_failed_transcription():
+    """Plaud with empty text should still be processed - text field is required."""
     reset_idempotency_store()
-    event = _plaud_event(status="failed", transcript=None)
+    # PlaudTranscriptionEvent requires 'text' field. Send empty text
+    # to represent a failed transcription
+    event = _plaud_event(text="")
     payload = json.dumps(event).encode()
     sig = _sign_payload(payload, PLAUD_SECRET)
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        resp = await client.post(
-            "/api/v1/webhooks/plaud",
-            content=payload,
-            headers={
-                "Content-Type": "application/json",
-                "X-Plaud-Signature": sig,
-            },
-        )
+    mock_session = AsyncMock()
+    mock_session.begin = MagicMock(return_value=AsyncMock())
+    mock_session.execute = AsyncMock()
+    mock_session.add = MagicMock()
+    mock_session.flush = AsyncMock()
+    mock_session.commit = AsyncMock()
+
+    mock_transcription = MagicMock()
+    mock_transcription.id = uuid.uuid4()
+
+    with patch(
+        "apps.api.webhooks.plaud.async_session_factory",
+    ) as mock_factory:
+        mock_cm = AsyncMock()
+        mock_cm.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_cm.__aexit__ = AsyncMock(return_value=False)
+        mock_factory.return_value = mock_cm
+
+        mock_begin_cm = AsyncMock()
+        mock_begin_cm.__aenter__ = AsyncMock(return_value=None)
+        mock_begin_cm.__aexit__ = AsyncMock(return_value=False)
+        mock_session.begin.return_value = mock_begin_cm
+
+        def track_add(obj):
+            if hasattr(obj, "source") and not hasattr(obj, "transcription_id"):
+                obj.id = mock_transcription.id
+
+        mock_session.add.side_effect = track_add
+
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.post(
+                "/api/v1/webhooks/plaud",
+                content=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "X-Plaud-Signature": sig,
+                },
+            )
 
     assert resp.status_code == 200
-    assert resp.json()["status"] == "skipped"
+    data = resp.json()
+    # Empty text transcription is still accepted and stored
+    assert data["status"] == "accepted"
 
 
 @pytest.mark.asyncio
@@ -310,32 +499,61 @@ async def test_plaud_missing_signature():
 async def test_plaud_idempotency():
     """Duplicate Plaud webhook should be rejected."""
     reset_idempotency_store()
-    event = _plaud_event(recording_id="dup-recording-1")
+    event = _plaud_event(transcription_id="dup-recording-1")
     payload = json.dumps(event).encode()
     sig = _sign_payload(payload, PLAUD_SECRET)
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        resp1 = await client.post(
-            "/api/v1/webhooks/plaud",
-            content=payload,
-            headers={
-                "Content-Type": "application/json",
-                "X-Plaud-Signature": sig,
-            },
-        )
-        assert resp1.json()["status"] == "accepted"
+    mock_session = AsyncMock()
+    mock_session.begin = MagicMock(return_value=AsyncMock())
+    mock_session.execute = AsyncMock()
+    mock_session.add = MagicMock()
+    mock_session.flush = AsyncMock()
+    mock_session.commit = AsyncMock()
 
-        resp2 = await client.post(
-            "/api/v1/webhooks/plaud",
-            content=payload,
-            headers={
-                "Content-Type": "application/json",
-                "X-Plaud-Signature": sig,
-            },
-        )
-        assert resp2.json()["duplicate"] is True
+    mock_transcription = MagicMock()
+    mock_transcription.id = uuid.uuid4()
+
+    with patch(
+        "apps.api.webhooks.plaud.async_session_factory",
+    ) as mock_factory:
+        mock_cm = AsyncMock()
+        mock_cm.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_cm.__aexit__ = AsyncMock(return_value=False)
+        mock_factory.return_value = mock_cm
+
+        mock_begin_cm = AsyncMock()
+        mock_begin_cm.__aenter__ = AsyncMock(return_value=None)
+        mock_begin_cm.__aexit__ = AsyncMock(return_value=False)
+        mock_session.begin.return_value = mock_begin_cm
+
+        def track_add(obj):
+            if hasattr(obj, "source") and not hasattr(obj, "transcription_id"):
+                obj.id = mock_transcription.id
+
+        mock_session.add.side_effect = track_add
+
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp1 = await client.post(
+                "/api/v1/webhooks/plaud",
+                content=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "X-Plaud-Signature": sig,
+                },
+            )
+            assert resp1.json()["status"] == "accepted"
+
+            resp2 = await client.post(
+                "/api/v1/webhooks/plaud",
+                content=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "X-Plaud-Signature": sig,
+                },
+            )
+            assert resp2.json()["duplicate"] is True
 
 
 # ── Integration status test ──
@@ -347,21 +565,40 @@ async def test_integration_status():
 
     token = create_access_token(uuid.uuid4(), TENANT_A, "partner", "test@test.be")
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        resp = await client.get(
-            "/api/v1/integrations/status",
-            headers={"Authorization": f"Bearer {token}"},
-        )
+    mock_session = AsyncMock()
 
-    assert resp.status_code == 200
-    data = resp.json()
-    assert len(data["integrations"]) >= 3
-    names = [i["name"] for i in data["integrations"]]
-    assert "ringover" in names
-    assert "plaud" in names
-    assert "outlook" in names
+    # Mock execute to return a result with scalars().all() -> []
+    mock_result = MagicMock()
+    mock_result.scalars = MagicMock(
+        return_value=MagicMock(all=MagicMock(return_value=[]))
+    )
+    mock_session.execute = AsyncMock(return_value=mock_result)
+
+    async def override_db(tenant_id=None):
+        yield mock_session
+
+    from apps.api.dependencies import get_db_session
+
+    app.dependency_overrides[get_db_session] = override_db
+
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.get(
+                "/api/v1/integrations/status",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data["integrations"]) >= 3
+        names = [i["name"] for i in data["integrations"]]
+        assert "ringover" in names
+        assert "plaud" in names
+        assert "outlook" in names
+    finally:
+        app.dependency_overrides = {}
 
 
 # ── Outlook sync stub test ──

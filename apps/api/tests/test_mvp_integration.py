@@ -95,6 +95,7 @@ def _make_contact():
     obj.phone_e164 = "+32470123456"
     obj.address = {"street": "Rue de la Loi 1", "city": "Bruxelles", "zip": "1000"}
     obj.language = "fr"
+    obj.metadata_ = {}
     obj.created_at = NOW
     obj.updated_at = NOW
     return obj
