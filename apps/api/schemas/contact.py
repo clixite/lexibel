@@ -16,6 +16,7 @@ class ContactCreate(BaseModel):
     phone_e164: Optional[str] = Field(None, max_length=20)
     address: Optional[dict] = None
     language: str = Field("fr", max_length=5)
+    metadata: dict = Field(default_factory=dict)
 
     @field_validator("bce_number")
     @classmethod
@@ -50,6 +51,7 @@ class ContactUpdate(BaseModel):
     phone_e164: Optional[str] = Field(None, max_length=20)
     address: Optional[dict] = None
     language: Optional[str] = Field(None, max_length=5)
+    metadata: Optional[dict] = None
 
     @field_validator("bce_number")
     @classmethod
@@ -84,10 +86,11 @@ class ContactResponse(BaseModel):
     phone_e164: Optional[str]
     address: Optional[dict]
     language: str
+    metadata: dict = Field(default_factory=dict, validation_alias="metadata_")
     created_at: datetime
     updated_at: datetime
 
-    model_config = {"from_attributes": True}
+    model_config = {"from_attributes": True, "populate_by_name": True}
 
 
 class ContactListResponse(BaseModel):

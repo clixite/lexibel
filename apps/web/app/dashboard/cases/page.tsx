@@ -3,9 +3,9 @@
 import { useAuth } from "@/lib/useAuth";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Loader2, Search, Grid3x3, List, X, Check, ChevronRight } from "lucide-react";
+import { Plus, Search, Grid3x3, List, Check, ChevronRight, AlertTriangle, Clock } from "lucide-react";
 import { apiFetch } from "@/lib/api";
-import { LoadingSkeleton, ErrorState, EmptyState, Badge, Modal, Button, Card } from "@/components/ui";
+import { LoadingSkeleton, ErrorState, EmptyState, Badge, Button, Card } from "@/components/ui";
 
 interface Case {
   id: string;
@@ -15,6 +15,18 @@ interface Case {
   matter_type: string;
   opened_at: string;
   responsible_user_id: string;
+  jurisdiction: string | null;
+  court_reference: string | null;
+  metadata: {
+    description?: string;
+    priority?: string;
+    sub_type?: string;
+    billing?: { type?: string };
+    parties?: { clients?: { name: string }[]; adverse?: { name: string }[] };
+    key_dates?: { next_hearing?: string; prescription?: string };
+    legal_aid?: { enabled?: boolean };
+    [key: string]: unknown;
+  };
 }
 
 interface CaseListResponse {
@@ -56,13 +68,24 @@ const MATTER_TYPES = [
   { value: "fiscal", label: "Fiscal" },
   { value: "family", label: "Familial" },
   { value: "administrative", label: "Administratif" },
+  { value: "immobilier", label: "Immobilier" },
+  { value: "construction", label: "Construction" },
+  { value: "societes", label: "Sociétés" },
+  { value: "environnement", label: "Environnement" },
+  { value: "ip", label: "Propriété intellectuelle" },
 ];
 
-function generateReference(): string {
-  const year = new Date().getFullYear();
-  const num = String(Math.floor(Math.random() * 999) + 1).padStart(3, "0");
-  return `DOS-${year}-${num}`;
-}
+const PRIORITY_STYLES: Record<string, string> = {
+  normal: "bg-neutral-100 text-neutral-600",
+  urgent: "bg-warning-50 text-warning-700",
+  tres_urgent: "bg-red-50 text-red-700",
+};
+
+const PRIORITY_LABELS: Record<string, string> = {
+  normal: "Normal",
+  urgent: "Urgent",
+  tres_urgent: "Très urgent",
+};
 
 export default function CasesPage() {
   const { accessToken, tenantId, userId } = useAuth();
@@ -73,18 +96,8 @@ export default function CasesPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [showModal, setShowModal] = useState(false);
-  const [creating, setCreating] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
-
-  const [form, setForm] = useState({
-    reference: generateReference(),
-    title: "",
-    matter_type: "general",
-    description: "",
-    status: "open",
-  });
 
   const loadCases = () => {
     if (!accessToken) return;
@@ -99,41 +112,6 @@ export default function CasesPage() {
     loadCases();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken, tenantId]);
-
-  const handleCreate = async () => {
-    if (!accessToken || !form.title.trim()) return;
-    setCreating(true);
-    setError(null);
-    try {
-      await apiFetch("/cases", accessToken, {
-        tenantId,
-        method: "POST",
-        body: JSON.stringify({
-          reference: form.reference,
-          title: form.title,
-          matter_type: form.matter_type,
-          status: form.status,
-          responsible_user_id: userId,
-          metadata: form.description ? { description: form.description } : {},
-        }),
-      });
-      setSuccess("Dossier créé avec succès");
-      setShowModal(false);
-      setForm({
-        reference: generateReference(),
-        title: "",
-        matter_type: "general",
-        description: "",
-        status: "open",
-      });
-      loadCases();
-      setTimeout(() => setSuccess(null), 3000);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setCreating(false);
-    }
-  };
 
   const filtered = cases.filter((c) => {
     if (statusFilter && c.status !== statusFilter) return false;
@@ -180,7 +158,7 @@ export default function CasesPage() {
           variant="primary"
           size="lg"
           icon={<Plus className="w-5 h-5" />}
-          onClick={() => setShowModal(true)}
+          onClick={() => router.push("/dashboard/cases/new")}
         >
           Nouveau dossier
         </Button>
@@ -271,99 +249,6 @@ export default function CasesPage() {
       </div>
 
 
-      {/* Premium Create Modal */}
-      <Modal
-        isOpen={showModal}
-        onClose={() => setShowModal(false)}
-        title="Créer un nouveau dossier"
-        size="lg"
-        footer={
-          <div className="flex justify-end gap-3">
-            <Button
-              variant="secondary"
-              size="md"
-              onClick={() => setShowModal(false)}
-            >
-              Annuler
-            </Button>
-            <Button
-              variant="primary"
-              size="md"
-              loading={creating}
-              disabled={creating || !form.title.trim()}
-              onClick={handleCreate}
-            >
-              Créer le dossier
-            </Button>
-          </div>
-        }
-      >
-        <div className="space-y-6">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-neutral-900 mb-2">
-                Référence
-              </label>
-              <input
-                type="text"
-                value={form.reference}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, reference: e.target.value }))
-                }
-                placeholder="DOS-2026-001"
-                className="input"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-neutral-900 mb-2">
-                Type de dossier
-              </label>
-              <select
-                value={form.matter_type}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, matter_type: e.target.value }))
-                }
-                className="input"
-              >
-                {MATTER_TYPES.map((t) => (
-                  <option key={t.value} value={t.value}>
-                    {t.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-neutral-900 mb-2">
-              Titre du dossier
-            </label>
-            <input
-              type="text"
-              value={form.title}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, title: e.target.value }))
-              }
-              placeholder="Ex: Dupont c/ SA Immobel"
-              className="input"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-neutral-900 mb-2">
-              Description (optionnel)
-            </label>
-            <textarea
-              value={form.description}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, description: e.target.value }))
-              }
-              placeholder="Décrivez le contexte et les détails du dossier..."
-              className="input"
-              rows={3}
-            />
-          </div>
-        </div>
-      </Modal>
-
       {/* Content Display */}
       {filtered.length === 0 ? (
         <div className="bg-white rounded-xl shadow-subtle border border-neutral-100 p-12 text-center">
@@ -373,7 +258,7 @@ export default function CasesPage() {
               variant="primary"
               size="lg"
               icon={<Plus className="w-5 h-5" />}
-              onClick={() => setShowModal(true)}
+              onClick={() => router.push("/dashboard/cases/new")}
               className="mt-6"
             >
               Créer votre premier dossier
@@ -397,6 +282,12 @@ export default function CasesPage() {
                 </th>
                 <th className="text-left px-6 py-4 text-xs font-semibold text-neutral-600 uppercase tracking-wider">
                   Type
+                </th>
+                <th className="text-left px-6 py-4 text-xs font-semibold text-neutral-600 uppercase tracking-wider">
+                  Priorité
+                </th>
+                <th className="text-left px-6 py-4 text-xs font-semibold text-neutral-600 uppercase tracking-wider">
+                  Client
                 </th>
                 <th className="text-left px-6 py-4 text-xs font-semibold text-neutral-600 uppercase tracking-wider">
                   Ouvert le
@@ -444,6 +335,21 @@ export default function CasesPage() {
                         ?.label || c.matter_type}
                     </Badge>
                   </td>
+                  <td className="px-6 py-4">
+                    {c.metadata?.priority && c.metadata.priority !== "normal" ? (
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${PRIORITY_STYLES[c.metadata.priority] || PRIORITY_STYLES.normal}`}>
+                        {c.metadata.priority === "tres_urgent" && <AlertTriangle className="w-3 h-3" />}
+                        {PRIORITY_LABELS[c.metadata.priority] || c.metadata.priority}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-neutral-400">Normal</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-sm text-neutral-600 truncate max-w-[150px] block">
+                      {c.metadata?.parties?.clients?.[0]?.name || "-"}
+                    </span>
+                  </td>
                   <td className="px-6 py-4 text-sm text-neutral-500">
                     {new Date(c.opened_at).toLocaleDateString("fr-BE")}
                   </td>
@@ -484,7 +390,7 @@ export default function CasesPage() {
               }
               className="group"
             >
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <Badge
                     variant={
@@ -504,11 +410,35 @@ export default function CasesPage() {
                       ?.label || c.matter_type}
                   </Badge>
                 </div>
-                <div className="text-sm text-neutral-500">
-                  Ouvert le{" "}
-                  <span className="font-medium text-neutral-700">
+                {c.metadata?.priority && c.metadata.priority !== "normal" && (
+                  <div>
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${PRIORITY_STYLES[c.metadata.priority] || ""}`}>
+                      {c.metadata.priority === "tres_urgent" && <AlertTriangle className="w-3 h-3" />}
+                      {PRIORITY_LABELS[c.metadata.priority] || c.metadata.priority}
+                    </span>
+                  </div>
+                )}
+                {c.metadata?.parties?.clients?.[0]?.name && (
+                  <div className="text-sm text-neutral-600">
+                    <span className="text-neutral-400">Client : </span>
+                    {c.metadata.parties.clients[0].name}
+                  </div>
+                )}
+                {c.jurisdiction && (
+                  <div className="text-xs text-neutral-500 truncate">
+                    {c.jurisdiction}
+                  </div>
+                )}
+                <div className="flex items-center justify-between text-sm text-neutral-500 pt-1 border-t border-neutral-100">
+                  <span>
                     {new Date(c.opened_at).toLocaleDateString("fr-BE")}
                   </span>
+                  {c.metadata?.key_dates?.next_hearing && (
+                    <span className="flex items-center gap-1 text-xs text-accent-600">
+                      <Clock className="w-3 h-3" />
+                      {new Date(c.metadata.key_dates.next_hearing).toLocaleDateString("fr-BE")}
+                    </span>
+                  )}
                 </div>
               </div>
             </Card>

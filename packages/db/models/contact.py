@@ -66,6 +66,13 @@ class Contact(TenantMixin, TimestampMixin, Base):
         server_default=text("'fr'"),
         comment="Preferred language: fr, nl, de, en",
     )
+    metadata_: Mapped[dict] = mapped_column(
+        "metadata",
+        JSONB,
+        nullable=False,
+        server_default=text("'{}'::jsonb"),
+        comment="Extended Belgian fields: civility, birth_date, national_register, etc.",
+    )
 
     def __repr__(self) -> str:
         return f"<Contact {self.full_name}>"

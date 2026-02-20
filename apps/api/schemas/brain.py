@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import datetime
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -174,3 +175,58 @@ class BrainActionResponse(BaseModel):
 class BrainInsightListResponse(BaseModel):
     items: list[InsightResponse]
     total: int
+
+
+# ── Dossier creation assist schemas ─────────────────────────────────
+
+
+class DossierCreationAssistRequest(BaseModel):
+    matter_type: str = Field(
+        ...,
+        description="Type de matiere: civil, penal, commercial, social, fiscal, family, administrative, immobilier, construction, societes",
+    )
+    description: str = Field(..., min_length=1, description="Description de l'affaire")
+    client_name: Optional[str] = None
+
+
+class DossierCreationAssistResponse(BaseModel):
+    suggested_jurisdiction: Optional[str] = None
+    suggested_sub_type: Optional[str] = None
+    applicable_deadlines: list[dict] = Field(
+        default_factory=list,
+        description="Delais applicables: [{name, duration, description}]",
+    )
+    required_documents: list[str] = Field(default_factory=list)
+    risk_points: list[str] = Field(default_factory=list)
+    strategy_notes: str = ""
+    estimated_complexity: str = Field(
+        "moderate", description="simple, moderate, complex"
+    )
+    belgian_legal_references: list[str] = Field(default_factory=list)
+
+
+# ── Contact creation assist schemas ──────────────────────────────────
+
+
+class ContactAssistRequest(BaseModel):
+    type: str = Field(..., pattern="^(natural|legal)$")
+    full_name: str = Field(..., min_length=1)
+    bce_number: Optional[str] = None
+
+
+class ContactAssistResponse(BaseModel):
+    suggested_fields: dict = Field(
+        default_factory=dict, description="Champs pre-remplis suggeres"
+    )
+    bce_info: Optional[dict] = Field(
+        None, description="Informations BCE si numero fourni"
+    )
+    duplicate_warning: Optional[dict] = Field(
+        None, description="Alerte de doublon potentiel"
+    )
+    compliance_notes: list[str] = Field(
+        default_factory=list, description="Notes RGPD et protection des donnees"
+    )
+    relationship_suggestions: list[str] = Field(
+        default_factory=list, description="Suggestions de categorisation"
+    )
