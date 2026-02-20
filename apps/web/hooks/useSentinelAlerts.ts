@@ -17,8 +17,17 @@ export function useSentinelAlerts() {
   const eventSourceRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
+    // SSE is only available in browser
+    if (typeof window === "undefined" || typeof EventSource === "undefined") return;
+
     // Create SSE connection
-    const eventSource = new EventSource("/api/sentinel/alerts/stream");
+    let eventSource: EventSource;
+    try {
+      eventSource = new EventSource("/api/sentinel/alerts/stream");
+    } catch {
+      // EventSource creation failed — skip SSE
+      return;
+    }
     eventSourceRef.current = eventSource;
 
     eventSource.onopen = () => {
@@ -44,7 +53,7 @@ export function useSentinelAlerts() {
         setConflictCount((prev) => prev + 1);
 
         // Show browser notification if permission granted
-        if (Notification.permission === "granted" && data.conflict) {
+        if (typeof Notification !== "undefined" && Notification.permission === "granted" && data.conflict) {
           new Notification("Nouveau conflit détecté", {
             body: `Conflit ${data.conflict.conflict_type} avec sévérité ${data.conflict.severity_score}`,
             icon: "/favicon.ico",
@@ -89,7 +98,7 @@ export function useSentinelAlerts() {
     };
 
     // Request notification permission
-    if (Notification.permission === "default") {
+    if (typeof Notification !== "undefined" && Notification.permission === "default") {
       Notification.requestPermission();
     }
 

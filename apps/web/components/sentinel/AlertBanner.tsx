@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { X, AlertTriangle } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
-import { fr } from "date-fns/locale";
 import { useSentinelAlerts } from "@/hooks/useSentinelAlerts";
 
 export default function AlertBanner() {
@@ -39,10 +37,10 @@ export default function AlertBanner() {
               Nouveau conflit détecté
             </p>
             <p className="text-sm text-red-800 dark:text-red-200 mb-2">
-              {currentAlert.conflict.description}
+              {currentAlert.conflict?.description}
             </p>
             <p className="text-xs text-red-700 dark:text-red-300">
-              Sévérité : {currentAlert.conflict.severity_score}/100
+              Sévérité : {currentAlert.conflict?.severity_score ?? 0}/100
             </p>
           </div>
           <button
