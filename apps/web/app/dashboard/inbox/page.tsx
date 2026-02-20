@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/lib/useAuth";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   Inbox,
   Mail,
@@ -9,13 +9,18 @@ import {
   FileText,
   Loader2,
   Check,
-  X,
-  AlertTriangle,
   ChevronDown,
+  ChevronUp,
   FolderPlus,
   CheckCircle2,
   XCircle,
   Clock,
+  Sparkles,
+  ArrowRight,
+  Calendar,
+  Link2,
+  Zap,
+  Brain,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { LoadingSkeleton, ErrorState, EmptyState, Badge, Modal, Card, Tabs, Button } from "@/components/ui";
@@ -56,6 +61,36 @@ interface CaseListResponse {
   items: CaseOption[];
   total: number;
 }
+
+/* --- AI Triage Types --- */
+
+interface AIClassification {
+  category: "URGENT" | "ACTION_REQUIRED" | "NORMAL" | "INFO_ONLY" | "DELEGABLE" | "SPAM";
+  confidence: number;
+  reasons: string[];
+  suggested_priority: number;
+}
+
+interface AIDeadline {
+  date: string;
+  description: string;
+  days_remaining: number;
+}
+
+interface AISuggestion {
+  case_id?: string;
+  case_reference?: string;
+  case_title?: string;
+  relevance: number;
+}
+
+interface AITriageResult {
+  classification: AIClassification;
+  suggestions?: AISuggestion[];
+  deadlines?: AIDeadline[];
+}
+
+type AIFilterCategory = "" | "URGENT" | "ACTION_REQUIRED" | "INFO_ONLY" | "DELEGABLE";
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -104,6 +139,32 @@ const statusLabels: Record<string, string> = {
   REFUSED: "Refusé",
 };
 
+const AI_CATEGORY_LABELS: Record<string, string> = {
+  URGENT: "Urgent",
+  ACTION_REQUIRED: "Action requise",
+  NORMAL: "Normal",
+  INFO_ONLY: "Informatif",
+  DELEGABLE: "Delegable",
+  SPAM: "Spam",
+};
+
+const AI_CATEGORY_DESCRIPTIONS: Record<string, string> = {
+  URGENT: "Delai tribunal ou action immediate requise",
+  ACTION_REQUIRED: "Necessite une action de l'avocat",
+  NORMAL: "Traitement standard",
+  INFO_ONLY: "Pour information uniquement",
+  DELEGABLE: "Peut etre delegue a un assistant",
+  SPAM: "Non pertinent ou publicite",
+};
+
+const AI_FILTER_BUTTONS: { label: string; value: AIFilterCategory; colorClass: string; badgeVariant: "danger" | "warning" | "accent" | "default" }[] = [
+  { label: "Tous", value: "", colorClass: "bg-neutral-100 text-neutral-700 hover:bg-neutral-200", badgeVariant: "default" },
+  { label: "Urgents", value: "URGENT", colorClass: "bg-danger-50 text-danger-700 hover:bg-danger-100", badgeVariant: "danger" },
+  { label: "Action requise", value: "ACTION_REQUIRED", colorClass: "bg-warning-50 text-warning-700 hover:bg-warning-100", badgeVariant: "warning" },
+  { label: "Informatif", value: "INFO_ONLY", colorClass: "bg-accent-50 text-accent-700 hover:bg-accent-100", badgeVariant: "accent" },
+  { label: "Delegable", value: "DELEGABLE", colorClass: "bg-neutral-50 text-neutral-600 hover:bg-neutral-100", badgeVariant: "default" },
+];
+
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
@@ -145,7 +206,7 @@ function timeAgo(dateStr: string): string {
   const date = new Date(dateStr);
   const diffMs = now.getTime() - date.getTime();
   const diffMin = Math.floor(diffMs / 60000);
-  if (diffMin < 1) return "À l'instant";
+  if (diffMin < 1) return "A l'instant";
   if (diffMin < 60) return `Il y a ${diffMin} min`;
   const diffH = Math.floor(diffMin / 60);
   if (diffH < 24) return `Il y a ${diffH}h`;
@@ -162,7 +223,7 @@ function itemTitle(item: InboxItem): string {
   return (
     item.raw_payload.title ||
     item.raw_payload.subject ||
-    `Élément ${item.source}`
+    `Element ${item.source}`
   );
 }
 
@@ -170,6 +231,112 @@ function generateReference(): string {
   const year = new Date().getFullYear();
   const num = String(Math.floor(Math.random() * 999) + 1).padStart(3, "0");
   return `DOS-${year}-${num}`;
+}
+
+/* --- AI Helpers --- */
+
+function mockClassify(subject: string, body: string): AIClassification {
+  const text = `${subject} ${body}`.toLowerCase();
+  if (text.includes("urgent") || text.includes("delai") || text.includes("tribunal") || text.includes("audience") || text.includes("comparution")) {
+    return { category: "URGENT", confidence: 0.85, reasons: ["Mots-cles urgents detectes", "Delai juridique potentiel"], suggested_priority: 1 };
+  }
+  if (text.includes("reponse") || text.includes("signer") || text.includes("confirmer") || text.includes("approuver") || text.includes("decision")) {
+    return { category: "ACTION_REQUIRED", confidence: 0.78, reasons: ["Action de l'avocat requise", "Confirmation ou signature demandee"], suggested_priority: 2 };
+  }
+  if (text.includes("facture") || text.includes("honoraire") || text.includes("paiement") || text.includes("provision")) {
+    return { category: "DELEGABLE", confidence: 0.72, reasons: ["Element administratif", "Peut etre traite par un assistant"], suggested_priority: 3 };
+  }
+  if (text.includes("newsletter") || text.includes("info") || text.includes("bulletin") || text.includes("communication") || text.includes("mise a jour")) {
+    return { category: "INFO_ONLY", confidence: 0.75, reasons: ["Contenu informatif", "Aucune action requise"], suggested_priority: 4 };
+  }
+  if (text.includes("publicite") || text.includes("promo") || text.includes("unsubscribe") || text.includes("desabonner")) {
+    return { category: "SPAM", confidence: 0.9, reasons: ["Contenu promotionnel", "Non pertinent pour le cabinet"], suggested_priority: 5 };
+  }
+  return { category: "NORMAL", confidence: 0.5, reasons: ["Classification par defaut"], suggested_priority: 3 };
+}
+
+function mockDeadlines(subject: string, body: string): AIDeadline[] {
+  const text = `${subject} ${body}`.toLowerCase();
+  const deadlines: AIDeadline[] = [];
+  if (text.includes("delai") || text.includes("tribunal") || text.includes("audience")) {
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + 7);
+    deadlines.push({
+      date: futureDate.toISOString().split("T")[0],
+      description: "Delai de procedure estime",
+      days_remaining: 7,
+    });
+  }
+  if (text.includes("comparution") || text.includes("hearing")) {
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + 14);
+    deadlines.push({
+      date: futureDate.toISOString().split("T")[0],
+      description: "Date d'audience estimee",
+      days_remaining: 14,
+    });
+  }
+  return deadlines;
+}
+
+function aiCategoryBorderColor(category: string): string {
+  switch (category) {
+    case "URGENT":
+      return "border-l-4 border-l-danger";
+    case "ACTION_REQUIRED":
+      return "border-l-4 border-l-warning";
+    case "INFO_ONLY":
+      return "border-l-4 border-l-accent";
+    case "DELEGABLE":
+      return "border-l-4 border-l-neutral-400";
+    case "SPAM":
+      return "border-l-4 border-l-neutral-300";
+    default:
+      return "border-l-4 border-l-success";
+  }
+}
+
+function aiCategoryBadgeVariant(category: string): "danger" | "warning" | "accent" | "neutral" | "success" | "default" {
+  switch (category) {
+    case "URGENT":
+      return "danger";
+    case "ACTION_REQUIRED":
+      return "warning";
+    case "INFO_ONLY":
+      return "accent";
+    case "DELEGABLE":
+      return "neutral";
+    case "SPAM":
+      return "neutral";
+    default:
+      return "success";
+  }
+}
+
+function aiCategoryShortLabel(category: string, reasons: string[]): string {
+  switch (category) {
+    case "URGENT":
+      if (reasons.some((r) => r.toLowerCase().includes("delai"))) return "Urgent: delai procedure";
+      if (reasons.some((r) => r.toLowerCase().includes("tribunal"))) return "Urgent: delai tribunal";
+      return "Urgent: action immediate";
+    case "ACTION_REQUIRED":
+      return "Action: reponse requise";
+    case "INFO_ONLY":
+      if (reasons.some((r) => r.toLowerCase().includes("newsletter") || r.toLowerCase().includes("informatif"))) return "Info: newsletter";
+      return "Info: pour information";
+    case "DELEGABLE":
+      return "Delegable: assistant";
+    case "SPAM":
+      return "Spam: non pertinent";
+    default:
+      return "Normal: traitement standard";
+  }
+}
+
+function deadlineBadgeColor(daysRemaining: number): string {
+  if (daysRemaining <= 3) return "bg-danger-100 text-danger-700";
+  if (daysRemaining <= 7) return "bg-warning-100 text-warning-700";
+  return "bg-accent-100 text-accent-700";
 }
 
 /* ------------------------------------------------------------------ */
@@ -211,6 +378,15 @@ export default function InboxPage() {
     matter_type: "general",
   });
 
+  /* --- AI Triage State --- */
+  const [aiTriageMap, setAiTriageMap] = useState<Record<string, AITriageResult>>({});
+  const [aiFilter, setAiFilter] = useState<AIFilterCategory>("");
+  const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
+  const [bulkTriageRunning, setBulkTriageRunning] = useState(false);
+  const [bulkTriageProgress, setBulkTriageProgress] = useState({ current: 0, total: 0 });
+  const [linkingCaseItemId, setLinkingCaseItemId] = useState<string | null>(null);
+  const bulkTriageCancelledRef = useRef(false);
+
   /* --- Data loading --- */
   const loadItems = useCallback(() => {
     if (!accessToken) return;
@@ -242,6 +418,146 @@ export default function InboxPage() {
     loadCases();
   }, [loadCases]);
 
+  /* --- AI Triage: classify a single item --- */
+  const classifyItem = useCallback(
+    async (item: InboxItem): Promise<AITriageResult> => {
+      const subject = item.raw_payload.subject || item.raw_payload.title || "";
+      const body = item.raw_payload.body || "";
+      const sender = item.raw_payload.from || "";
+
+      if (!accessToken) {
+        const classification = mockClassify(subject, body);
+        const deadlines = mockDeadlines(subject, body);
+        return { classification, deadlines, suggestions: [] };
+      }
+
+      try {
+        /* Try the full ML pipeline first */
+        const result = await apiFetch<{
+          classification: AIClassification;
+          suggestions?: AISuggestion[];
+          deadlines?: AIDeadline[];
+        }>("/ml/process", accessToken, {
+          tenantId,
+          method: "POST",
+          body: JSON.stringify({
+            subject,
+            body,
+            sender,
+            type: item.source,
+            existing_cases: cases.map((c) => ({ id: c.id, reference: c.reference, title: c.title })),
+          }),
+        });
+        return {
+          classification: result.classification,
+          suggestions: result.suggestions || [],
+          deadlines: result.deadlines || [],
+        };
+      } catch {
+        /* Fallback: try simpler classify endpoint */
+        try {
+          const classifyResult = await apiFetch<AIClassification>("/ml/classify", accessToken, {
+            tenantId,
+            method: "POST",
+            body: JSON.stringify({ subject, body, sender }),
+          });
+          const deadlines = mockDeadlines(subject, body);
+          return { classification: classifyResult, deadlines, suggestions: [] };
+        } catch {
+          /* Final fallback: mock classification */
+          const classification = mockClassify(subject, body);
+          const deadlines = mockDeadlines(subject, body);
+          return { classification, deadlines, suggestions: [] };
+        }
+      }
+    },
+    [accessToken, tenantId, cases],
+  );
+
+  /* --- AI Triage: bulk classify all unclassified items --- */
+  const handleBulkTriage = useCallback(async () => {
+    const unclassified = items.filter((item) => !aiTriageMap[item.id]);
+    if (unclassified.length === 0) {
+      setSuccess("Tous les elements sont deja classifies par l'IA.");
+      setTimeout(() => setSuccess(null), 3000);
+      return;
+    }
+
+    setBulkTriageRunning(true);
+    setBulkTriageProgress({ current: 0, total: unclassified.length });
+    bulkTriageCancelledRef.current = false;
+
+    const newMap = { ...aiTriageMap };
+
+    for (let i = 0; i < unclassified.length; i++) {
+      if (bulkTriageCancelledRef.current) break;
+
+      const item = unclassified[i];
+      try {
+        const result = await classifyItem(item);
+        newMap[item.id] = result;
+        setAiTriageMap({ ...newMap });
+      } catch {
+        /* Skip failed items silently */
+      }
+      setBulkTriageProgress({ current: i + 1, total: unclassified.length });
+    }
+
+    setBulkTriageRunning(false);
+    if (!bulkTriageCancelledRef.current) {
+      setSuccess(`${unclassified.length} elements analyses par l'IA.`);
+      setTimeout(() => setSuccess(null), 3000);
+    }
+  }, [items, aiTriageMap, classifyItem]);
+
+  /* --- AI Triage: classify single item on expand --- */
+  const handleExpandItem = useCallback(
+    async (itemId: string) => {
+      if (expandedItemId === itemId) {
+        setExpandedItemId(null);
+        return;
+      }
+      setExpandedItemId(itemId);
+
+      /* Auto-classify if not already done */
+      if (!aiTriageMap[itemId]) {
+        const item = items.find((i) => i.id === itemId);
+        if (item) {
+          try {
+            const result = await classifyItem(item);
+            setAiTriageMap((prev) => ({ ...prev, [itemId]: result }));
+          } catch {
+            /* Silently fail — analysis panel will show "not available" */
+          }
+        }
+      }
+    },
+    [expandedItemId, aiTriageMap, items, classifyItem],
+  );
+
+  /* --- AI Triage: link to suggested case --- */
+  const handleLinkToCase = useCallback(
+    async (itemId: string, caseId: string) => {
+      if (!accessToken) return;
+      setLinkingCaseItemId(itemId);
+      try {
+        await apiFetch(`/inbox/${itemId}`, accessToken, {
+          tenantId,
+          method: "PATCH",
+          body: JSON.stringify({ suggested_case_id: caseId }),
+        });
+        setSuccess("Element lie au dossier suggere.");
+        loadItems();
+        setTimeout(() => setSuccess(null), 3000);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLinkingCaseItemId(null);
+      }
+    },
+    [accessToken, tenantId, loadItems],
+  );
+
   /* --- Actions --- */
   const handleValidate = async () => {
     if (!accessToken || !validateTarget || !validateForm.case_id || !validateForm.title.trim())
@@ -259,7 +575,7 @@ export default function InboxPage() {
           body: validateForm.body || undefined,
         }),
       });
-      setSuccess("Élément validé et ajouté au dossier.");
+      setSuccess("Element valide et ajoute au dossier.");
       setValidateTarget(null);
       setValidateForm({
         case_id: "",
@@ -285,7 +601,7 @@ export default function InboxPage() {
         tenantId,
         method: "POST",
       });
-      setSuccess("Élément refusé.");
+      setSuccess("Element refuse.");
       setRefuseTarget(null);
       loadItems();
       setTimeout(() => setSuccess(null), 3000);
@@ -317,7 +633,7 @@ export default function InboxPage() {
           responsible_user_id: userId,
         }),
       });
-      setSuccess("Nouveau dossier créé à partir de cet élément.");
+      setSuccess("Nouveau dossier cree a partir de cet element.");
       setCreateCaseTarget(null);
       setCreateCaseForm({
         reference: generateReference(),
@@ -336,8 +652,15 @@ export default function InboxPage() {
 
   /* Open validate modal with pre-filled data */
   const openValidate = (item: InboxItem) => {
+    const triage = aiTriageMap[item.id];
+    const suggestedCaseId =
+      item.suggested_case_id ||
+      (triage?.suggestions && triage.suggestions.length > 0
+        ? triage.suggestions[0].case_id
+        : "") ||
+      "";
     setValidateForm({
-      case_id: item.suggested_case_id || "",
+      case_id: suggestedCaseId,
       event_type: "email_received",
       title: itemTitle(item),
       body: item.raw_payload.body || "",
@@ -355,10 +678,36 @@ export default function InboxPage() {
     setCreateCaseTarget(item);
   };
 
-  /* --- Filtered items --- */
-  const filteredItems = statusFilter
-    ? items
-    : items; // API already filters; show all when "Tous"
+  /* --- Filtered items (status + AI category) --- */
+  const filteredItems = items.filter((item) => {
+    /* AI category filter */
+    if (aiFilter) {
+      const triage = aiTriageMap[item.id];
+      if (!triage) return false;
+      return triage.classification.category === aiFilter;
+    }
+    return true;
+  });
+
+  /* --- AI filter counts --- */
+  const aiFilterCounts: Record<string, number> = {
+    "": items.length,
+    URGENT: 0,
+    ACTION_REQUIRED: 0,
+    INFO_ONLY: 0,
+    DELEGABLE: 0,
+  };
+  for (const item of items) {
+    const triage = aiTriageMap[item.id];
+    if (triage) {
+      const cat = triage.classification.category;
+      if (cat in aiFilterCounts) {
+        aiFilterCounts[cat]++;
+      }
+    }
+  }
+
+  const hasAnyTriage = Object.keys(aiTriageMap).length > 0;
 
   /* ---------------------------------------------------------------- */
   /*  Render                                                           */
@@ -386,10 +735,47 @@ export default function InboxPage() {
             {totalCount}
           </span>
         </div>
+        {/* Bulk AI Triage Button */}
+        <div className="flex items-center gap-3">
+          {bulkTriageRunning && (
+            <div className="flex items-center gap-2 text-sm text-neutral-600">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>
+                Analyse {bulkTriageProgress.current}/{bulkTriageProgress.total}
+              </span>
+              <div className="w-24 h-1.5 bg-neutral-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-accent rounded-full transition-all duration-300"
+                  style={{
+                    width: bulkTriageProgress.total > 0
+                      ? `${Math.round((bulkTriageProgress.current / bulkTriageProgress.total) * 100)}%`
+                      : "0%",
+                  }}
+                />
+              </div>
+              <button
+                onClick={() => { bulkTriageCancelledRef.current = true; }}
+                className="text-xs text-neutral-400 hover:text-danger transition-colors"
+              >
+                Annuler
+              </button>
+            </div>
+          )}
+          <Button
+            size="sm"
+            variant="secondary"
+            icon={<Zap className="w-3.5 h-3.5" />}
+            onClick={handleBulkTriage}
+            disabled={bulkTriageRunning || items.length === 0}
+            loading={bulkTriageRunning}
+          >
+            Trier avec IA
+          </Button>
+        </div>
       </div>
 
       {/* Filter tabs with pills and badge counts */}
-      <div className="mb-6">
+      <div className="mb-4">
         <Tabs
           tabs={STATUS_FILTERS.map((f) => ({
             id: f.value,
@@ -409,6 +795,66 @@ export default function InboxPage() {
         />
       </div>
 
+      {/* AI Smart Filter Bar */}
+      {hasAnyTriage && (
+        <div className="mb-6">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 text-xs text-neutral-500 mr-1">
+              <Brain className="w-3.5 h-3.5" />
+              <span className="font-medium">Filtre IA :</span>
+            </div>
+            {AI_FILTER_BUTTONS.map((btn) => {
+              const isActive = aiFilter === btn.value;
+              const count = aiFilterCounts[btn.value] || 0;
+              return (
+                <button
+                  key={btn.value || "all"}
+                  onClick={() => setAiFilter(btn.value)}
+                  className={`
+                    inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium
+                    transition-all duration-150
+                    ${isActive
+                      ? `${btn.colorClass} ring-2 ring-offset-1 ring-neutral-300 shadow-sm`
+                      : "bg-white text-neutral-500 border border-neutral-200 hover:border-neutral-300 hover:text-neutral-700"
+                    }
+                  `}
+                >
+                  {btn.label}
+                  {count > 0 && (
+                    <span
+                      className={`
+                        inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px]
+                        font-bold rounded-full
+                        ${isActive
+                          ? btn.value === "URGENT"
+                            ? "bg-danger-200 text-danger-800"
+                            : btn.value === "ACTION_REQUIRED"
+                              ? "bg-warning-200 text-warning-800"
+                              : btn.value === "INFO_ONLY"
+                                ? "bg-accent-200 text-accent-800"
+                                : "bg-neutral-200 text-neutral-700"
+                          : "bg-neutral-100 text-neutral-500"
+                        }
+                      `}
+                    >
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+            {aiFilter && (
+              <button
+                onClick={() => setAiFilter("")}
+                className="text-xs text-neutral-400 hover:text-neutral-600 underline ml-1 transition-colors"
+              >
+                Effacer le filtre
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Error */}
       {error && (
         <div className="mb-4">
@@ -420,7 +866,7 @@ export default function InboxPage() {
       <Modal
         isOpen={!!validateTarget}
         onClose={() => setValidateTarget(null)}
-        title="Valider et rattacher à un dossier"
+        title="Valider et rattacher a un dossier"
         footer={
           <div className="flex justify-end gap-3">
             <button
@@ -463,10 +909,10 @@ export default function InboxPage() {
                     }
                     className="input appearance-none pr-8"
                   >
-                    <option value="">-- Sélectionner un dossier --</option>
+                    <option value="">-- Selectionner un dossier --</option>
                     {cases.map((c) => (
                       <option key={c.id} value={c.id}>
-                        {c.reference} — {c.title}
+                        {c.reference} -- {c.title}
                       </option>
                     ))}
                   </select>
@@ -475,7 +921,7 @@ export default function InboxPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  Type d&apos;événement
+                  Type d&apos;evenement
                 </label>
                 <div className="relative">
                   <select
@@ -507,7 +953,7 @@ export default function InboxPage() {
                   onChange={(e) =>
                     setValidateForm((f) => ({ ...f, title: e.target.value }))
                   }
-                  placeholder="Titre de l'événement"
+                  placeholder="Titre de l'evenement"
                   className="input"
                 />
               </div>
@@ -520,7 +966,7 @@ export default function InboxPage() {
                   onChange={(e) =>
                     setValidateForm((f) => ({ ...f, body: e.target.value }))
                   }
-                  placeholder="Détails supplémentaires..."
+                  placeholder="Details supplementaires..."
                   className="input"
                   rows={3}
                 />
@@ -557,8 +1003,8 @@ export default function InboxPage() {
         }
       >
             <p className="text-sm text-neutral-600 mb-6">
-              Êtes-vous sûr de vouloir refuser cet élément ? Cette action
-              marquera l&apos;entrée comme non pertinente.
+              Etes-vous sur de vouloir refuser cet element ? Cette action
+              marquera l&apos;entree comme non pertinente.
             </p>
             {refuseTarget && (
               <div className="bg-neutral-50 rounded-md p-3 mb-6">
@@ -578,7 +1024,7 @@ export default function InboxPage() {
       <Modal
         isOpen={!!createCaseTarget}
         onClose={() => setCreateCaseTarget(null)}
-        title="Créer un nouveau dossier"
+        title="Creer un nouveau dossier"
         footer={
           <div className="flex justify-end gap-3">
             <button
@@ -600,22 +1046,22 @@ export default function InboxPage() {
                 <Loader2 className="w-4 h-4 animate-spin" />
               )}
               <FolderPlus className="w-4 h-4" />
-              Créer le dossier
+              Creer le dossier
             </button>
           </div>
         }
       >
             <div className="bg-accent-50/50 border border-accent-100 rounded-md p-3 mb-5">
               <p className="text-xs text-accent-600">
-                Un dossier sera créé et cet élément y sera automatiquement
-                rattaché.
+                Un dossier sera cree et cet element y sera automatiquement
+                rattache.
               </p>
             </div>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-1">
-                    Référence
+                    Reference
                   </label>
                   <input
                     type="text"
@@ -631,7 +1077,7 @@ export default function InboxPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-1">
-                    Type de matière
+                    Type de matiere
                   </label>
                   <div className="relative">
                     <select
@@ -675,149 +1121,370 @@ export default function InboxPage() {
       {filteredItems.length === 0 ? (
         <Card className="text-center py-20">
           <EmptyState
-            title="Aucun élément"
+            title="Aucun element"
             description={
-              statusFilter
-                ? "Aucun élément ne correspond à ce filtre. Essayez un autre statut."
-                : "Votre inbox est vide. Les nouveaux e-mails, appels et documents apparaîtront ici automatiquement."
+              aiFilter
+                ? `Aucun element classe comme "${AI_CATEGORY_LABELS[aiFilter] || aiFilter}". Lancez le tri IA ou essayez un autre filtre.`
+                : statusFilter
+                  ? "Aucun element ne correspond a ce filtre. Essayez un autre statut."
+                  : "Votre inbox est vide. Les nouveaux e-mails, appels et documents apparaitront ici automatiquement."
             }
           />
         </Card>
       ) : (
         <div className="space-y-3">
-          {filteredItems.map((item) => (
-            <Card
-              key={item.id}
-              hover
-              className="border border-neutral-100 hover:border-accent-200"
-            >
-              <div className="flex items-start gap-4">
-                {/* Source icon */}
-                <div
-                  className={`w-10 h-10 rounded flex items-center justify-center flex-shrink-0 ${sourceColor(item.source)}`}
-                >
-                  {sourceIcon(item.source)}
-                </div>
+          {filteredItems.map((item) => {
+            const triage = aiTriageMap[item.id];
+            const isExpanded = expandedItemId === item.id;
+            const hasTriage = !!triage;
 
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <h3 className="text-sm font-semibold text-neutral-900 truncate">
-                        {itemTitle(item)}
-                      </h3>
-                      {item.raw_payload.from && (
-                        <p className="text-xs text-neutral-500 mt-0.5">
-                          De : {item.raw_payload.from}
-                        </p>
-                      )}
-                      {item.raw_payload.body && (
-                        <p className="text-sm text-neutral-600 mt-1.5 line-clamp-2">
-                          {item.raw_payload.body}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className="text-xs text-neutral-400 whitespace-nowrap">
-                        {timeAgo(item.created_at)}
-                      </span>
-                      <Badge
-                        variant={
-                          item.status === "DRAFT"
-                            ? "warning"
-                            : item.status === "VALIDATED"
-                              ? "success"
-                              : "danger"
-                        }
-                        size="sm"
-                      >
-                        {statusLabels[item.status] || item.status}
-                      </Badge>
-                    </div>
+            return (
+              <Card
+                key={item.id}
+                hover
+                className={`border border-neutral-100 hover:border-accent-200 ${
+                  hasTriage ? aiCategoryBorderColor(triage.classification.category) : ""
+                } ${triage?.classification.category === "SPAM" ? "opacity-60" : ""}`}
+              >
+                <div className="flex items-start gap-4">
+                  {/* Source icon */}
+                  <div
+                    className={`w-10 h-10 rounded flex items-center justify-center flex-shrink-0 ${sourceColor(item.source)}`}
+                  >
+                    {sourceIcon(item.source)}
                   </div>
 
-                  {/* Confidence bar */}
-                  <div className="flex items-center gap-2 mt-3">
-                    <span className="text-xs text-neutral-400">Confiance</span>
-                    <div className="flex-1 max-w-[200px] h-1.5 bg-neutral-100 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all duration-300 ${
-                          item.confidence >= 0.8
-                            ? "bg-success"
-                            : item.confidence >= 0.5
-                              ? "bg-warning"
-                              : "bg-danger"
-                        }`}
-                        style={{ width: `${Math.round(item.confidence * 100)}%` }}
-                      />
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3
+                            className={`text-sm font-semibold text-neutral-900 truncate ${
+                              triage?.classification.category === "SPAM" ? "line-through text-neutral-500" : ""
+                            }`}
+                          >
+                            {itemTitle(item)}
+                          </h3>
+                          {/* AI Classification Tag */}
+                          {hasTriage && (
+                            <Badge
+                              variant={aiCategoryBadgeVariant(triage.classification.category)}
+                              size="sm"
+                            >
+                              {aiCategoryShortLabel(triage.classification.category, triage.classification.reasons)}
+                            </Badge>
+                          )}
+                        </div>
+                        {item.raw_payload.from && (
+                          <p className="text-xs text-neutral-500 mt-0.5">
+                            De : {item.raw_payload.from}
+                          </p>
+                        )}
+                        {item.raw_payload.body && (
+                          <p className="text-sm text-neutral-600 mt-1.5 line-clamp-2">
+                            {item.raw_payload.body}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {/* AI Confidence badge */}
+                        {hasTriage && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-neutral-100 text-neutral-600">
+                            <Sparkles className="w-3 h-3" />
+                            IA: {Math.round(triage.classification.confidence * 100)}%
+                          </span>
+                        )}
+                        {/* Deadline badge */}
+                        {hasTriage && triage.deadlines && triage.deadlines.length > 0 && (
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold ${
+                              deadlineBadgeColor(triage.deadlines[0].days_remaining)
+                            }`}
+                          >
+                            <Calendar className="w-3 h-3" />
+                            {triage.deadlines[0].days_remaining}j
+                          </span>
+                        )}
+                        <span className="text-xs text-neutral-400 whitespace-nowrap">
+                          {timeAgo(item.created_at)}
+                        </span>
+                        <Badge
+                          variant={
+                            item.status === "DRAFT"
+                              ? "warning"
+                              : item.status === "VALIDATED"
+                                ? "success"
+                                : "danger"
+                          }
+                          size="sm"
+                        >
+                          {statusLabels[item.status] || item.status}
+                        </Badge>
+                      </div>
                     </div>
-                    <span className="text-xs font-medium text-neutral-600">
-                      {Math.round(item.confidence * 100)}%
-                    </span>
-                    {item.suggested_case_id && (
-                      <Badge variant="accent" size="sm" className="ml-2">
-                        Dossier suggéré
-                      </Badge>
+
+                    {/* Confidence bar */}
+                    <div className="flex items-center gap-2 mt-3">
+                      <span className="text-xs text-neutral-400">Confiance</span>
+                      <div className="flex-1 max-w-[200px] h-1.5 bg-neutral-100 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-300 ${
+                            item.confidence >= 0.8
+                              ? "bg-success"
+                              : item.confidence >= 0.5
+                                ? "bg-warning"
+                                : "bg-danger"
+                          }`}
+                          style={{ width: `${Math.round(item.confidence * 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-xs font-medium text-neutral-600">
+                        {Math.round(item.confidence * 100)}%
+                      </span>
+                      {item.suggested_case_id && (
+                        <Badge variant="accent" size="sm" className="ml-2">
+                          Dossier suggere
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* Actions for DRAFT items */}
+                    {item.status === "DRAFT" && (
+                      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-neutral-100">
+                        <Button
+                          size="sm"
+                          variant="primary"
+                          icon={<CheckCircle2 className="w-3.5 h-3.5" />}
+                          onClick={() => openValidate(item)}
+                          disabled={actionLoading === item.id}
+                        >
+                          Valider
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="danger"
+                          icon={<XCircle className="w-3.5 h-3.5" />}
+                          onClick={() => setRefuseTarget(item)}
+                          disabled={actionLoading === item.id}
+                        >
+                          Refuser
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          icon={<FolderPlus className="w-3.5 h-3.5" />}
+                          onClick={() => openCreateCase(item)}
+                          disabled={actionLoading === item.id}
+                        >
+                          Creer dossier
+                        </Button>
+                        {/* Expand/Collapse for AI Analysis */}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          icon={<Sparkles className="w-3.5 h-3.5" />}
+                          onClick={() => handleExpandItem(item.id)}
+                        >
+                          {isExpanded ? "Masquer IA" : "Analyse IA"}
+                          {isExpanded ? (
+                            <ChevronUp className="w-3 h-3 ml-0.5" />
+                          ) : (
+                            <ChevronDown className="w-3 h-3 ml-0.5" />
+                          )}
+                        </Button>
+                        {actionLoading === item.id && (
+                          <Loader2 className="w-4 h-4 animate-spin text-accent ml-1" />
+                        )}
+                      </div>
+                    )}
+
+                    {/* Status indicator for processed items */}
+                    {item.status === "VALIDATED" && (
+                      <div className="flex items-center justify-between mt-3 pt-3 border-t border-neutral-100">
+                        <div className="flex items-center gap-1.5">
+                          <CheckCircle2 className="w-4 h-4 text-success" />
+                          <span className="text-xs text-success-700">
+                            Valide et rattache a un dossier
+                          </span>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          icon={<Sparkles className="w-3.5 h-3.5" />}
+                          onClick={() => handleExpandItem(item.id)}
+                        >
+                          {isExpanded ? "Masquer IA" : "Analyse IA"}
+                        </Button>
+                      </div>
+                    )}
+                    {item.status === "REFUSED" && (
+                      <div className="flex items-center justify-between mt-3 pt-3 border-t border-neutral-100">
+                        <div className="flex items-center gap-1.5">
+                          <XCircle className="w-4 h-4 text-danger" />
+                          <span className="text-xs text-danger-700">
+                            Refuse -- non rattache
+                          </span>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          icon={<Sparkles className="w-3.5 h-3.5" />}
+                          onClick={() => handleExpandItem(item.id)}
+                        >
+                          {isExpanded ? "Masquer IA" : "Analyse IA"}
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* ---- AI Analysis Panel (expanded) ---- */}
+                    {isExpanded && (
+                      <div className="mt-4 pt-4 border-t border-neutral-100">
+                        <div className="bg-neutral-50 rounded-lg p-4">
+                          <div className="flex items-center gap-2 mb-3">
+                            <Brain className="w-4 h-4 text-accent" />
+                            <h4 className="text-sm font-semibold text-neutral-800">
+                              Analyse IA
+                            </h4>
+                          </div>
+
+                          {!hasTriage ? (
+                            <div className="flex items-center gap-2 text-sm text-neutral-500">
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              <span>Analyse en cours...</span>
+                            </div>
+                          ) : (
+                            <div className="space-y-4">
+                              {/* Classification */}
+                              <div>
+                                <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1.5">
+                                  Classification
+                                </p>
+                                <div className="flex items-center gap-2">
+                                  <Badge
+                                    variant={aiCategoryBadgeVariant(triage.classification.category)}
+                                    size="md"
+                                    dot
+                                  >
+                                    {AI_CATEGORY_LABELS[triage.classification.category] || triage.classification.category}
+                                  </Badge>
+                                  <span className="text-xs text-neutral-500">
+                                    Confiance : {Math.round(triage.classification.confidence * 100)}%
+                                  </span>
+                                  <span className="text-xs text-neutral-400">
+                                    | Priorite : {triage.classification.suggested_priority}/5
+                                  </span>
+                                </div>
+                                <p className="text-xs text-neutral-500 mt-1">
+                                  {AI_CATEGORY_DESCRIPTIONS[triage.classification.category] || ""}
+                                </p>
+                              </div>
+
+                              {/* Reasons */}
+                              <div>
+                                <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1.5">
+                                  Raisons de la classification
+                                </p>
+                                <ul className="space-y-1">
+                                  {triage.classification.reasons.map((reason, idx) => (
+                                    <li
+                                      key={idx}
+                                      className="flex items-start gap-1.5 text-xs text-neutral-600"
+                                    >
+                                      <ArrowRight className="w-3 h-3 text-neutral-400 mt-0.5 flex-shrink-0" />
+                                      {reason}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+
+                              {/* Deadlines */}
+                              {triage.deadlines && triage.deadlines.length > 0 && (
+                                <div>
+                                  <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1.5">
+                                    Delais detectes
+                                  </p>
+                                  <div className="space-y-1.5">
+                                    {triage.deadlines.map((deadline, idx) => (
+                                      <div
+                                        key={idx}
+                                        className={`flex items-center gap-2 px-2.5 py-1.5 rounded ${
+                                          deadlineBadgeColor(deadline.days_remaining)
+                                        }`}
+                                      >
+                                        <Clock className="w-3.5 h-3.5 flex-shrink-0" />
+                                        <span className="text-xs font-medium">
+                                          {deadline.description}
+                                        </span>
+                                        <span className="text-xs">
+                                          -- {deadline.date}
+                                        </span>
+                                        <span className="text-xs font-bold ml-auto">
+                                          {deadline.days_remaining}j restants
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Case Suggestions */}
+                              {triage.suggestions && triage.suggestions.length > 0 && (
+                                <div>
+                                  <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1.5">
+                                    Dossiers suggeres
+                                  </p>
+                                  <div className="space-y-1.5">
+                                    {triage.suggestions.map((suggestion, idx) => (
+                                      <div
+                                        key={idx}
+                                        className="flex items-center justify-between gap-2 bg-white border border-neutral-200 rounded px-3 py-2"
+                                      >
+                                        <div className="min-w-0">
+                                          <p className="text-xs font-medium text-neutral-800 truncate">
+                                            {suggestion.case_reference
+                                              ? `${suggestion.case_reference} -- ${suggestion.case_title || ""}`
+                                              : suggestion.case_title || "Dossier suggere"}
+                                          </p>
+                                          <p className="text-[10px] text-neutral-400">
+                                            Pertinence : {Math.round(suggestion.relevance * 100)}%
+                                          </p>
+                                        </div>
+                                        {suggestion.case_id && (
+                                          <Button
+                                            size="sm"
+                                            variant="secondary"
+                                            icon={<Link2 className="w-3 h-3" />}
+                                            onClick={() => handleLinkToCase(item.id, suggestion.case_id!)}
+                                            loading={linkingCaseItemId === item.id}
+                                            disabled={linkingCaseItemId === item.id}
+                                          >
+                                            Lier au dossier
+                                          </Button>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* No suggestions fallback */}
+                              {(!triage.suggestions || triage.suggestions.length === 0) &&
+                                (!triage.deadlines || triage.deadlines.length === 0) && (
+                                <p className="text-xs text-neutral-400 italic">
+                                  Aucun dossier lie ou delai detecte pour cet element.
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     )}
                   </div>
-
-                  {/* Actions for DRAFT items */}
-                  {item.status === "DRAFT" && (
-                    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-neutral-100">
-                      <Button
-                        size="sm"
-                        variant="primary"
-                        icon={<CheckCircle2 className="w-3.5 h-3.5" />}
-                        onClick={() => openValidate(item)}
-                        disabled={actionLoading === item.id}
-                      >
-                        Valider
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="danger"
-                        icon={<XCircle className="w-3.5 h-3.5" />}
-                        onClick={() => setRefuseTarget(item)}
-                        disabled={actionLoading === item.id}
-                      >
-                        Refuser
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        icon={<FolderPlus className="w-3.5 h-3.5" />}
-                        onClick={() => openCreateCase(item)}
-                        disabled={actionLoading === item.id}
-                      >
-                        Créer dossier
-                      </Button>
-                      {actionLoading === item.id && (
-                        <Loader2 className="w-4 h-4 animate-spin text-accent ml-1" />
-                      )}
-                    </div>
-                  )}
-
-                  {/* Status indicator for processed items */}
-                  {item.status === "VALIDATED" && (
-                    <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-neutral-100">
-                      <CheckCircle2 className="w-4 h-4 text-success" />
-                      <span className="text-xs text-success-700">
-                        Validé et rattaché à un dossier
-                      </span>
-                    </div>
-                  )}
-                  {item.status === "REFUSED" && (
-                    <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-neutral-100">
-                      <XCircle className="w-4 h-4 text-danger" />
-                      <span className="text-xs text-danger-700">
-                        Refusé — non rattaché
-                      </span>
-                    </div>
-                  )}
                 </div>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

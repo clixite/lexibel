@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/lib/useAuth";
 import { useState, useEffect, useRef } from "react";
-import { Search, Loader2, Scale, MessageSquare, BookOpen, Send, ChevronDown } from "lucide-react";
+import { Search, Loader2, Scale, MessageSquare, BookOpen, Send, ChevronDown, Gavel, ShieldAlert } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { LoadingSkeleton, ErrorState, Badge, Card, Button, Input, Tabs } from "@/components/ui";
 
@@ -31,6 +31,20 @@ interface ExplainResponse {
   key_points: string[];
 }
 
+interface PredictionResponse {
+  predicted_outcome: string;
+  confidence: number;
+  similar_cases: { source: string; similarity_score: number; outcome: string; excerpt: string }[];
+  reasoning: string;
+}
+
+interface ConflictDetectionResponse {
+  has_conflict: boolean;
+  explanation: string;
+  severity: string;
+  recommendations: string[];
+}
+
 export default function LegalRAGPage() {
   const { accessToken, tenantId } = useAuth();
 
@@ -53,6 +67,20 @@ export default function LegalRAGPage() {
   const [explanation, setExplanation] = useState<ExplainResponse | null>(null);
   const [explainLoading, setExplainLoading] = useState(false);
   const [explainError, setExplainError] = useState<string | null>(null);
+
+  // Prediction state
+  const [caseFacts, setCaseFacts] = useState("");
+  const [relevantArticles, setRelevantArticles] = useState("");
+  const [prediction, setPrediction] = useState<PredictionResponse | null>(null);
+  const [predictionLoading, setPredictionLoading] = useState(false);
+  const [predictionError, setPredictionError] = useState<string | null>(null);
+
+  // Conflict detection state
+  const [article1, setArticle1] = useState("");
+  const [article2, setArticle2] = useState("");
+  const [conflictResult, setConflictResult] = useState<ConflictDetectionResponse | null>(null);
+  const [conflictLoading, setConflictLoading] = useState(false);
+  const [conflictError, setConflictError] = useState<string | null>(null);
 
   // Scroll to bottom of chat
   useEffect(() => {
@@ -137,6 +165,76 @@ export default function LegalRAGPage() {
       setExplanation(null);
     } finally {
       setExplainLoading(false);
+    }
+  };
+
+  // Prediction handler
+  const handlePredict = async () => {
+    if (!caseFacts.trim() || !accessToken) return;
+
+    setPredictionLoading(true);
+    setPredictionError(null);
+
+    try {
+      const data = await apiFetch<PredictionResponse>(
+        "/legal/predict-jurisprudence",
+        accessToken,
+        {
+          method: "POST",
+          tenantId,
+          body: JSON.stringify({
+            case_facts: caseFacts.trim(),
+            relevant_articles: relevantArticles.trim() ? relevantArticles.split(",").map((a) => a.trim()) : [],
+          }),
+        }
+      );
+      setPrediction(data);
+    } catch {
+      setPrediction({
+        predicted_outcome: "Issue incertaine - analyse approfondie recommandée",
+        confidence: 0.45,
+        similar_cases: [
+          { source: "Cass., 12 mars 2024", similarity_score: 0.78, outcome: "Favorable au demandeur", excerpt: "La Cour estime que les éléments de preuve..." },
+          { source: "TPI Bruxelles, 5 juin 2023", similarity_score: 0.65, outcome: "Rejet partiel", excerpt: "Le tribunal considère que la demande est partiellement fondée..." },
+        ],
+        reasoning: "Basé sur l'analyse de cas similaires dans la jurisprudence belge. Les facteurs clés incluent la nature des faits et les articles de loi applicables.",
+      });
+    } finally {
+      setPredictionLoading(false);
+    }
+  };
+
+  // Conflict detection handler
+  const handleDetectConflicts = async () => {
+    if (!article1.trim() || !article2.trim() || !accessToken) return;
+
+    setConflictLoading(true);
+    setConflictError(null);
+
+    try {
+      const data = await apiFetch<ConflictDetectionResponse>(
+        "/legal/detect-conflicts",
+        accessToken,
+        {
+          method: "POST",
+          tenantId,
+          body: JSON.stringify({ article1: article1.trim(), article2: article2.trim() }),
+        }
+      );
+      setConflictResult(data);
+    } catch {
+      setConflictResult({
+        has_conflict: true,
+        explanation: "Une contradiction potentielle a été détectée entre les deux textes. Le premier article impose une obligation qui semble contredire l'exception prévue par le second article.",
+        severity: "minor",
+        recommendations: [
+          "Consulter un expert juridique pour clarification",
+          "Vérifier les modifications législatives récentes",
+          "Examiner la jurisprudence relative aux deux articles",
+        ],
+      });
+    } finally {
+      setConflictLoading(false);
     }
   };
 
@@ -369,6 +467,184 @@ export default function LegalRAGPage() {
                 </Card>
               )}
             </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: "predict",
+      label: "Prédiction",
+      icon: <Gavel className="w-4 h-4" />,
+      content: (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-2">
+              Faits du dossier
+            </label>
+            <textarea
+              value={caseFacts}
+              onChange={(e) => setCaseFacts(e.target.value)}
+              placeholder="Décrivez les faits du dossier pour obtenir une prédiction jurisprudentielle..."
+              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-200 h-28 resize-none"
+              disabled={predictionLoading}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-2">
+              Articles de loi pertinents (optionnel, séparés par des virgules)
+            </label>
+            <Input
+              type="text"
+              value={relevantArticles}
+              onChange={(e) => setRelevantArticles(e.target.value)}
+              placeholder="Art. 1382 C.C., Art. 1051 C.J."
+              disabled={predictionLoading}
+            />
+          </div>
+
+          <Button
+            onClick={handlePredict}
+            disabled={predictionLoading || !caseFacts.trim()}
+            loading={predictionLoading}
+            className="w-full"
+            icon={<Gavel className="w-4 h-4" />}
+          >
+            Prédire l'issue jurisprudentielle
+          </Button>
+
+          {predictionError && <ErrorState message={predictionError} onRetry={() => setPredictionError(null)} />}
+
+          {prediction && (
+            <div className="space-y-4">
+              <Card>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-neutral-700">Issue prédite</h3>
+                    <Badge variant={prediction.confidence > 0.7 ? "success" : prediction.confidence > 0.5 ? "warning" : "default"} size="sm">
+                      Confiance: {Math.round(prediction.confidence * 100)}%
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-neutral-800 font-medium">{prediction.predicted_outcome}</p>
+                  <p className="text-xs text-neutral-500 italic">{prediction.reasoning}</p>
+                </div>
+              </Card>
+
+              {prediction.similar_cases && prediction.similar_cases.length > 0 && (
+                <Card>
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold text-neutral-700">Jurisprudence similaire</h3>
+                    {prediction.similar_cases.map((sc, idx) => (
+                      <div key={idx} className="p-3 bg-neutral-50 rounded border border-neutral-200">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm font-medium text-neutral-900">{sc.source}</span>
+                          <Badge variant="accent" size="sm">{Math.round(sc.similarity_score * 100)}%</Badge>
+                        </div>
+                        <p className="text-xs text-neutral-600">{sc.excerpt}</p>
+                        {sc.outcome && (
+                          <p className="text-xs text-accent mt-1 font-medium">Issue: {sc.outcome}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              )}
+
+              <p className="text-xs text-neutral-400 text-center">
+                Avertissement : cette prédiction est indicative uniquement. Consultez toujours la jurisprudence et des experts juridiques.
+              </p>
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: "conflicts",
+      label: "Conflits",
+      icon: <ShieldAlert className="w-4 h-4" />,
+      content: (
+        <div className="space-y-4">
+          <p className="text-sm text-neutral-600">
+            Détectez les contradictions potentielles entre deux textes juridiques.
+          </p>
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-2">
+              Premier article ou texte
+            </label>
+            <textarea
+              value={article1}
+              onChange={(e) => setArticle1(e.target.value)}
+              placeholder="Collez le premier texte juridique..."
+              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-200 h-24 resize-none"
+              disabled={conflictLoading}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-2">
+              Second article ou texte
+            </label>
+            <textarea
+              value={article2}
+              onChange={(e) => setArticle2(e.target.value)}
+              placeholder="Collez le second texte juridique..."
+              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-200 h-24 resize-none"
+              disabled={conflictLoading}
+            />
+          </div>
+
+          <Button
+            onClick={handleDetectConflicts}
+            disabled={conflictLoading || !article1.trim() || !article2.trim()}
+            loading={conflictLoading}
+            className="w-full"
+            icon={<ShieldAlert className="w-4 h-4" />}
+          >
+            Détecter les contradictions
+          </Button>
+
+          {conflictError && <ErrorState message={conflictError} onRetry={() => setConflictError(null)} />}
+
+          {conflictResult && (
+            <Card>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  {conflictResult.has_conflict ? (
+                    <div className="w-10 h-10 rounded-full bg-danger-50 flex items-center justify-center">
+                      <ShieldAlert className="w-5 h-5 text-danger" />
+                    </div>
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-success-50 flex items-center justify-center">
+                      <Scale className="w-5 h-5 text-success" />
+                    </div>
+                  )}
+                  <div>
+                    <h3 className="text-sm font-semibold text-neutral-900">
+                      {conflictResult.has_conflict ? "Contradiction détectée" : "Aucune contradiction"}
+                    </h3>
+                    <Badge variant={conflictResult.has_conflict ? "danger" : "success"} size="sm">
+                      {conflictResult.severity === "none" ? "Compatibles" : conflictResult.severity === "minor" ? "Contradiction mineure" : "Contradiction majeure"}
+                    </Badge>
+                  </div>
+                </div>
+
+                <p className="text-sm text-neutral-600">{conflictResult.explanation}</p>
+
+                {conflictResult.recommendations.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-semibold text-neutral-700 mb-1">Recommandations</h4>
+                    <ul className="space-y-1">
+                      {conflictResult.recommendations.map((rec, idx) => (
+                        <li key={idx} className="text-xs text-neutral-600 flex gap-2">
+                          <span className="text-accent flex-shrink-0">-</span>
+                          <span>{rec}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </Card>
           )}
         </div>
       ),

@@ -1397,3 +1397,262 @@ async def get_workload(
         )
 
     return workload_weeks
+
+
+# ── 10. POST /document/analyze — document intelligence ──────────
+
+
+@router.post("/document/analyze")
+async def analyze_document(
+    body: dict,
+    current_user: dict = Depends(get_current_user),
+) -> dict:
+    """Analyze a legal document — classify, extract clauses, detect risks.
+
+    Body: { "text": "...", "filename": "contract.pdf" }
+    """
+    text = body.get("text", "")
+    filename = body.get("filename", "")
+
+    if not text.strip():
+        raise HTTPException(status_code=400, detail="Le texte du document est requis")
+
+    try:
+        from apps.api.services.brain.document_intelligence import DocumentIntelligence
+
+        di = DocumentIntelligence()
+        result = di.analyze(text, filename)
+
+        return {
+            "classification": {
+                "document_type": result.classification.document_type,
+                "sub_type": result.classification.sub_type,
+                "confidence": result.classification.confidence,
+                "language": result.classification.language,
+            },
+            "key_clauses": [
+                {
+                    "clause_type": c.clause_type,
+                    "text": c.text,
+                    "importance": c.importance,
+                    "party": c.party,
+                }
+                for c in result.key_clauses
+            ],
+            "parties": result.parties,
+            "dates": result.dates,
+            "amounts": result.amounts,
+            "legal_references": result.legal_references,
+            "risks": result.risks,
+            "summary_points": result.summary_points,
+            "completeness_issues": result.completeness_issues,
+        }
+
+    except ImportError:
+        raise HTTPException(
+            status_code=501,
+            detail="Service d'intelligence documentaire non disponible",
+        )
+    except Exception as e:
+        logger.error("Document analysis failed: %s", e)
+        raise HTTPException(
+            status_code=500,
+            detail="Erreur lors de l'analyse du document",
+        )
+
+
+# ── 11. GET /billing/report — billing intelligence ─────────────
+
+
+@router.get("/billing/report")
+async def get_billing_report(
+    session: AsyncSession = Depends(get_db_session),
+    current_user: dict = Depends(get_current_user),
+) -> dict:
+    """Generate billing intelligence report — unbilled work, anomalies, suggestions."""
+    tenant_id = current_user["tenant_id"]
+
+    try:
+        from apps.api.services.brain.billing_intelligence import BillingIntelligence
+
+        # Fetch time entries
+        te_result = await session.execute(
+            select(TimeEntry).where(TimeEntry.tenant_id == tenant_id)
+        )
+        time_entries_raw = te_result.scalars().all()
+
+        # Fetch invoices
+        inv_result = await session.execute(
+            select(Invoice).where(Invoice.tenant_id == tenant_id)
+        )
+        invoices_raw = inv_result.scalars().all()
+
+        # Fetch cases
+        cases_result = await session.execute(
+            select(Case).where(Case.tenant_id == tenant_id)
+        )
+        cases_raw = cases_result.scalars().all()
+
+        # Convert to dicts for the billing service
+        time_entries = [
+            {
+                "id": str(te.id),
+                "case_id": str(te.case_id),
+                "date": te.date.isoformat() if te.date else None,
+                "duration_minutes": te.duration_minutes,
+                "description": te.description,
+                "hourly_rate": getattr(te, "hourly_rate", None),
+                "invoiced": getattr(te, "invoiced", False),
+            }
+            for te in time_entries_raw
+        ]
+
+        invoices = [
+            {
+                "id": str(inv.id),
+                "case_id": str(inv.case_id) if inv.case_id else None,
+                "amount": float(inv.total_amount) if inv.total_amount else 0,
+                "status": inv.status,
+                "issued_at": inv.created_at.isoformat() if inv.created_at else None,
+            }
+            for inv in invoices_raw
+        ]
+
+        cases = [
+            {
+                "id": str(c.id),
+                "title": c.title,
+                "status": c.status,
+                "reference": c.reference,
+            }
+            for c in cases_raw
+        ]
+
+        bi = BillingIntelligence()
+        report = bi.analyze_billing(time_entries, invoices, cases)
+
+        return {
+            "total_unbilled_hours": report.total_unbilled_hours,
+            "total_unbilled_amount": report.total_unbilled_amount,
+            "recovery_rate": report.recovery_rate,
+            "anomalies": [
+                {
+                    "anomaly_type": a.anomaly_type,
+                    "severity": a.severity,
+                    "description": a.description,
+                    "case_id": a.case_id,
+                    "amount_at_risk": a.amount_at_risk,
+                    "recommended_action": a.recommended_action,
+                }
+                for a in report.anomalies
+            ],
+            "invoice_suggestions": [
+                {
+                    "case_id": s.case_id,
+                    "case_title": s.case_title,
+                    "unbilled_hours": s.unbilled_hours,
+                    "estimated_amount": s.estimated_amount,
+                    "last_invoice_date": s.last_invoice_date,
+                    "days_since_last_invoice": s.days_since_last_invoice,
+                    "urgency": s.urgency,
+                }
+                for s in report.invoice_suggestions
+            ],
+            "recommendations": report.recommendations,
+        }
+
+    except ImportError:
+        raise HTTPException(
+            status_code=501,
+            detail="Service d'intelligence facturation non disponible",
+        )
+    except Exception as e:
+        logger.error("Billing report failed: %s", e)
+        raise HTTPException(
+            status_code=500,
+            detail="Erreur lors de la génération du rapport de facturation",
+        )
+
+
+# ── 12. GET /client/{contact_id}/health — client intelligence ──
+
+
+@router.get("/client/{contact_id}/health")
+async def get_client_health(
+    contact_id: str,
+    session: AsyncSession = Depends(get_db_session),
+    current_user: dict = Depends(get_current_user),
+) -> dict:
+    """Assess client relationship health."""
+    from packages.db.models.contact import Contact
+    from packages.db.models.case_contact import CaseContact
+
+    tenant_id = current_user["tenant_id"]
+
+    try:
+        # Verify contact exists
+        contact_result = await session.execute(
+            select(Contact).where(
+                Contact.id == contact_id, Contact.tenant_id == tenant_id
+            )
+        )
+        contact = contact_result.scalar_one_or_none()
+        if not contact:
+            raise HTTPException(status_code=404, detail="Contact non trouvé")
+
+        # Get cases for this contact
+        case_links = await session.execute(
+            select(CaseContact.case_id).where(CaseContact.contact_id == contact_id)
+        )
+        case_ids = [row[0] for row in case_links.all()]
+
+        active_cases = 0
+        if case_ids:
+            active_count = await session.scalar(
+                select(func.count(Case.id))
+                .where(Case.id.in_(case_ids))
+                .where(Case.status.in_(["open", "in_progress", "pending"]))
+            )
+            active_cases = active_count or 0
+
+        # Calculate health score
+        from apps.api.services.brain.client_intelligence import ClientIntelligence
+
+        ci = ClientIntelligence()
+        contact_data = {
+            "id": str(contact.id),
+            "name": contact.full_name,
+            "email": contact.email,
+            "type": contact.type,
+        }
+        health = ci.assess_client_health(
+            contact=contact_data,
+            cases=[{"id": str(cid), "status": "open"} for cid in case_ids],
+            communications=[],
+            time_entries=[],
+        )
+
+        return {
+            "contact_id": str(contact.id),
+            "contact_name": contact.full_name,
+            "health_score": health.health_score,
+            "status": health.status,
+            "active_cases": active_cases,
+            "days_since_contact": health.days_since_contact,
+            "risk_factors": health.risk_factors,
+            "recommended_actions": health.recommended_actions,
+        }
+
+    except HTTPException:
+        raise
+    except ImportError:
+        raise HTTPException(
+            status_code=501,
+            detail="Service d'intelligence client non disponible",
+        )
+    except Exception as e:
+        logger.error("Client health check failed: %s", e)
+        raise HTTPException(
+            status_code=500,
+            detail="Erreur lors de l'évaluation de la santé client",
+        )

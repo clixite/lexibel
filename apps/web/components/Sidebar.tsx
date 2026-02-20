@@ -30,6 +30,7 @@ import {
   Moon,
   Sun,
   FolderOpen,
+  BarChart3,
 } from "lucide-react";
 
 // NAV_ITEMS groupés par section
@@ -43,6 +44,7 @@ const NAV_GROUPS = [
       { label: "Prestations", href: "/dashboard/billing", icon: Clock },
       { label: "Factures", href: "/dashboard/billing?tab=invoices", icon: Receipt },
       { label: "Documents", href: "/dashboard/documents", icon: FolderOpen },
+      { label: "Analytique", href: "/dashboard/analytics", icon: BarChart3 },
     ],
   },
   {
