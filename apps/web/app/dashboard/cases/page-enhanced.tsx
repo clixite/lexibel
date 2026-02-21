@@ -146,10 +146,11 @@ export default function CasesPage() {
         description: "",
         status: "open",
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
       // Rollback
       setCases(cases.filter((c) => c.id !== tempId));
-      toast.error(err.message || "Erreur lors de la création du dossier");
+      toast.error(message || "Erreur lors de la création du dossier");
     } finally {
       setCreating(false);
     }

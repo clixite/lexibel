@@ -153,8 +153,9 @@ export default function AIHubPage() {
       );
       setResult({ ...data, task_type: taskType });
       setPrompt("");
-    } catch (err: any) {
-      setError(err.message || "Erreur lors de la génération");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(message || "Erreur lors de la génération");
     } finally {
       setLoading(false);
     }
@@ -169,8 +170,9 @@ export default function AIHubPage() {
         tenantId,
       });
       setValidated(true);
-    } catch (err: any) {
-      setError(err.message || "Erreur lors de la validation");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(message || "Erreur lors de la validation");
     } finally {
       setValidating(false);
     }

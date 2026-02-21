@@ -89,9 +89,5 @@ class BrainAction(TenantMixin, TimestampMixin, Base):
         nullable=True,
     )
 
-    # Relationships
-    # case: Mapped["Case"] = relationship("Case")
-    # reviewer: Mapped["User"] = relationship("User", foreign_keys=[reviewed_by])
-
     def __repr__(self) -> str:
         return f"<BrainAction {self.action_type} {self.status}>"

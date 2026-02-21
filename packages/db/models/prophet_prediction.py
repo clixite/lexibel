@@ -90,8 +90,5 @@ class ProphetPrediction(TenantMixin, TimestampMixin, Base):
         comment="Most recent prediction for this case",
     )
 
-    # Relationships
-    # case: Mapped["Case"] = relationship("Case")
-
     def __repr__(self) -> str:
         return f"<ProphetPrediction {self.id} {self.prediction_type}>"

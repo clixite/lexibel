@@ -96,8 +96,7 @@ class ConflictAlerter:
         # Send alert to all user's active connections
         for connection in connections:
             try:
-                # In production, this would be:
-                # await connection.send(json.dumps(alert_data))
+                # In production, this would send via connection.send()
                 logger.info(f"SSE alert sent to user {user_id}: {alert_data['title']}")
             except Exception as e:
                 logger.error(f"Failed to send SSE alert: {e}")

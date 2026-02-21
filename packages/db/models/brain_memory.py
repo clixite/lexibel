@@ -58,8 +58,5 @@ class BrainMemory(TenantMixin, TimestampMixin, Base):
         comment="0.0-1.0",
     )
 
-    # Relationships
-    # case: Mapped["Case"] = relationship("Case")
-
     def __repr__(self) -> str:
         return f"<BrainMemory {self.memory_type} {self.qdrant_id[:20]}>"

@@ -1381,6 +1381,7 @@ class TestAlertsStream:
         app.dependency_overrides[get_db_session] = override_db
 
         try:
+
             async def mock_sleep(seconds):
                 raise asyncio.CancelledError()
 

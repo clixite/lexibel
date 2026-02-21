@@ -41,8 +41,9 @@ export default function MigrationPage() {
       });
       setJobId(job.id);
       setStep(2);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -71,8 +72,9 @@ export default function MigrationPage() {
       );
       setPreview(previewData);
       setStep(3);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -94,8 +96,9 @@ export default function MigrationPage() {
       );
       setResult(importResult);
       setStep(5);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(message);
       setStep(3);
     } finally {
       setImportLoading(false);

@@ -350,8 +350,9 @@ export default function SettingsWizardPage() {
 
       setFormValues(values);
       setStepStatuses(statuses);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -431,8 +432,9 @@ export default function SettingsWizardPage() {
         ...prev,
         [currentWizardStep.category]: "configured",
       }));
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(message);
     } finally {
       setSaving(false);
     }
@@ -479,11 +481,12 @@ export default function SettingsWizardPage() {
       } else {
         setStepStatuses((prev) => ({ ...prev, [category]: "error" }));
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
       setTestStatuses((prev) => ({ ...prev, [category]: "error" }));
       setTestMessages((prev) => ({
         ...prev,
-        [category]: err.message,
+        [category]: message,
       }));
     }
   };

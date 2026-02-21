@@ -96,9 +96,5 @@ class SentinelConflict(TenantMixin, TimestampMixin, Base):
         nullable=True,
     )
 
-    # Relationships
-    # conflicting_case: Mapped["Case"] = relationship("Case")
-    # resolver: Mapped["User"] = relationship("User", foreign_keys=[resolved_by])
-
     def __repr__(self) -> str:
         return f"<SentinelConflict {self.conflict_type} severity={self.severity_score}>"

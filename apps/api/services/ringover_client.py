@@ -7,12 +7,15 @@ API Documentation: https://public-api.ringover.com/v2
 """
 
 import asyncio
+import logging
 import os
 from datetime import datetime
 from typing import Any, Optional
 
 import httpx
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
 
 
 class RingoverAPIError(Exception):
@@ -150,7 +153,7 @@ class RingoverClient:
             except Exception as e:
                 # Gracefully degrade if Redis unavailable
                 self.enable_cache = False
-                print(f"Redis cache disabled: {e}")
+                logger.warning("Redis cache disabled: %s", e)
 
     async def close(self):
         """Close HTTP and Redis connections."""

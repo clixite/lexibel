@@ -113,9 +113,5 @@ class TimelineEvent(TenantMixin, TimestampMixin, Base):
         nullable=True,
     )
 
-    # Relationships
-    # case: Mapped["Case"] = relationship("Case")
-    # validator: Mapped["User"] = relationship("User", foreign_keys=[validated_by])
-
     def __repr__(self) -> str:
         return f"<TimelineEvent {self.category} {self.event_date}>"

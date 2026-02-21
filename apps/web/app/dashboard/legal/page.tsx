@@ -102,8 +102,9 @@ export default function LegalRAGPage() {
         { method: "POST", tenantId, body: JSON.stringify({ q: searchQuery.trim() }) }
       );
       setSearchResults(data.results || []);
-    } catch (err: any) {
-      setSearchError(err.message || "Erreur lors de la recherche");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setSearchError(message || "Erreur lors de la recherche");
       setSearchResults([]);
     } finally {
       setSearchLoading(false);
@@ -135,8 +136,9 @@ export default function LegalRAGPage() {
         }
       );
       setChatMessages((prev) => [...prev, data]);
-    } catch (err: any) {
-      setChatError(err.message || "Erreur lors de la conversation");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setChatError(message || "Erreur lors de la conversation");
     } finally {
       setChatLoading(false);
     }
@@ -160,8 +162,9 @@ export default function LegalRAGPage() {
         }
       );
       setExplanation(data);
-    } catch (err: any) {
-      setExplainError(err.message || "Erreur lors de l'explication");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setExplainError(message || "Erreur lors de l'explication");
       setExplanation(null);
     } finally {
       setExplainLoading(false);

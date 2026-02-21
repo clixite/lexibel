@@ -285,8 +285,9 @@ function ProvidersTab({ token, tenantId }: { token: string; tenantId?: string })
     try {
       const data = await apiFetch<ProvidersResponse>("/llm/providers", token, { tenantId });
       setProviders(data.providers || {});
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -308,8 +309,9 @@ function ProvidersTab({ token, tenantId }: { token: string; tenantId?: string })
         ...prev,
         [providerName]: { ...prev[providerName], enabled: !currentEnabled },
       }));
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(message);
     } finally {
       setTogglingProvider(null);
     }
@@ -326,8 +328,9 @@ function ProvidersTab({ token, tenantId }: { token: string; tenantId?: string })
         body: JSON.stringify({ text: classifyText }),
       });
       setClassifyResult(result);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(message);
     } finally {
       setClassifyLoading(false);
     }
@@ -574,8 +577,9 @@ function AuditTab({ token, tenantId }: { token: string; tenantId?: string }) {
       const data = await apiFetch<AuditResponse>(`/llm/audit?${params.toString()}`, token, { tenantId });
       setItems(data.items || []);
       setTotal(data.total || 0);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -848,8 +852,9 @@ function StatsTab({ token, tenantId }: { token: string; tenantId?: string }) {
     try {
       const data = await apiFetch<StatsResponse>(`/llm/audit/stats?days=${periodDays}`, token, { tenantId });
       setStats(data);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -1085,8 +1090,9 @@ function DPIATab({ token, tenantId }: { token: string; tenantId?: string }) {
     try {
       const data = await apiFetch<DPIAReport>("/llm/audit/dpia-report", token, { tenantId });
       setReport(data);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -1310,8 +1316,9 @@ function ConfigTab({ token, tenantId }: { token: string; tenantId?: string }) {
     try {
       const data = await apiFetch<ProvidersResponse>("/llm/providers", token, { tenantId });
       setProviders(data.providers || {});
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(message);
     } finally {
       setLoading(false);
     }

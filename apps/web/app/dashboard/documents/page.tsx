@@ -497,8 +497,9 @@ function LinkCaseModal({ document, token, tenantId, onClose, onLinked }: LinkCas
       });
       onLinked();
       onClose();
-    } catch (e: any) {
-      setError(e.message || "Erreur lors de la liaison");
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Une erreur est survenue";
+      setError(message || "Erreur lors de la liaison");
     } finally {
       setLoading(false);
     }

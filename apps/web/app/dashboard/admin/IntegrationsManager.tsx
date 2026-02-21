@@ -61,8 +61,9 @@ export default function IntegrationsManager() {
         { tenantId }
       );
       setIntegrations(data.items || []);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -89,8 +90,9 @@ export default function IntegrationsManager() {
       if (response.oauth_url) {
         window.open(response.oauth_url, "_blank", "width=500,height=600");
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(message);
     } finally {
       setConnectingProvider(null);
     }
@@ -110,8 +112,9 @@ export default function IntegrationsManager() {
         { method: "DELETE", tenantId }
       );
       await fetchIntegrations();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(message);
     }
   };
 

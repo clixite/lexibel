@@ -405,8 +405,9 @@ export default function CaseDetailPage() {
         tenantId,
       });
       setCaseData(data);
-    } catch (err: any) {
-      setError(err.message || "Erreur lors du chargement du dossier");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(message || "Erreur lors du chargement du dossier");
     } finally {
       setLoading(false);
     }
@@ -870,8 +871,9 @@ export default function CaseDetailPage() {
       });
       setCaseData(updated);
       flash("Modification enregistrée");
-    } catch (err: any) {
-      setError(err.message || "Erreur lors de la sauvegarde");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(message || "Erreur lors de la sauvegarde");
     } finally {
       setSaving(false);
       setEditingField(null);
@@ -968,8 +970,9 @@ export default function CaseDetailPage() {
       setSearchResults([]);
       setLinkRole("client");
       fetchContacts();
-    } catch (err: any) {
-      setError(err.message || "Erreur lors de la liaison du contact");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(message || "Erreur lors de la liaison du contact");
     } finally {
       setLinking(false);
     }
@@ -1006,8 +1009,9 @@ export default function CaseDetailPage() {
         date: new Date().toISOString().split("T")[0],
       });
       fetchTimeEntries();
-    } catch (err: any) {
-      setError(err.message || "Erreur lors de l\u2019enregistrement");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(message || "Erreur lors de l\u2019enregistrement");
     } finally {
       setTimeSubmitting(false);
     }
@@ -1042,8 +1046,9 @@ export default function CaseDetailPage() {
         occurred_at: new Date().toISOString().slice(0, 16),
       });
       fetchTimeline();
-    } catch (err: any) {
-      setError(err.message || "Erreur lors de l\u2019ajout de l\u2019événement");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(message || "Erreur lors de l\u2019ajout de l\u2019événement");
     } finally {
       setEventSubmitting(false);
     }

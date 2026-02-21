@@ -66,8 +66,9 @@ export default function TimeEntryApproval() {
       const data = await apiFetch<{ items: TimeEntry[] }>("/time-entries?status=submitted", token, { tenantId });
       setEntries(data.items);
       setSelected(new Set());
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(message);
     } finally {
       setProcessing(false);
     }

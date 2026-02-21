@@ -44,8 +44,9 @@ export default function SearchPage() {
         { method: "POST", tenantId, body: JSON.stringify({ q: query.trim(), top_k: 10 }) }
       );
       setResults(data.results || []);
-    } catch (err: any) {
-      setError(err.message || "Erreur lors de la recherche");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(message || "Erreur lors de la recherche");
       setResults([]);
     } finally {
       setLoading(false);

@@ -72,8 +72,9 @@ export default function GraphPage() {
       );
       setGraphData(data);
       setSelectedEntity(null);
-    } catch (err: any) {
-      setError(err.message || "Erreur lors du chargement du graphe");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(message || "Erreur lors du chargement du graphe");
       setGraphData(null);
     } finally {
       setLoading(false);

@@ -508,8 +508,9 @@ export default function InboxPage() {
         setSuccess("Element lie au dossier suggere.");
         loadItems();
         setTimeout(() => setSuccess(null), 3000);
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Une erreur est survenue";
+        setError(message);
       } finally {
         setLinkingCaseItemId(null);
       }
@@ -544,8 +545,9 @@ export default function InboxPage() {
       });
       loadItems();
       setTimeout(() => setSuccess(null), 3000);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(message);
     } finally {
       setActionLoading(null);
     }
@@ -564,8 +566,9 @@ export default function InboxPage() {
       setRefuseTarget(null);
       loadItems();
       setTimeout(() => setSuccess(null), 3000);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(message);
     } finally {
       setActionLoading(null);
     }
@@ -602,8 +605,9 @@ export default function InboxPage() {
       loadItems();
       loadCases();
       setTimeout(() => setSuccess(null), 3000);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(message);
     } finally {
       setActionLoading(null);
     }

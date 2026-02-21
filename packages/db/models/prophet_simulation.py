@@ -70,8 +70,5 @@ class ProphetSimulation(TenantMixin, TimestampMixin, Base):
         comment="0.0-1.0 (higher = better strategy)",
     )
 
-    # Relationships
-    # case: Mapped["Case"] = relationship("Case")
-
     def __repr__(self) -> str:
         return f"<ProphetSimulation {self.id} {self.strategy_name}>"

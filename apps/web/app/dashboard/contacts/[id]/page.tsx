@@ -391,8 +391,9 @@ export default function ContactDetailPage() {
           { tenantId },
         );
         setContact(data);
-      } catch (err: any) {
-        setError(err.message || "Erreur lors du chargement du contact");
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Une erreur est survenue";
+        setError(message || "Erreur lors du chargement du contact");
       } finally {
         setLoading(false);
       }
@@ -637,8 +638,9 @@ export default function ContactDetailPage() {
       setValidationErrors({});
       setSuccess("Contact mis a jour avec succes");
       setTimeout(() => setSuccess(null), 3000);
-    } catch (err: any) {
-      setError(err.message || "Erreur lors de la sauvegarde du contact");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(message || "Erreur lors de la sauvegarde du contact");
     } finally {
       setSaving(false);
     }

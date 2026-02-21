@@ -918,9 +918,7 @@ async def test_seed_data_counts():
     try:
         async with async_session_factory() as db:
             # Count CallRecords
-            call_count = await db.scalar(
-                select(func.count()).select_from(CallRecord)
-            )
+            call_count = await db.scalar(select(func.count()).select_from(CallRecord))
 
             # Count Transcriptions
             trans_count = await db.scalar(
@@ -928,19 +926,13 @@ async def test_seed_data_counts():
             )
 
             # Count EmailThreads
-            email_count = await db.scalar(
-                select(func.count()).select_from(EmailThread)
-            )
+            email_count = await db.scalar(select(func.count()).select_from(EmailThread))
 
             # Count Contacts
-            contact_count = await db.scalar(
-                select(func.count()).select_from(Contact)
-            )
+            contact_count = await db.scalar(select(func.count()).select_from(Contact))
 
             # Count Cases
-            case_count = await db.scalar(
-                select(func.count()).select_from(Case)
-            )
+            case_count = await db.scalar(select(func.count()).select_from(Case))
     except Exception as e:
         pytest.skip(f"PostgreSQL not available: {e}")
 

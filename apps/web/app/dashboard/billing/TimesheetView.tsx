@@ -152,8 +152,9 @@ export default function TimesheetView() {
       // Reload
       const data = await apiFetch<{ items: TimeEntry[] }>("/time-entries", token, { tenantId });
       setEntries(data.items);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(message);
     }
   };
 

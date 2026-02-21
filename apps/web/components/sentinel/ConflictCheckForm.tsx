@@ -26,8 +26,9 @@ export default function ConflictCheckForm() {
         include_graph: true,
       });
       setResult(response);
-    } catch (err: any) {
-      setError(err.message || "Erreur lors de la vérification");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(message || "Erreur lors de la vérification");
     } finally {
       setIsChecking(false);
     }

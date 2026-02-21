@@ -70,9 +70,5 @@ class TimelineDocument(TenantMixin, TimestampMixin, Base):
         nullable=False,
     )
 
-    # Relationships
-    # case: Mapped["Case"] = relationship("Case")
-    # generator: Mapped["User"] = relationship("User", foreign_keys=[generated_by])
-
     def __repr__(self) -> str:
         return f"<TimelineDocument {self.format} {self.events_count} events>"

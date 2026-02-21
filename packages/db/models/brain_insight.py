@@ -77,8 +77,5 @@ class BrainInsight(TenantMixin, TimestampMixin, Base):
         nullable=True,
     )
 
-    # Relationships
-    # case: Mapped["Case"] = relationship("Case")
-
     def __repr__(self) -> str:
         return f"<BrainInsight {self.insight_type} {self.severity}>"

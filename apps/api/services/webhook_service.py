@@ -89,10 +89,6 @@ async def check_idempotency(key: str) -> bool:
     In production, this uses Redis SETNX with 24h TTL.
     """
     # TODO: Replace with Redis SETNX in production
-    # async with redis.pipeline() as pipe:
-    #     result = await pipe.set(f"idempotency:{key}", "1", nx=True, ex=86400)
-    #     return not result  # True if key already existed
-
     if key in _idempotency_store:
         return True  # Duplicate
     _idempotency_store[key] = True

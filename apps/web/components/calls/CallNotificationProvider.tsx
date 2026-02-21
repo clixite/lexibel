@@ -28,8 +28,6 @@ export function CallNotificationProvider({ children }: CallNotificationProviderP
   const { isConnected, isReconnecting } = useEventStream({
     // Handle incoming call events
     onCallEvent: (data) => {
-      console.log('New call event:', data);
-
       // Build notification message
       const contactName = data.contact_name || data.phone_number;
       const direction = data.direction === 'inbound' ? 'entrant' : 'sortant';
@@ -80,8 +78,6 @@ export function CallNotificationProvider({ children }: CallNotificationProviderP
 
     // Handle AI processing completion
     onCallAiCompleted: (data) => {
-      console.log('Call AI processing completed:', data);
-
       const features = [];
       if (data.has_transcript) features.push('Transcription');
       if (data.has_summary) features.push('Résumé');
@@ -100,13 +96,11 @@ export function CallNotificationProvider({ children }: CallNotificationProviderP
     },
 
     // Handle other events
-    onCaseUpdated: (data) => {
-      console.log('Case updated:', data);
+    onCaseUpdated: () => {
       router.refresh();
     },
 
-    onInboxItem: (data) => {
-      console.log('New inbox item:', data);
+    onInboxItem: () => {
       toast.info('Nouvel élément dans la boîte de réception', {
         duration: 3000,
       });

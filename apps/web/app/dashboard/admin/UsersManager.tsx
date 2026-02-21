@@ -40,8 +40,9 @@ export default function UsersManager() {
     try {
       const data = await apiFetch<{ users: User[] }>("/admin/users", accessToken, { tenantId });
       setUsers(data.users || []);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -73,8 +74,9 @@ export default function UsersManager() {
       setInviteFullName("");
       fetchUsers();
       setTimeout(() => setSuccess(""), 3000);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Une erreur est survenue";
+      setError(message);
     } finally {
       setInviting(false);
     }

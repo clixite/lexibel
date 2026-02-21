@@ -59,8 +59,9 @@ export default function SystemHealth() {
       ]);
       setHealth(healthData);
       setStats(statsData);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(message);
     } finally {
       setLoading(false);
     }

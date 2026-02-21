@@ -84,7 +84,6 @@ export function useEventStream(options: EventStreamOptions = {}): EventStreamSta
 
   const connect = useCallback(() => {
     if (!accessToken) {
-      console.warn('EventStream: No access token available');
       return;
     }
 
@@ -104,7 +103,6 @@ export function useEventStream(options: EventStreamOptions = {}): EventStreamSta
       eventSourceRef.current = eventSource;
 
       eventSource.onopen = () => {
-        console.log('EventStream: Connected');
         setIsConnected(true);
         setIsReconnecting(false);
         setError(null);
@@ -112,15 +110,13 @@ export function useEventStream(options: EventStreamOptions = {}): EventStreamSta
       };
 
       // Handle 'connected' event
-      eventSource.addEventListener('connected', (e) => {
-        const data = JSON.parse(e.data);
-        console.log('EventStream: Connection confirmed', data);
+      eventSource.addEventListener('connected', () => {
+        // Connection confirmed
       });
 
       // Handle 'call_event_created' event
       eventSource.addEventListener('call_event_created', (e) => {
         const data: CallEventData = JSON.parse(e.data);
-        console.log('EventStream: Call event received', data);
 
         setEvents((prev) => [...prev, { type: 'call_event_created', data }]);
 
@@ -132,7 +128,6 @@ export function useEventStream(options: EventStreamOptions = {}): EventStreamSta
       // Handle 'call_ai_completed' event
       eventSource.addEventListener('call_ai_completed', (e) => {
         const data: CallAiData = JSON.parse(e.data);
-        console.log('EventStream: Call AI completed', data);
 
         setEvents((prev) => [...prev, { type: 'call_ai_completed', data }]);
 
@@ -175,10 +170,6 @@ export function useEventStream(options: EventStreamOptions = {}): EventStreamSta
           const backoffDelay = Math.min(
             reconnectDelay * Math.pow(2, reconnectAttemptsRef.current),
             30000 // Max 30 seconds
-          );
-
-          console.log(
-            `EventStream: Reconnecting in ${backoffDelay}ms (attempt ${reconnectAttemptsRef.current + 1})`
           );
 
           reconnectTimeoutRef.current = setTimeout(() => {

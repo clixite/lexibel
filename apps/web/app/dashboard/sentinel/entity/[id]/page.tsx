@@ -33,8 +33,9 @@ export default function EntityDetailPage() {
         nodes: response.nodes,
         edges: response.edges,
       });
-    } catch (err: any) {
-      setError(err.message || "Erreur lors du chargement du graphe");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(message || "Erreur lors du chargement du graphe");
     } finally {
       setIsLoading(false);
     }

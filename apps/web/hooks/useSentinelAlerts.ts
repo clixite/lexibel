@@ -32,11 +32,10 @@ export function useSentinelAlerts() {
 
     eventSource.onopen = () => {
       setIsConnected(true);
-      console.log("[SENTINEL SSE] Connected");
     };
 
-    eventSource.addEventListener("connected", (event) => {
-      console.log("[SENTINEL SSE] Received connection confirmation");
+    eventSource.addEventListener("connected", () => {
+      // Connection confirmed
     });
 
     eventSource.addEventListener("conflict_detected", (event) => {

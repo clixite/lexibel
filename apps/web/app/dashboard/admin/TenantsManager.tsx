@@ -39,8 +39,9 @@ export default function TenantsManager() {
     try {
       const data = await apiFetch<{ tenants: Tenant[] }>("/admin/tenants", accessToken, { tenantId });
       setTenants(data.tenants || []);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -73,8 +74,9 @@ export default function TenantsManager() {
       setSuccess("Tenant créé avec succès");
       fetchTenants();
       setTimeout(() => setSuccess(""), 3000);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Une erreur est survenue";
+      setError(message);
     } finally {
       setCreating(false);
     }

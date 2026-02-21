@@ -3,6 +3,7 @@
 Fetches call records from Ringover API and stores them in database.
 """
 
+import logging
 import os
 from datetime import datetime
 from typing import List, Optional
@@ -14,6 +15,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from packages.db.models.call_record import CallRecord
 from packages.db.models.contact import Contact
+
+logger = logging.getLogger(__name__)
 
 
 class RingoverIntegrationService:
@@ -74,7 +77,7 @@ class RingoverIntegrationService:
                 data = response.json()
             except httpx.HTTPError as e:
                 # Log error but don't crash - return empty list
-                print(f"Ringover API error: {e}")
+                logger.error("Ringover API error: %s", e)
                 return []
 
         calls = data.get("calls", [])

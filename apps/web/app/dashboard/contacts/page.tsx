@@ -412,8 +412,9 @@ export default function ContactsPage() {
       setValidationErrors({});
       loadContacts();
       setTimeout(() => setSuccess(null), 3000);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(message);
     } finally {
       setCreating(false);
     }

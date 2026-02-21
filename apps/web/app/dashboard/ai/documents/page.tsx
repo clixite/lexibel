@@ -99,8 +99,9 @@ export default function DocumentsPage() {
         }),
       });
       setGeneratedText(data.text);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(message);
     } finally {
       setLoading(false);
     }
