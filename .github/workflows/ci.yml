@@ -5,6 +5,12 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: "Deploy to production after CI passes"
+        type: boolean
+        default: true
 
 env:
   REGISTRY: ghcr.io
@@ -112,7 +118,7 @@ jobs:
   build:
     needs: [backend, frontend, security]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: (github.ref == 'refs/heads/main' && github.event_name == 'push') || (github.event_name == 'workflow_dispatch' && inputs.deploy)
     permissions:
       contents: read
       packages: write
@@ -159,7 +165,7 @@ jobs:
   deploy:
     needs: [build]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: (github.ref == 'refs/heads/main' && github.event_name == 'push') || (github.event_name == 'workflow_dispatch' && inputs.deploy)
     environment: production
     steps:
       - name: Deploy via SSH
