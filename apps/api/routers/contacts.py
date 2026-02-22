@@ -1,10 +1,16 @@
-"""Contacts router — CRUD + search.
+"""Contacts router — CRUD + search + activity + merge + financial.
 
-GET    /api/v1/contacts           — paginated list
-POST   /api/v1/contacts           — create contact
-GET    /api/v1/contacts/search    — search by name/bce/phone/email
-GET    /api/v1/contacts/{id}      — get contact
-PATCH  /api/v1/contacts/{id}      — update contact
+GET    /api/v1/contacts                   — paginated list
+POST   /api/v1/contacts                   — create contact
+GET    /api/v1/contacts/search            — search by name/bce/phone/email
+GET    /api/v1/contacts/{id}              — get contact
+PATCH  /api/v1/contacts/{id}              — update contact
+DELETE /api/v1/contacts/{id}              — delete contact
+GET    /api/v1/contacts/{id}/cases        — linked cases
+GET    /api/v1/contacts/{id}/activity     — unified activity timeline
+GET    /api/v1/contacts/{id}/financial    — financial summary
+GET    /api/v1/contacts/{id}/duplicates   — find potential duplicates
+POST   /api/v1/contacts/merge             — merge two contacts
 """
 
 import uuid
@@ -12,14 +18,26 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.api.dependencies import get_current_tenant, get_db_session
+from apps.api.dependencies import get_current_tenant, get_current_user, get_db_session
 from apps.api.schemas.contact import (
     ContactCreate,
     ContactListResponse,
     ContactResponse,
     ContactUpdate,
 )
+from apps.api.schemas.contact_activity import (
+    ContactActivityResponse,
+    ContactDuplicateResponse,
+    ContactFinancialResponse,
+    ContactMergeRequest,
+    ContactMergeResponse,
+)
 from apps.api.services import contact_service
+from apps.api.services.contact_activity_service import (
+    get_contact_activity,
+    get_contact_financial_summary,
+)
+from apps.api.services.contact_merge_service import find_duplicates, merge_contacts
 
 router = APIRouter(prefix="/api/v1/contacts", tags=["contacts"])
 
@@ -88,6 +106,38 @@ async def search_contacts(
     )
 
 
+# ── Merge endpoint (before {contact_id} routes) ──
+
+
+@router.post("/merge", response_model=ContactMergeResponse)
+async def merge_contacts_endpoint(
+    body: ContactMergeRequest,
+    tenant_id: uuid.UUID = Depends(get_current_tenant),
+    current_user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+) -> ContactMergeResponse:
+    """Merge two contacts into one.
+
+    The secondary contact is absorbed into the primary:
+    - All case links, invoices, and call records are transferred
+    - Metadata is merged (primary wins, secondary fills gaps)
+    - An audit event is created
+    - The secondary contact is deleted
+    """
+    try:
+        result = await merge_contacts(
+            session,
+            primary_id=body.primary_id,
+            secondary_id=body.secondary_id,
+            user_id=current_user["user_id"],
+            tenant_id=tenant_id,
+        )
+        await session.commit()
+        return ContactMergeResponse(**result)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.get("/{contact_id}", response_model=ContactResponse)
 async def get_contact(
     contact_id: uuid.UUID,
@@ -129,6 +179,70 @@ async def get_contact_cases(
             for case, role in rows
         ]
     }
+
+
+# ── Activity Timeline ──
+
+
+@router.get("/{contact_id}/activity", response_model=ContactActivityResponse)
+async def get_contact_activity_endpoint(
+    contact_id: uuid.UUID,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
+    session: AsyncSession = Depends(get_db_session),
+    current_user: dict = Depends(get_current_user),
+) -> ContactActivityResponse:
+    """Get unified activity timeline for a contact.
+
+    Aggregates emails, calls, invoices, case events, and case links
+    into a single chronological feed.
+    """
+    offset = (page - 1) * per_page
+    items, total = await get_contact_activity(
+        session, contact_id, limit=per_page, offset=offset
+    )
+    return ContactActivityResponse(
+        items=items,
+        total=total,
+        page=page,
+        per_page=per_page,
+    )
+
+
+# ── Financial Summary ──
+
+
+@router.get("/{contact_id}/financial", response_model=ContactFinancialResponse)
+async def get_contact_financial(
+    contact_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db_session),
+    current_user: dict = Depends(get_current_user),
+) -> ContactFinancialResponse:
+    """Get financial summary for a client contact.
+
+    Returns total invoiced, paid, outstanding, overdue amounts,
+    and the last payment date.
+    """
+    result = await get_contact_financial_summary(session, contact_id)
+    return ContactFinancialResponse(**result)
+
+
+# ── Duplicates ──
+
+
+@router.get("/{contact_id}/duplicates", response_model=list[ContactDuplicateResponse])
+async def get_contact_duplicates(
+    contact_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db_session),
+    current_user: dict = Depends(get_current_user),
+) -> list[ContactDuplicateResponse]:
+    """Find potential duplicate contacts.
+
+    Matches on email, phone, BCE number, and name similarity.
+    Returns candidates sorted by confidence score.
+    """
+    duplicates = await find_duplicates(session, contact_id)
+    return [ContactDuplicateResponse(**d) for d in duplicates]
 
 
 @router.delete("/{contact_id}", status_code=status.HTTP_204_NO_CONTENT)
