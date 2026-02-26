@@ -54,6 +54,7 @@ from apps.api.routers.dashboard import router as dashboard_router
 from apps.api.routers.oauth import router as oauth_router
 from apps.api.routers.cloud_documents import router as cloud_documents_router
 from apps.api.routers.llm import router as llm_router
+from apps.api.routers.integration_health import router as integration_health_router
 
 # Optional routers (defensive imports)
 try:
@@ -190,6 +191,7 @@ def create_app() -> FastAPI:
     app.include_router(oauth_router)
     app.include_router(cloud_documents_router)
     app.include_router(llm_router)
+    app.include_router(integration_health_router)
 
     # Optional routers
     if SENTINEL_AVAILABLE and sentinel_router:
