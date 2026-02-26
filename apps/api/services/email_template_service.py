@@ -237,12 +237,19 @@ async def seed_system_templates(
 
 async def list_templates(
     session: AsyncSession,
+    tenant_id: uuid.UUID,
     category: str | None = None,
     language: str | None = None,
     matter_type: str | None = None,
 ) -> list[EmailTemplate]:
-    """List email templates with optional filters."""
-    query = select(EmailTemplate).order_by(EmailTemplate.name)
+    """List email templates with optional filters (defense-in-depth tenant filter)."""
+    query = (
+        select(EmailTemplate)
+        .where(
+            EmailTemplate.tenant_id == tenant_id,
+        )
+        .order_by(EmailTemplate.name)
+    )
 
     if category:
         query = query.where(EmailTemplate.category == category)
@@ -262,11 +269,13 @@ async def list_templates(
 async def get_template(
     session: AsyncSession,
     template_id: uuid.UUID,
+    tenant_id: uuid.UUID | None = None,
 ) -> EmailTemplate | None:
-    """Get a single template by ID."""
-    result = await session.execute(
-        select(EmailTemplate).where(EmailTemplate.id == template_id)
-    )
+    """Get a single template by ID (defense-in-depth tenant filter)."""
+    query = select(EmailTemplate).where(EmailTemplate.id == template_id)
+    if tenant_id is not None:
+        query = query.where(EmailTemplate.tenant_id == tenant_id)
+    result = await session.execute(query)
     return result.scalar_one_or_none()
 
 
@@ -286,10 +295,11 @@ async def create_template(
 async def update_template(
     session: AsyncSession,
     template_id: uuid.UUID,
+    tenant_id: uuid.UUID | None = None,
     **kwargs,
 ) -> EmailTemplate | None:
     """Update a template. System templates cannot be modified."""
-    template = await get_template(session, template_id)
+    template = await get_template(session, template_id, tenant_id=tenant_id)
     if template is None:
         return None
     if template.is_system:
@@ -307,9 +317,10 @@ async def update_template(
 async def delete_template(
     session: AsyncSession,
     template_id: uuid.UUID,
+    tenant_id: uuid.UUID | None = None,
 ) -> bool:
     """Delete a template. System templates cannot be deleted."""
-    template = await get_template(session, template_id)
+    template = await get_template(session, template_id, tenant_id=tenant_id)
     if template is None:
         return False
     if template.is_system:
@@ -326,6 +337,7 @@ async def render_for_case(
     case_id: uuid.UUID,
     contact_id: uuid.UUID | None = None,
     extra_vars: dict | None = None,
+    tenant_id: uuid.UUID | None = None,
 ) -> dict:
     """Render a template with case/contact data populated.
 
@@ -336,7 +348,7 @@ async def render_for_case(
     from packages.db.models.contact import Contact
     from packages.db.models.user import User
 
-    template = await get_template(session, template_id)
+    template = await get_template(session, template_id, tenant_id=tenant_id)
     if not template:
         raise ValueError("Template not found")
 

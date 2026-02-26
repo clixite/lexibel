@@ -152,17 +152,22 @@ async def get_contact(
 @router.get("/{contact_id}/cases")
 async def get_contact_cases(
     contact_id: uuid.UUID,
+    tenant_id: uuid.UUID = Depends(get_current_tenant),
     session: AsyncSession = Depends(get_db_session),
 ) -> dict:
     """Get all cases linked to this contact with their roles."""
+    from sqlalchemy import select as sa_select
+
     from packages.db.models.case import Case
     from packages.db.models.case_contact import CaseContact
-    from sqlalchemy import select as sa_select
 
     result = await session.execute(
         sa_select(Case, CaseContact.role)
         .join(CaseContact, CaseContact.case_id == Case.id)
-        .where(CaseContact.contact_id == contact_id)
+        .where(
+            CaseContact.contact_id == contact_id,
+            CaseContact.tenant_id == tenant_id,
+        )
         .order_by(Case.created_at.desc())
     )
     rows = result.all()

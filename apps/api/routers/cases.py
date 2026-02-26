@@ -133,6 +133,7 @@ async def delete_case(
 @router.get("/{case_id}/contacts")
 async def get_case_contacts(
     case_id: uuid.UUID,
+    tenant_id: uuid.UUID = Depends(get_current_tenant),
     session: AsyncSession = Depends(get_db_session),
 ) -> dict:
     """List contacts linked to a case via case_contacts junction."""
@@ -144,7 +145,7 @@ async def get_case_contacts(
     result = await session.execute(
         sa_select(Contact, CaseContact.role)
         .join(CaseContact, CaseContact.contact_id == Contact.id)
-        .where(CaseContact.case_id == case_id)
+        .where(CaseContact.case_id == case_id, CaseContact.tenant_id == tenant_id)
     )
     rows = result.all()
     return {
@@ -221,15 +222,17 @@ async def unlink_case_contact(
 @router.get("/{case_id}/time-entries")
 async def get_case_time_entries(
     case_id: uuid.UUID,
+    tenant_id: uuid.UUID = Depends(get_current_tenant),
     session: AsyncSession = Depends(get_db_session),
 ) -> dict:
     """List time entries for a case."""
-    from packages.db.models.time_entry import TimeEntry
     from sqlalchemy import select as sa_select
+
+    from packages.db.models.time_entry import TimeEntry
 
     result = await session.execute(
         sa_select(TimeEntry)
-        .where(TimeEntry.case_id == case_id)
+        .where(TimeEntry.case_id == case_id, TimeEntry.tenant_id == tenant_id)
         .order_by(TimeEntry.entry_date.desc())
     )
     entries = result.scalars().all()
@@ -254,17 +257,22 @@ async def get_case_time_entries(
 @router.get("/{case_id}/documents")
 async def get_case_documents(
     case_id: uuid.UUID,
+    tenant_id: uuid.UUID = Depends(get_current_tenant),
     session: AsyncSession = Depends(get_db_session),
 ) -> dict:
     """List documents linked to a case via its events."""
+    from sqlalchemy import select as sa_select
+
     from packages.db.models.evidence_link import EvidenceLink
     from packages.db.models.interaction_event import InteractionEvent
-    from sqlalchemy import select as sa_select
 
     result = await session.execute(
         sa_select(EvidenceLink)
         .join(InteractionEvent, InteractionEvent.id == EvidenceLink.event_id)
-        .where(InteractionEvent.case_id == case_id)
+        .where(
+            InteractionEvent.case_id == case_id,
+            InteractionEvent.tenant_id == tenant_id,
+        )
         .order_by(EvidenceLink.created_at.desc())
     )
     links = result.scalars().all()
@@ -346,6 +354,7 @@ async def get_case_deadlines(
 @router.get("/{case_id}/relations")
 async def get_case_relations(
     case_id: uuid.UUID,
+    tenant_id: uuid.UUID = Depends(get_current_tenant),
     session: AsyncSession = Depends(get_db_session),
 ) -> dict:
     """Get all cases related to this case (appeal, opposition, joined, etc.)."""
@@ -354,7 +363,7 @@ async def get_case_relations(
     from packages.db.models.case import Case
     from packages.db.models.case_relation import CaseRelation
 
-    # Relations where this case is source or target
+    # Relations where this case is source or target (defense-in-depth: tenant_id filter)
     result = await session.execute(
         sa_select(CaseRelation, Case)
         .join(
@@ -367,10 +376,11 @@ async def get_case_relations(
             ),
         )
         .where(
+            CaseRelation.tenant_id == tenant_id,
             or_(
                 CaseRelation.source_case_id == case_id,
                 CaseRelation.target_case_id == case_id,
-            )
+            ),
         )
     )
     rows = result.all()

@@ -302,12 +302,17 @@ async def list_templates(
     category: str | None = Query(None),
     language: str | None = Query(None),
     matter_type: str | None = Query(None),
+    tenant_id: uuid.UUID = Depends(get_current_tenant),
     db: AsyncSession = Depends(get_db_session),
     current_user: dict = Depends(get_current_user),
 ):
     """List available email templates."""
     templates = await email_template_service.list_templates(
-        db, category=category, language=language, matter_type=matter_type
+        db,
+        tenant_id=tenant_id,
+        category=category,
+        language=language,
+        matter_type=matter_type,
     )
     return [EmailTemplateResponse.model_validate(t) for t in templates]
 
@@ -354,6 +359,7 @@ async def seed_templates(
 @router.post("/templates/render", response_model=EmailTemplateRenderResponse)
 async def render_template(
     body: EmailTemplateRenderRequest,
+    tenant_id: uuid.UUID = Depends(get_current_tenant),
     db: AsyncSession = Depends(get_db_session),
     current_user: dict = Depends(get_current_user),
 ):
@@ -365,6 +371,7 @@ async def render_template(
             case_id=body.case_id,
             contact_id=body.contact_id,
             extra_vars=body.extra_variables,
+            tenant_id=tenant_id,
         )
         return EmailTemplateRenderResponse(**rendered)
     except ValueError as e:
@@ -374,11 +381,14 @@ async def render_template(
 @router.get("/templates/{template_id}", response_model=EmailTemplateResponse)
 async def get_template(
     template_id: uuid.UUID,
+    tenant_id: uuid.UUID = Depends(get_current_tenant),
     db: AsyncSession = Depends(get_db_session),
     current_user: dict = Depends(get_current_user),
 ):
     """Get a single email template."""
-    template = await email_template_service.get_template(db, template_id)
+    template = await email_template_service.get_template(
+        db, template_id, tenant_id=tenant_id
+    )
     if not template:
         raise HTTPException(status_code=404, detail="Template not found")
     return EmailTemplateResponse.model_validate(template)
@@ -388,6 +398,7 @@ async def get_template(
 async def update_template(
     template_id: uuid.UUID,
     body: EmailTemplateUpdate,
+    tenant_id: uuid.UUID = Depends(get_current_tenant),
     db: AsyncSession = Depends(get_db_session),
     current_user: dict = Depends(get_current_user),
 ):
@@ -395,7 +406,7 @@ async def update_template(
     try:
         update_data = body.model_dump(exclude_unset=True)
         template = await email_template_service.update_template(
-            db, template_id, **update_data
+            db, template_id, tenant_id=tenant_id, **update_data
         )
         if not template:
             raise HTTPException(status_code=404, detail="Template not found")
@@ -408,12 +419,15 @@ async def update_template(
 @router.delete("/templates/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_template(
     template_id: uuid.UUID,
+    tenant_id: uuid.UUID = Depends(get_current_tenant),
     db: AsyncSession = Depends(get_db_session),
     current_user: dict = Depends(get_current_user),
 ):
     """Delete a custom email template."""
     try:
-        deleted = await email_template_service.delete_template(db, template_id)
+        deleted = await email_template_service.delete_template(
+            db, template_id, tenant_id=tenant_id
+        )
         if not deleted:
             raise HTTPException(status_code=404, detail="Template not found")
         await db.commit()
@@ -427,6 +441,7 @@ async def delete_template(
 @router.post("/compose", response_model=EmailComposeResponse)
 async def compose_email(
     body: EmailComposeRequest,
+    tenant_id: uuid.UUID = Depends(get_current_tenant),
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
 ):
@@ -440,12 +455,12 @@ async def compose_email(
     """
     from packages.db.models.oauth_token import OAuthToken
 
-    tenant_id = str(current_user["tenant_id"])
     user_id = current_user["user_id"]
 
-    # Find active OAuth token for this user
+    # Find active OAuth token for this user (defense-in-depth: filter by tenant_id)
     token_result = await db.execute(
         select(OAuthToken).where(
+            OAuthToken.tenant_id == tenant_id,
             OAuthToken.user_id == user_id,
             OAuthToken.status == "active",
             OAuthToken.provider.in_(["google", "microsoft"]),

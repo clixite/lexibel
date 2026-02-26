@@ -66,6 +66,7 @@ async def find_duplicates(
         select(Contact)
         .where(
             Contact.id != contact_id,
+            Contact.tenant_id == source.tenant_id,
             or_(*conditions),
         )
         .limit(10)
@@ -147,14 +148,16 @@ async def merge_contacts(
 
     Returns merge summary.
     """
-    # Load both contacts
+    # Load both contacts (defense-in-depth: filter by tenant_id)
     primary_result = await session.execute(
-        select(Contact).where(Contact.id == primary_id)
+        select(Contact).where(Contact.id == primary_id, Contact.tenant_id == tenant_id)
     )
     primary = primary_result.scalar_one_or_none()
 
     secondary_result = await session.execute(
-        select(Contact).where(Contact.id == secondary_id)
+        select(Contact).where(
+            Contact.id == secondary_id, Contact.tenant_id == tenant_id
+        )
     )
     secondary = secondary_result.scalar_one_or_none()
 
