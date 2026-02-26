@@ -12,11 +12,26 @@ from datetime import datetime, timedelta, timezone
 
 from jose import JWTError, jwt
 
-SECRET_KEY: str = os.getenv("SECRET_KEY", "dev-secret-change-me-in-production")
+_DEFAULT_SECRET = "dev-secret-change-me-in-production"
+SECRET_KEY: str = os.getenv("SECRET_KEY", _DEFAULT_SECRET)
 ALGORITHM: str = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 MFA_TOKEN_EXPIRE_MINUTES: int = 5
+
+# Refuse to start in production with the default secret
+_env = os.getenv("ENV", os.getenv("ENVIRONMENT", "development"))
+if SECRET_KEY == _DEFAULT_SECRET and _env in ("production", "prod", "staging"):
+    raise RuntimeError(
+        "CRITICAL: SECRET_KEY is set to the default value in a production environment. "
+        "Set a strong SECRET_KEY environment variable (at least 32 random characters)."
+    )
+if SECRET_KEY == _DEFAULT_SECRET:
+    import logging as _log
+
+    _log.getLogger(__name__).warning(
+        "SECRET_KEY is using the default dev value. Set SECRET_KEY env var for production."
+    )
 
 
 class TokenError(Exception):

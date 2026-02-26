@@ -543,7 +543,7 @@ async def bootstrap_admin() -> dict:
     is set in the environment. This prevents accidental or malicious
     admin account creation on public-facing deployments.
     """
-    bootstrap_enabled = os.getenv("BOOTSTRAP_ENABLED", "true").lower() in (
+    bootstrap_enabled = os.getenv("BOOTSTRAP_ENABLED", "false").lower() in (
         "true",
         "1",
         "yes",

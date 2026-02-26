@@ -205,15 +205,17 @@ async def sync_emails(
     except Exception:
         pass
 
-    # Try Gmail sync via integrations service
+    # Try Gmail sync via GmailSyncService
     try:
-        from apps.api.services.google_service import sync_gmail
+        from apps.api.services.gmail_sync_service import get_gmail_sync_service
 
-        result = await sync_gmail(
-            tenant_id=str(tenant_id),
-            user_id=str(user_id),
+        gmail_service = get_gmail_sync_service()
+        gmail_result = await gmail_service.sync_emails(
+            session=db,
+            tenant_id=uuid.UUID(str(tenant_id)),
+            user_id=uuid.UUID(str(user_id)),
         )
-        synced["gmail"] = len(result) if isinstance(result, list) else 0
+        synced["gmail"] = gmail_result.get("new_messages", 0)
     except Exception:
         pass
 
