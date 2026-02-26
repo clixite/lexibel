@@ -158,6 +158,9 @@ def create_app() -> FastAPI:
     app.include_router(mfa_router)
     app.include_router(cases_router)
     app.include_router(contacts_router)
+    # events_router MUST be before timeline_router and documents_router
+    # because they register /events/{event_id} which would match /events/stream
+    app.include_router(events_router)
     app.include_router(timeline_router)
     app.include_router(documents_router)
     app.include_router(inbox_router)
@@ -167,7 +170,6 @@ def create_app() -> FastAPI:
     app.include_router(ringover_webhook_router)
     app.include_router(plaud_webhook_router)
     app.include_router(integrations_router)
-    app.include_router(events_router)
     app.include_router(bootstrap_router)
     app.include_router(search_router)
     app.include_router(ai_router)

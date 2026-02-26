@@ -60,9 +60,8 @@ async def test_get_emails():
     _override_user()
 
     with patch("apps.api.routers.outlook.outlook_service") as mock_service:
-        mock_service.get_cached_emails = AsyncMock(
-            return_value={"emails": [], "total": 0}
-        )
+        # get_cached_emails is synchronous (no await in the router), returns a list
+        mock_service.get_cached_emails.return_value = []
 
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://test"

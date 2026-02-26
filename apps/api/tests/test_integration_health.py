@@ -64,7 +64,8 @@ async def test_bce_lookup():
     """GET /api/v1/integrations/bce/{number} should return company info."""
     _override_user()
 
-    mock_company = {
+    # lookup_bce returns an object with .to_dict() method
+    mock_company_data = {
         "bce_number": "0123.456.789",
         "name": "Test SA",
         "legal_form": "SA",
@@ -72,10 +73,15 @@ async def test_bce_lookup():
         "address": "Rue de la Loi 1, 1000 Bruxelles",
     }
 
+    from unittest.mock import MagicMock
+
+    mock_bce_result = MagicMock()
+    mock_bce_result.to_dict.return_value = mock_company_data
+
     with patch(
         "apps.api.routers.integration_health.lookup_bce",
         new_callable=AsyncMock,
-        return_value=mock_company,
+        return_value=mock_bce_result,
     ):
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://test"
@@ -94,17 +100,23 @@ async def test_kyc_check():
     """POST /api/v1/integrations/kyc should return risk assessment."""
     _override_user()
 
-    mock_result = {
+    # perform_kyc_check returns an object with .to_dict() method
+    mock_result_data = {
         "risk_level": "low",
         "risk_score": 15,
         "checks": [],
         "recommendations": [],
     }
 
+    from unittest.mock import MagicMock
+
+    mock_kyc_result = MagicMock()
+    mock_kyc_result.to_dict.return_value = mock_result_data
+
     with patch(
         "apps.api.routers.integration_health.perform_kyc_check",
         new_callable=AsyncMock,
-        return_value=mock_result,
+        return_value=mock_kyc_result,
     ):
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://test"
@@ -113,6 +125,7 @@ async def test_kyc_check():
                 "/api/v1/integrations/kyc",
                 headers=HEADERS,
                 json={
+                    "contact_id": str(uuid.uuid4()),
                     "contact_name": "Jean Dupont",
                     "contact_type": "natural",
                 },

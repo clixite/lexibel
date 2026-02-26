@@ -1,7 +1,7 @@
 """Tests for LLM router — AI completion, streaming, providers, audit."""
 
 import uuid
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -48,42 +48,62 @@ def _cleanup():
     app.dependency_overrides.clear()
 
 
+def _make_mock_gateway():
+    """Create a mock gateway that matches LLMGateway interface."""
+    gw = MagicMock()
+    # complete() is async and returns a response object with specific attributes
+    mock_response = MagicMock()
+    mock_response.content = "Selon l'article 1382 du Code civil..."
+    mock_response.provider = "openai"
+    mock_response.model = "gpt-4"
+    mock_response.sensitivity = "public"
+    mock_response.was_anonymized = False
+    mock_response.token_count_input = 50
+    mock_response.token_count_output = 100
+    mock_response.cost_estimate_eur = 0.005
+    mock_response.latency_ms = 1200
+    mock_response.audit_id = str(uuid.uuid4())
+    mock_response.require_human_validation = False
+    gw.complete = AsyncMock(return_value=mock_response)
+    # get_provider_status() is async
+    gw.get_provider_status = AsyncMock(
+        return_value=[
+            {"provider": "openai", "status": "active", "models": ["gpt-4"]},
+        ]
+    )
+    # classify_text() is synchronous (no await in router)
+    gw.classify_text = MagicMock(return_value={"category": "civil", "confidence": 0.95})
+    return gw
+
+
 @pytest.mark.asyncio
 async def test_complete_endpoint():
     """POST /api/v1/llm/complete should return AI completion."""
     _override_deps()
 
-    mock_result = {
-        "response": "Selon l'article 1382 du Code civil...",
-        "provider": "openai",
-        "model": "gpt-4",
-        "tokens_used": 150,
-    }
+    mock_gw = _make_mock_gateway()
 
-    with patch("apps.api.routers.llm.LLMGateway") as MockGateway:
-        gateway = MockGateway.return_value
-        gateway.complete = AsyncMock(return_value=mock_result)
-
-        with patch("apps.api.routers.llm.AIAuditLogger") as MockAudit:
-            MockAudit.return_value.log = AsyncMock()
-
-            async with AsyncClient(
-                transport=ASGITransport(app=app), base_url="http://test"
-            ) as client:
-                response = await client.post(
-                    "/api/v1/llm/complete",
-                    headers=HEADERS,
-                    json={
-                        "messages": [
-                            {"role": "user", "content": "Qu'est-ce que l'art. 1382?"}
-                        ],
-                        "purpose": "legal_research",
-                    },
-                )
+    with (
+        patch("apps.api.routers.llm._get_gateway", return_value=mock_gw),
+        patch("apps.api.routers.llm.AIAuditLogger"),
+    ):
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            response = await client.post(
+                "/api/v1/llm/complete",
+                headers=HEADERS,
+                json={
+                    "messages": [
+                        {"role": "user", "content": "Qu'est-ce que l'art. 1382?"}
+                    ],
+                    "purpose": "legal_research",
+                },
+            )
 
     assert response.status_code == 200
     data = response.json()
-    assert "response" in data or "content" in data
+    assert "content" in data
 
 
 @pytest.mark.asyncio
@@ -91,20 +111,17 @@ async def test_providers_endpoint():
     """GET /api/v1/llm/providers should list available LLM providers."""
     _override_deps()
 
-    with patch("apps.api.routers.llm.LLMGateway") as MockGateway:
-        gateway = MockGateway.return_value
-        gateway.get_provider_status = AsyncMock(
-            return_value=[
-                {"provider": "openai", "status": "active", "models": ["gpt-4"]},
-            ]
-        )
+    mock_gw = _make_mock_gateway()
 
+    with patch("apps.api.routers.llm._get_gateway", return_value=mock_gw):
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://test"
         ) as client:
             response = await client.get("/api/v1/llm/providers", headers=HEADERS)
 
     assert response.status_code == 200
+    data = response.json()
+    assert "providers" in data
 
 
 @pytest.mark.asyncio
@@ -112,12 +129,9 @@ async def test_classify_endpoint():
     """POST /api/v1/llm/classify should classify text."""
     _override_deps()
 
-    with patch("apps.api.routers.llm.LLMGateway") as MockGateway:
-        gateway = MockGateway.return_value
-        gateway.classify_text = AsyncMock(
-            return_value={"category": "civil", "confidence": 0.95}
-        )
+    mock_gw = _make_mock_gateway()
 
+    with patch("apps.api.routers.llm._get_gateway", return_value=mock_gw):
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://test"
         ) as client:

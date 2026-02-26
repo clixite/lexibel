@@ -51,8 +51,9 @@ def _make_event(**overrides):
         "event_type": "CALL",
         "title": "Appel entrant",
         "body": None,
+        "case_id": None,
         "occurred_at": datetime(2026, 2, 20, 10, 0),
-        "metadata_": {"direction": "inbound", "duration": 120},
+        "metadata_": {"direction": "inbound", "duration_seconds": 120},
         "created_at": datetime(2026, 2, 20, 10, 0),
     }
     defaults.update(overrides)
@@ -73,9 +74,8 @@ async def test_list_calls_success():
     mock_result.scalars.return_value.all.return_value = events
     mock_session.execute = AsyncMock(return_value=mock_result)
 
-    with patch(
-        "apps.api.routers.calls.RingoverClient", side_effect=Exception("no key")
-    ):
+    with patch("apps.api.routers.calls.os") as mock_os:
+        mock_os.getenv.return_value = None  # No RINGOVER_API_KEY
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://test"
         ) as client:
@@ -83,7 +83,8 @@ async def test_list_calls_success():
 
     assert response.status_code == 200
     data = response.json()
-    assert "items" in data or "calls" in data
+    assert "calls" in data
+    assert len(data["calls"]) == 2
 
 
 @pytest.mark.asyncio
@@ -101,10 +102,10 @@ async def test_call_stats():
     """GET /api/v1/calls/stats should return statistics."""
     mock_session = _patch_deps()
 
-    # Mock count results
-    mock_count = MagicMock()
-    mock_count.scalar.return_value = 42
-    mock_session.execute = AsyncMock(return_value=mock_count)
+    # Mock scalar result for total count
+    mock_result = MagicMock()
+    mock_result.scalar.return_value = 42
+    mock_session.execute = AsyncMock(return_value=mock_result)
 
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
@@ -112,3 +113,5 @@ async def test_call_stats():
         response = await client.get("/api/v1/calls/stats", headers=HEADERS)
 
     assert response.status_code == 200
+    data = response.json()
+    assert data["total_calls"] == 42

@@ -107,13 +107,13 @@ async def get_calls(
     query = (
         select(InteractionEvent)
         .where(InteractionEvent.tenant_id == tenant_id)
-        .where(InteractionEvent.interaction_type == "call")
+        .where(InteractionEvent.event_type == "CALL")
         .order_by(InteractionEvent.occurred_at.desc())
         .limit(limit)
     )
 
     if direction:
-        query = query.where(InteractionEvent.direction == direction)
+        query = query.where(InteractionEvent.metadata_["direction"].astext == direction)
 
     result = await db.execute(query)
     events = result.scalars().all()
@@ -123,14 +123,13 @@ async def get_calls(
             {
                 "id": str(event.id),
                 "case_id": str(event.case_id) if event.case_id else None,
-                "contact_id": str(event.contact_id) if event.contact_id else None,
-                "direction": event.direction,
+                "direction": (event.metadata_ or {}).get("direction"),
                 "occurred_at": event.occurred_at.isoformat()
                 if event.occurred_at
                 else None,
-                "duration_seconds": event.duration_seconds,
-                "transcript": event.transcript,
-                "metadata": event.metadata or {},
+                "duration_seconds": (event.metadata_ or {}).get("duration_seconds"),
+                "transcript": event.body,
+                "metadata": event.metadata_ or {},
             }
             for event in events
         ],
@@ -150,30 +149,16 @@ async def get_call_stats(
 
     from packages.db.models import InteractionEvent
 
-    # Count calls by direction
-    query = (
-        select(
-            InteractionEvent.direction,
-            func.count(InteractionEvent.id).label("count"),
-            func.avg(InteractionEvent.duration_seconds).label("avg_duration"),
-        )
+    # Total call count
+    total_query = (
+        select(func.count(InteractionEvent.id))
         .where(InteractionEvent.tenant_id == tenant_id)
-        .where(InteractionEvent.interaction_type == "call")
-        .group_by(InteractionEvent.direction)
+        .where(InteractionEvent.event_type == "CALL")
     )
 
-    result = await db.execute(query)
-    stats = result.all()
+    result = await db.execute(total_query)
+    total = result.scalar() or 0
 
     return {
-        "by_direction": [
-            {
-                "direction": row.direction,
-                "count": row.count,
-                "avg_duration_seconds": float(row.avg_duration)
-                if row.avg_duration
-                else 0,
-            }
-            for row in stats
-        ]
+        "total_calls": total,
     }

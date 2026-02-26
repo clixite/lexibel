@@ -163,12 +163,14 @@ async def test_get_email_stats():
     """GET /api/v1/emails/stats returns email statistics."""
     mock_session, override_db = _patch_db()
 
-    # 3 sequential session.execute: total, unread, validated
+    # 5 sequential session.execute: total, unread, validated, threads, linked
     mock_session.execute = AsyncMock(
         side_effect=[
             MagicMock(scalar=MagicMock(return_value=100)),
             MagicMock(scalar=MagicMock(return_value=25)),
             MagicMock(scalar=MagicMock(return_value=60)),
+            MagicMock(scalar=MagicMock(return_value=10)),
+            MagicMock(scalar=MagicMock(return_value=5)),
         ]
     )
 
@@ -199,8 +201,11 @@ async def test_get_email_stats_all_zero():
     """GET /api/v1/emails/stats with no emails returns zeros."""
     mock_session, override_db = _patch_db()
 
+    # 5 sequential session.execute: total, unread, validated, threads, linked
     mock_session.execute = AsyncMock(
         side_effect=[
+            MagicMock(scalar=MagicMock(return_value=0)),
+            MagicMock(scalar=MagicMock(return_value=0)),
             MagicMock(scalar=MagicMock(return_value=0)),
             MagicMock(scalar=MagicMock(return_value=0)),
             MagicMock(scalar=MagicMock(return_value=0)),

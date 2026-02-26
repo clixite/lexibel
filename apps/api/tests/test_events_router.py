@@ -1,13 +1,13 @@
 """Tests for Events router — SSE stream endpoint."""
 
 import uuid
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 
 from apps.api.auth.jwt import create_access_token
-from apps.api.dependencies import get_current_tenant
+from apps.api.dependencies import get_current_tenant, get_db_session
 from apps.api.main import app
 
 TENANT_ID = uuid.uuid4()
@@ -36,24 +36,30 @@ async def test_events_stream_requires_auth():
 async def test_events_stream_returns_sse():
     """GET /api/v1/events/stream should return text/event-stream content type."""
 
-    async def override_tenant(request=None):
+    async def override_tenant():
         return TENANT_ID
 
+    async def override_db(tenant_id=None):
+        yield AsyncMock()
+
     app.dependency_overrides[get_current_tenant] = override_tenant
+    app.dependency_overrides[get_db_session] = override_db
 
     # Mock the SSE manager to yield one event then stop
     async def mock_subscribe(tenant_id):
-        yield '{"type": "ping", "data": {}}'
+        yield 'data: {"type": "ping"}\n\n'
 
-    with patch("apps.api.routers.events.sse_manager") as mock_sse:
+    with (
+        patch("apps.api.routers.events.sse_manager") as mock_sse,
+        patch("apps.api.middleware.audit.get_tenant_session"),
+        patch("apps.api.middleware.audit.get_superadmin_session"),
+    ):
         mock_sse.subscribe = mock_subscribe
 
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://test"
         ) as client:
-            async with client.stream(
-                "GET", "/api/v1/events/stream", headers=HEADERS
-            ) as response:
-                assert response.status_code == 200
-                content_type = response.headers.get("content-type", "")
-                assert "text/event-stream" in content_type
+            response = await client.get("/api/v1/events/stream", headers=HEADERS)
+            assert response.status_code == 200
+            content_type = response.headers.get("content-type", "")
+            assert "text/event-stream" in content_type
