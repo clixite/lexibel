@@ -28,6 +28,7 @@ router = APIRouter(prefix="/api/v1/contacts", tags=["contacts"])
 async def list_contacts(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
+    tenant_id: uuid.UUID = Depends(get_current_tenant),
     session: AsyncSession = Depends(get_db_session),
 ) -> ContactListResponse:
     items, total = await contact_service.list_contacts(
@@ -75,6 +76,7 @@ async def search_contacts(
     q: str = Query(..., min_length=1),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
+    tenant_id: uuid.UUID = Depends(get_current_tenant),
     session: AsyncSession = Depends(get_db_session),
 ) -> ContactListResponse:
     items, total = await contact_service.search_contacts(
@@ -91,6 +93,7 @@ async def search_contacts(
 @router.get("/{contact_id}", response_model=ContactResponse)
 async def get_contact(
     contact_id: uuid.UUID,
+    tenant_id: uuid.UUID = Depends(get_current_tenant),
     session: AsyncSession = Depends(get_db_session),
 ) -> ContactResponse:
     contact = await contact_service.get_contact(session, contact_id)
@@ -102,6 +105,7 @@ async def get_contact(
 @router.get("/{contact_id}/cases")
 async def get_contact_cases(
     contact_id: uuid.UUID,
+    tenant_id: uuid.UUID = Depends(get_current_tenant),
     session: AsyncSession = Depends(get_db_session),
 ) -> dict:
     """Get all cases linked to this contact with their roles."""
@@ -135,6 +139,7 @@ async def get_contact_cases(
 async def update_contact(
     contact_id: uuid.UUID,
     body: ContactUpdate,
+    tenant_id: uuid.UUID = Depends(get_current_tenant),
     session: AsyncSession = Depends(get_db_session),
 ) -> ContactResponse:
     update_data = body.model_dump(exclude_unset=True)
