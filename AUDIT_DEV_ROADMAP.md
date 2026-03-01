@@ -44,25 +44,44 @@
 **Symptome** : `/dashboard/contacts` affiche "API 500: Internal Server Error", 100% reproductible
 **Localisation** : `apps/api/routers/contacts.py` → `apps/api/services/contact_service.py`
 
-**Cause racine probable** :
-Le modele `Contact` (`packages/db/models/contact.py`) herite de `TenantMixin` (qui definit `tenant_id`) ET redefinit `tenant_id` manuellement (ligne 30-34). Cette double definition peut causer un conflit SQLAlchemy au runtime.
+**Cause racine confirmee — DEUX bugs combines** :
 
-Verification additionnelle necessaire :
-- Verifier si la migration 019 (ajout colonne `metadata` JSONB) a bien ete appliquee en production
-- Verifier la politique RLS sur la table `contacts` en production
-- Checker les logs serveur : `docker logs lexibel-api-1 --tail 100`
+**Bug A (immediate) : Migration 019 jamais appliquee en production**
+Le modele `Contact` (ligne 69-75) declare une colonne `metadata_` mappee vers la colonne DB `metadata`.
+Cette colonne a ete ajoutee dans la migration 019 (`019_add_contact_metadata.py`).
+MAIS la table originale (migration 002) ne contient PAS cette colonne.
+Quand SQLAlchemy execute `select(Contact)`, il genere :
+```sql
+SELECT contacts.id, ..., contacts.metadata, ... FROM contacts
+```
+PostgreSQL leve : `UndefinedColumn: column contacts.metadata does not exist` → 500.
+
+**Bug B (cause profonde) : Le runner de migration au startup est CASSE**
+Dans `apps/api/main.py` (lignes 86-95), le lifespan tente :
+```python
+command.upgrade(alembic_cfg, "head")  # Appelle asyncio.run() en interne
+```
+MAIS `alembic/env.py` (ligne 63) utilise `asyncio.run(run_migrations_online())`.
+Or le lifespan tourne DEJA dans un event loop FastAPI → `RuntimeError: asyncio.run() cannot
+be called from a running event loop`. L'exception est attrapee silencieusement :
+```python
+except Exception as e:
+    logger.warning("Alembic migration skipped: %s", e)  # SILENCIEUSEMENT IGNORE
+```
+**Resultat : les migrations ne s'appliquent JAMAIS au demarrage.** Et le deploy dans CLAUDE.md
+(`docker compose up -d`) ne lance pas non plus `alembic upgrade head` explicitement.
+
+**Pourquoi les tests ne detectent pas ca** : Les 420 tests mockent entierement la session DB.
+Aucun test n'execute de vraie requete SQL contre PostgreSQL.
 
 **Fichiers a corriger** :
-- `packages/db/models/contact.py` : Supprimer la redefinition de `tenant_id` (lignes 30-34) puisque `TenantMixin` le fournit deja
-- Verifier `packages/db/migrations/versions/019_add_contact_metadata.py` est appliquee
-
-**Commande de debug** :
-```bash
-ssh root@76.13.46.55 "docker exec lexibel-api-1 python -c \"
-from packages.db.models.contact import Contact
-print(Contact.__table__.columns.keys())
-\""
-```
+1. `apps/api/main.py` (lignes 86-95) : Fixer le migration runner (utiliser `run_in_executor`)
+2. `packages/db/migrations/env.py` (ligne 63) : Detecter un event loop existant
+3. Appliquer la migration manuellement en production :
+   ```bash
+   ssh root@76.13.46.55 "docker exec lexibel-api-1 alembic upgrade head"
+   ```
+4. (Optionnel) `packages/db/models/contact.py` : Supprimer la redefinition de `tenant_id` (deja dans TenantMixin)
 
 ---
 
@@ -210,7 +229,7 @@ Le router `ringover.py` utilise CORRECTEMENT le meme modele (reference) :
 
 | Ticket | Titre | Fichiers | Effort |
 |--------|-------|----------|--------|
-| LXB-071 | Fix Contacts API 500 | `packages/db/models/contact.py`, `apps/api/services/contact_service.py` | 0.5j |
+| LXB-071 | Fix migration runner casse + appliquer migration 019 | `apps/api/main.py`, `packages/db/migrations/env.py` | 1j |
 | LXB-072 | Fix Billing "length" undefined | `apps/web/app/dashboard/billing/TimesheetView.tsx`, `InvoiceList.tsx`, `ThirdPartyView.tsx` | 0.5j |
 | LXB-073 | Fix Calendar "C is not iterable" | `apps/web/app/dashboard/calendar/page.tsx`, `apps/api/routers/calendar.py` | 1j |
 | LXB-074 | Fix Calls API 500 — rewrite calls.py | `apps/api/routers/calls.py` | 1j |
@@ -281,12 +300,20 @@ Tu dois corriger les 4 bugs suivants. Pour chaque bug, AVANT de coder :
 5. Lance les tests: python -m pytest apps/api/tests/ -v --timeout=300 -x
 6. Lance le lint: python -m ruff check apps/api/ packages/ apps/workers/
 
-### BUG 1 — Contacts API 500
-- Fichier: apps/api/routers/contacts.py + packages/db/models/contact.py
-- Cause: Le modele Contact herite de TenantMixin (qui definit tenant_id)
-  MAIS redefinit aussi tenant_id manuellement (lignes 30-34). Conflit SQLAlchemy.
-- Fix: Supprimer la redefinition de tenant_id dans contact.py (garder celle du mixin).
-  Verifier que d'autres modeles n'ont pas le meme probleme.
+### BUG 1 — Contacts API 500 (+ BUG SYSTEMIQUE migration runner)
+- Fichiers: apps/api/main.py (lignes 86-95) + packages/db/migrations/env.py (ligne 63)
+- Cause: DEUX bugs combines :
+  A) La migration 019 (ajout colonne `metadata` sur contacts) n'est JAMAIS appliquee
+     en production. `select(Contact)` genere un SELECT avec `contacts.metadata` qui
+     n'existe pas en DB → PostgreSQL leve UndefinedColumn → 500.
+  B) Le migration runner au startup est CASSE : alembic env.py utilise asyncio.run()
+     mais le lifespan FastAPI est deja dans un event loop → RuntimeError attrapee
+     silencieusement. Les migrations ne s'appliquent JAMAIS.
+- Fix (3 etapes) :
+  1. Fixer le migration runner dans main.py : utiliser `await loop.run_in_executor(None, command.upgrade, alembic_cfg, "head")`
+  2. Fixer env.py pour detecter un event loop existant
+  3. Appliquer la migration en production : `docker exec lexibel-api-1 alembic upgrade head`
+- Bonus: Verifier que tous les modeles n'ont pas de colonnes dependant de migrations non appliquees
 
 ### BUG 2 — Facturation "Cannot read properties of undefined (reading 'length')"
 - Fichier: apps/web/app/dashboard/billing/TimesheetView.tsx (ligne 77, 385)
