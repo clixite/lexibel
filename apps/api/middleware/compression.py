@@ -27,7 +27,7 @@ class CompressionMiddleware(BaseHTTPMiddleware):
         if hasattr(response, "body"):
             body = response.body
             if body:
-                etag = hashlib.md5(body).hexdigest()
+                etag = hashlib.sha256(body).hexdigest()
                 response.headers["ETag"] = f'"{etag}"'
 
                 # Check If-None-Match

@@ -83,7 +83,7 @@ def require_role(*allowed_roles: str) -> Callable:
             if not check_roles(user_role, allowed_roles):
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail=f"Role '{user_role}' not in allowed roles: {list(allowed_roles)}",
+                    detail="Insufficient permissions",
                 )
 
             return await func(*args, **kwargs)

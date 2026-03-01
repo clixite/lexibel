@@ -183,9 +183,15 @@ async def global_stats(user: dict = Depends(get_current_user)):
     }
 
 
+def _require_admin(user: dict) -> None:
+    if user.get("role") not in ("admin", "super_admin"):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+
 @router.get("/users")
 async def list_users(user: dict = Depends(get_current_user)):
-    """List users for the current tenant."""
+    """List users for the current tenant. Admin only."""
+    _require_admin(user)
     tenant_id = user.get("tenant_id")
 
     async with async_session_factory() as session:
@@ -216,7 +222,8 @@ async def invite_user(
     body: InviteUserRequest,
     user: dict = Depends(get_current_user),
 ):
-    """Invite a user to the current tenant."""
+    """Invite a user to the current tenant. Admin only."""
+    _require_admin(user)
     full_name = body.full_name or body.email.split("@")[0]
     tenant_id = user.get("tenant_id")
 

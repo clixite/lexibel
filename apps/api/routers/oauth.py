@@ -120,7 +120,7 @@ async def oauth_callback(
 
     try:
         # Exchange code for tokens
-        oauth_token = await oauth_engine.handle_callback(
+        await oauth_engine.handle_callback(
             session=session,
             provider=provider,
             code=code,
@@ -128,14 +128,26 @@ async def oauth_callback(
             code_verifier=code_verifier,
         )
 
-        # Redirect to frontend with success
-        frontend_url = f"https://lexibel.clixite.cloud/dashboard/admin?tab=integrations&status=success&provider={provider}&email={oauth_token.email_address}"
-        return RedirectResponse(url=frontend_url)
+        # Redirect to frontend with success (use urllib to safely encode params)
+        from urllib.parse import urlencode
 
-    except ValueError as e:
-        # Redirect to frontend with error
-        frontend_url = f"https://lexibel.clixite.cloud/dashboard/admin?tab=integrations&status=error&message={str(e)}"
-        return RedirectResponse(url=frontend_url)
+        params = urlencode(
+            {"tab": "integrations", "status": "success", "provider": provider}
+        )
+        return RedirectResponse(
+            url=f"https://lexibel.clixite.cloud/dashboard/admin?{params}"
+        )
+
+    except ValueError:
+        # Redirect to frontend with error (do not expose internal error details)
+        from urllib.parse import urlencode
+
+        params = urlencode(
+            {"tab": "integrations", "status": "error", "provider": provider}
+        )
+        return RedirectResponse(
+            url=f"https://lexibel.clixite.cloud/dashboard/admin?{params}"
+        )
 
 
 @router.get("/tokens")
@@ -300,13 +312,11 @@ async def get_oauth_config(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ) -> OAuthConfigResponse:
-    """Get OAuth configuration for the tenant.
-
-    Only returns client IDs (not secrets).
-    """
-    # TODO: Add admin role check
-    # if user.role != "admin":
-    #     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    """Get OAuth configuration for the tenant. Admin only."""
+    if user.get("role") not in ("admin", "super_admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
+        )
 
     result = await session.execute(select(Tenant).where(Tenant.id == tenant_id))
     tenant = result.scalar_one_or_none()
@@ -333,13 +343,11 @@ async def update_oauth_config(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ):
-    """Update OAuth configuration for the tenant.
-
-    Admin only.
-    """
-    # TODO: Add admin role check
-    # if user.role != "admin":
-    #     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    """Update OAuth configuration for the tenant. Admin only."""
+    if user.get("role") not in ("admin", "super_admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
+        )
 
     result = await session.execute(select(Tenant).where(Tenant.id == tenant_id))
     tenant = result.scalar_one_or_none()

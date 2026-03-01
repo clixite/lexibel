@@ -145,8 +145,8 @@ def create_app() -> FastAPI:
         CORSMiddleware,
         allow_origins=_get_cors_origins(),
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "X-Tenant-ID", "X-Request-ID"],
     )
 
     # Note: RBAC is enforced via @require_role() decorators (apps/api/middleware/rbac.py),

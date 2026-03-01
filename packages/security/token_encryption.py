@@ -1,7 +1,6 @@
-"""Token encryption service using AES-256-GCM.
+"""Token encryption service using Fernet (AES-128-CBC + HMAC-SHA256).
 
 Encrypts OAuth access_token and refresh_token before storing in database.
-Uses Fernet symmetric encryption (AES-128-CBC + HMAC-SHA256).
 """
 
 import os

@@ -62,17 +62,26 @@ async def login(body: LoginRequest) -> LoginResponse:
     with the TOTP code to complete authentication.
     """
     user = await _get_user_by_email(body.email)
-    if user is None or not user.hashed_password:
+
+    # Constant-time: always run bcrypt even if user doesn't exist to prevent
+    # timing-based user enumeration attacks.
+    _dummy_hash = "$2b$12$000000000000000000000000000000000000000000000000000000"
+    password_hash = (
+        user.hashed_password if (user and user.hashed_password) else _dummy_hash
+    )
+    password_valid = verify_password(body.password, password_hash)
+
+    if user is None or not user.hashed_password or not password_valid:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    if not verify_password(body.password, user.hashed_password):
+    if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password",
+            detail="Account deactivated",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -115,14 +124,18 @@ async def refresh(body: RefreshRequest) -> AccessTokenResponse:
     user_id = uuid.UUID(claims["sub"])
     user = await _get_user_by_id(user_id)
 
-    role = user.role if user else "junior"
-    email = user.email if user else ""
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User account not found or deactivated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     access_token = create_access_token(
         user_id=user_id,
         tenant_id=uuid.UUID(claims["tid"]),
-        role=role,
-        email=email,
+        role=user.role,
+        email=user.email,
     )
 
     return AccessTokenResponse(access_token=access_token)

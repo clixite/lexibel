@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/webhooks", tags=["webhooks"])
 
-PLAUD_WEBHOOK_SECRET = os.getenv("PLAUD_WEBHOOK_SECRET", "plaud-dev-secret")
+PLAUD_WEBHOOK_SECRET = os.getenv("PLAUD_WEBHOOK_SECRET", "")
 
 
 class PlaudSegment(BaseModel):
@@ -142,15 +142,24 @@ async def plaud_webhook(request: Request) -> PlaudWebhookResponse:
             duplicate=True,
         )
 
+    # Validate tenant_id as a proper UUID to prevent SQL injection
+    try:
+        tenant_uuid = uuid.UUID(event.tenant_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid tenant_id format",
+        )
+
     # Process transcription in database
     try:
         async with async_session_factory() as db:
             async with db.begin():
-                # Set tenant context for RLS
+                # Set tenant context for RLS (safe: tenant_uuid is a validated uuid.UUID)
                 from sqlalchemy import text
 
                 await db.execute(
-                    text(f"SET LOCAL app.current_tenant_id = '{event.tenant_id}'")
+                    text(f"SET LOCAL app.current_tenant_id = '{tenant_uuid}'")
                 )
 
                 # Parse case_id if provided
@@ -160,12 +169,13 @@ async def plaud_webhook(request: Request) -> PlaudWebhookResponse:
                         case_uuid = uuid.UUID(event.case_id)
                     except ValueError:
                         logger.warning(
-                            f"Invalid case_id format: {event.case_id}, skipping case linkage"
+                            "Invalid case_id format: %s, skipping case linkage",
+                            event.case_id,
                         )
 
                 # Create Transcription record
                 transcription = Transcription(
-                    tenant_id=uuid.UUID(event.tenant_id),
+                    tenant_id=tenant_uuid,
                     case_id=case_uuid,
                     source="plaud",
                     audio_url=event.audio_url,
@@ -200,7 +210,7 @@ async def plaud_webhook(request: Request) -> PlaudWebhookResponse:
                 interaction_created = False
                 if case_uuid:
                     interaction = InteractionEvent(
-                        tenant_id=uuid.UUID(event.tenant_id),
+                        tenant_id=tenant_uuid,
                         case_id=case_uuid,
                         source="PLAUD",
                         event_type="TRANSCRIPTION",
@@ -234,8 +244,8 @@ async def plaud_webhook(request: Request) -> PlaudWebhookResponse:
                 )
 
     except Exception as e:
-        logger.error(f"Database error processing Plaud webhook: {e}", exc_info=True)
+        logger.error("Database error processing Plaud webhook: %s", e, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to process transcription: {str(e)}",
+            detail="Failed to process transcription",
         )

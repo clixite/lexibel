@@ -97,7 +97,7 @@ async def seed_data():
             print(f"✅ Tenant created: {tenant.name} ({tenant.id})")
 
         # Set tenant context for RLS
-        await session.execute(text(f"SET app.current_tenant_id = '{tenant.id}'"))
+        await session.execute(text(f"SET LOCAL app.current_tenant_id = '{tenant.id}'"))
 
         # ── 2. Admin User ──
         print("\n👤 Creating/updating admin user...")
@@ -108,15 +108,25 @@ async def seed_data():
         )
         admin_user = result.scalar_one_or_none()
 
+        # Generate a secure random password for demo data
+        import secrets as _secrets
+
+        from apps.api.auth.passwords import hash_password
+
+        _demo_password = os.getenv("SEED_ADMIN_PASSWORD", "") or _secrets.token_urlsafe(
+            16
+        )
+
         if admin_user:
-            # Update password and other fields
-            admin_user.hashed_password = "$2b$12$b08gCP9T14tSROHu97NxRe/bu8t0vkVaboWDjcq5.V7fP4kXd0aL."  # admin123
+            # Update fields (password only updated if explicitly set via env var)
+            if os.getenv("SEED_ADMIN_PASSWORD"):
+                admin_user.hashed_password = hash_password(_demo_password)
             admin_user.full_name = "Nicolas Simon"
             admin_user.role = "partner"
             admin_user.hourly_rate_cents = 25000
             admin_user.is_active = True
             await session.flush()
-            print(f"✅ User updated: {admin_user.email} (password: admin123)")
+            print(f"✅ User updated: {admin_user.email}")
         else:
             admin_user = User(
                 id=uuid4(),
@@ -125,14 +135,16 @@ async def seed_data():
                 full_name="Nicolas Simon",
                 role="partner",
                 auth_provider="local",
-                hashed_password="$2b$12$b08gCP9T14tSROHu97NxRe/bu8t0vkVaboWDjcq5.V7fP4kXd0aL.",  # admin123
+                hashed_password=hash_password(_demo_password),
                 mfa_enabled=False,
                 hourly_rate_cents=25000,  # €250/h
                 is_active=True,
             )
             session.add(admin_user)
             await session.flush()
-            print(f"✅ User created: {admin_user.email} (password: admin123)")
+            print(f"✅ User created: {admin_user.email}")
+            if not os.getenv("SEED_ADMIN_PASSWORD"):
+                print(f"   Generated temp password: {_demo_password}")
 
         # ── 3. Contacts ──
         print("\n📇 Creating 10 contacts...")

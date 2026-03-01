@@ -39,7 +39,7 @@ from apps.api.services.webhook_service import (
 
 router = APIRouter(prefix="/api/v1/webhooks", tags=["webhooks"])
 
-RINGOVER_WEBHOOK_SECRET = os.getenv("RINGOVER_WEBHOOK_SECRET", "ringover-dev-secret")
+RINGOVER_WEBHOOK_SECRET = os.getenv("RINGOVER_WEBHOOK_SECRET", "")
 
 logger = logging.getLogger(__name__)
 

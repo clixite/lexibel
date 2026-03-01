@@ -6,13 +6,27 @@ MFA tokens (5 min) are issued after password auth when MFA is enabled.
 Algorithm: HS256 with SECRET_KEY from environment.
 """
 
+import logging
 import os
 import uuid
 from datetime import datetime, timedelta, timezone
 
 from jose import JWTError, jwt
 
+_logger = logging.getLogger(__name__)
+
+_ENV = os.getenv("ENVIRONMENT", "development").lower()
 SECRET_KEY: str = os.getenv("SECRET_KEY", "dev-secret-change-me-in-production")
+
+if (
+    _ENV in ("production", "prod")
+    and SECRET_KEY == "dev-secret-change-me-in-production"
+):
+    raise RuntimeError(
+        "FATAL: SECRET_KEY is set to the default value in production. "
+        "Set a secure random SECRET_KEY environment variable."
+    )
+
 ALGORITHM: str = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 REFRESH_TOKEN_EXPIRE_DAYS: int = 7

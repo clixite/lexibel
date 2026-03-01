@@ -1,9 +1,10 @@
 """Tenant middleware — extracts tenant_id from JWT or X-Tenant-ID header.
 
-Priority: JWT 'tid' claim → X-Tenant-ID header (dev fallback).
+Priority: JWT 'tid' claim → X-Tenant-ID header (dev/test only, disabled in production).
 Health, docs, and auth endpoints are excluded from tenant requirement.
 """
 
+import os
 import uuid
 
 from fastapi import Request, Response
@@ -11,6 +12,12 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.responses import JSONResponse
 
 from apps.api.auth.jwt import TokenError, verify_token
+
+# X-Tenant-ID header fallback is only allowed in development/testing.
+_ALLOW_HEADER_FALLBACK = os.getenv("ENVIRONMENT", "development").lower() not in (
+    "production",
+    "prod",
+)
 
 # Paths that do not require a tenant context.
 _PUBLIC_PATHS = frozenset(
@@ -75,8 +82,8 @@ class TenantMiddleware(BaseHTTPMiddleware):
                 )
             return await call_next(request)
 
-        # Fallback: X-Tenant-ID header (dev/testing only)
-        raw = request.headers.get("X-Tenant-ID")
+        # Fallback: X-Tenant-ID header (dev/testing only — disabled in production)
+        raw = request.headers.get("X-Tenant-ID") if _ALLOW_HEADER_FALLBACK else None
         if raw:
             try:
                 request.state.tenant_id = uuid.UUID(raw)

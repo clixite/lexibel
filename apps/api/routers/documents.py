@@ -12,7 +12,7 @@ from fastapi.responses import Response
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.api.dependencies import get_current_tenant, get_db_session
+from apps.api.dependencies import get_current_tenant, get_current_user, get_db_session
 from apps.api.schemas.timeline import EvidenceLinkResponse
 from apps.api.services import document_service
 from packages.db.models.evidence_link import EvidenceLink
@@ -86,6 +86,12 @@ async def upload_document(
     session: AsyncSession = Depends(get_db_session),
 ) -> EvidenceLinkResponse:
     file_data = await file.read()
+    max_file_size = 50 * 1024 * 1024  # 50 MB
+    if len(file_data) > max_file_size:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="File exceeds maximum allowed size (50 MB)",
+        )
     if len(file_data) == 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -106,16 +112,21 @@ async def upload_document(
 @router.get("/documents/{link_id}/download")
 async def download_document(
     link_id: uuid.UUID,
+    _user: dict = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ) -> Response:
     link, file_data = await document_service.download_file(session, link_id)
     if link is None:
         raise HTTPException(status_code=404, detail="Document not found")
 
+    # Sanitize filename to prevent header injection
+    import re
+
+    safe_name = re.sub(r"[^\w\s\-.]", "_", link.file_name or "document")
     return Response(
         content=file_data,
         media_type=link.mime_type,
         headers={
-            "Content-Disposition": f'attachment; filename="{link.file_name}"',
+            "Content-Disposition": f'attachment; filename="{safe_name}"',
         },
     )
