@@ -64,6 +64,21 @@ async def get_calendar_events(
     total_result = await session.execute(count_query)
     total = total_result.scalar()
 
+    def _extract_attendee_emails(attendees: list) -> list[str]:
+        emails: list[str] = []
+        for a in attendees:
+            if not isinstance(a, dict):
+                continue
+            # Google format: {"email": "x@y.com", ...}
+            if "email" in a:
+                emails.append(a["email"])
+            # Outlook format: {"emailAddress": {"address": "x@y.com"}, ...}
+            elif isinstance(a.get("emailAddress"), dict):
+                addr = a["emailAddress"].get("address")
+                if addr:
+                    emails.append(addr)
+        return emails
+
     return {
         "events": [
             {
@@ -74,9 +89,12 @@ async def get_calendar_events(
                 if event.start_time
                 else None,
                 "end_time": event.end_time.isoformat() if event.end_time else None,
+                "date": event.start_time.date().isoformat() if event.start_time else None,
+                "time": event.start_time.strftime("%H:%M") if event.start_time else None,
                 "location": event.location,
                 "provider": event.provider,
                 "is_all_day": event.is_all_day,
+                "attendees": _extract_attendee_emails(event.attendees or []),
             }
             for event in events
         ],
@@ -145,9 +163,9 @@ async def get_calendar_stats(
     today = today_result.scalar()
 
     return {
-        "total": total,
-        "upcoming": upcoming,
-        "today": today,
+        "total_events": total,
+        "upcoming_week": upcoming,
+        "today_events": today,
     }
 
 

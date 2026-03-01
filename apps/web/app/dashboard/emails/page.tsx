@@ -32,6 +32,7 @@ export default function EmailsPage() {
   const [threads, setThreads] = useState<EmailThread[]>([]);
   const [stats, setStats] = useState<EmailStats | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     async function fetchData() {
@@ -39,8 +40,8 @@ export default function EmailsPage() {
       try {
         setLoading(true);
         setError("");
-        const res = await apiFetch<EmailThread[]>("/emails", accessToken);
-        setThreads(res);
+        const res = await apiFetch<{ emails: EmailThread[]; total: number }>("/emails", accessToken);
+        setThreads(res.emails);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Erreur de chargement");
       } finally {
@@ -51,7 +52,7 @@ export default function EmailsPage() {
     if (accessToken) {
       fetchData();
     }
-  }, [accessToken]);
+  }, [accessToken, refreshKey]);
 
   useEffect(() => {
     async function fetchStats() {
@@ -74,7 +75,8 @@ export default function EmailsPage() {
     try {
       setSyncing(true);
       await apiFetch("/emails/sync", accessToken, { method: "POST" });
-      toast.success("Synchronisation démarrée");
+      toast.success("Synchronisation terminée");
+      setRefreshKey((k) => k + 1);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erreur de synchronisation");
     } finally {

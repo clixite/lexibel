@@ -33,10 +33,13 @@ interface CalendarEvent {
   id: string;
   title: string;
   start_time: string;
+  end_time?: string;
   location?: string;
   attendees: string[];
   date: string;
   time: string;
+  provider?: string;
+  is_all_day?: boolean;
 }
 
 interface CalendarStats {
@@ -183,6 +186,7 @@ export default function CalendarPage() {
     new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
   );
   const [syncing, setSyncing] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   /* ---- deadline state ---- */
   const [deadlines, setDeadlines] = useState<Deadline[]>([]);
@@ -197,11 +201,13 @@ export default function CalendarPage() {
         setLoading(true);
         setError("");
         const query = `?after=${encodeURIComponent(dateAfter)}&before=${encodeURIComponent(dateBefore)}`;
-        const res = await apiFetch<CalendarEvent[]>(
-          `/calendar/events${query}`,
-          accessToken,
-        );
-        setEvents(res);
+        const res = await apiFetch<{
+          events: CalendarEvent[];
+          total: number;
+          page: number;
+          per_page: number;
+        }>(`/calendar/events${query}`, accessToken);
+        setEvents(res.events);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Erreur de chargement");
       } finally {
@@ -212,7 +218,7 @@ export default function CalendarPage() {
     if (accessToken) {
       fetchData();
     }
-  }, [accessToken, dateAfter, dateBefore]);
+  }, [accessToken, dateAfter, dateBefore, refreshKey]);
 
   useEffect(() => {
     async function fetchStats() {
@@ -266,6 +272,7 @@ export default function CalendarPage() {
     try {
       setSyncing(true);
       await apiFetch("/calendar/sync", accessToken, { method: "POST" });
+      setRefreshKey((k) => k + 1);
     } catch {
       // Sync failed silently -- non-critical
     } finally {

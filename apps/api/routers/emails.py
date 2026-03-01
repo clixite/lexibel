@@ -1,59 +1,126 @@
-"""Emails router — Convenience wrapper for email access."""
+"""Emails router — Access synced email threads from Gmail and Outlook."""
+
+import uuid
 
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.api.dependencies import get_current_user, get_db_session
-from packages.db.models import InboxItem
+from apps.api.dependencies import get_current_tenant, get_current_user, get_db_session
+from packages.db.models.email_message import EmailMessage
+from packages.db.models.email_thread import EmailThread
 
 router = APIRouter(prefix="/api/v1/emails", tags=["emails"])
 
 
+def _extract_participants(participants: dict) -> list[str]:
+    """Extract email addresses from the participants JSONB field."""
+    emails: list[str] = []
+    if not isinstance(participants, dict):
+        return emails
+    from_data = participants.get("from")
+    if isinstance(from_data, dict) and from_data.get("email"):
+        emails.append(from_data["email"])
+    for to in participants.get("to", []):
+        if isinstance(to, dict) and to.get("email"):
+            emails.append(to["email"])
+    return emails
+
+
 @router.get("")
 async def get_emails(
-    folder: str | None = Query(None),
-    unread_only: bool = Query(False),
     limit: int = Query(50, le=200),
     current_user: dict = Depends(get_current_user),
+    tenant_id: uuid.UUID = Depends(get_current_tenant),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Get emails from inbox.
-
-    Returns emails from the inbox that have item_type='email'.
-    For full Outlook integration, use /api/v1/outlook/emails.
-    """
-    tenant_id = str(current_user["tenant_id"])
-
-    from sqlalchemy import select
-
+    """Get synced email threads (Gmail + Outlook)."""
     query = (
-        select(InboxItem)
-        .where(InboxItem.tenant_id == tenant_id)
-        .where(InboxItem.item_type == "email")
-        .order_by(InboxItem.received_at.desc())
+        select(EmailThread)
+        .where(EmailThread.tenant_id == tenant_id)
+        .order_by(EmailThread.last_message_at.desc().nullslast())
         .limit(limit)
     )
-
-    if unread_only:
-        query = query.where(InboxItem.status == "pending")
-
     result = await db.execute(query)
-    items = result.scalars().all()
+    threads = result.scalars().all()
 
+    emails = [
+        {
+            "id": str(t.id),
+            "subject": t.subject or "(Aucun objet)",
+            "participants": _extract_participants(t.participants),
+            "date": t.last_message_at.isoformat() if t.last_message_at else None,
+            "message_count": t.message_count,
+            "has_attachments": t.has_attachments,
+        }
+        for t in threads
+    ]
+
+    return {"emails": emails, "total": len(emails)}
+
+
+@router.get("/stats")
+async def get_email_stats(
+    current_user: dict = Depends(get_current_user),
+    tenant_id: uuid.UUID = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Get email statistics."""
+    total_threads = await db.scalar(
+        select(func.count())
+        .select_from(EmailThread)
+        .where(EmailThread.tenant_id == tenant_id)
+    )
+    unread_count = await db.scalar(
+        select(func.count())
+        .select_from(EmailMessage)
+        .where(EmailMessage.tenant_id == tenant_id, EmailMessage.is_read == False)  # noqa: E712
+    )
+    with_attachments = await db.scalar(
+        select(func.count())
+        .select_from(EmailThread)
+        .where(
+            EmailThread.tenant_id == tenant_id,
+            EmailThread.has_attachments == True,  # noqa: E712
+        )
+    )
     return {
-        "emails": [
-            {
-                "id": str(item.id),
-                "subject": item.subject,
-                "from_email": item.from_email,
-                "from_name": item.from_name,
-                "received_at": item.received_at.isoformat()
-                if item.received_at
-                else None,
-                "status": item.status,
-                "metadata": item.metadata or {},
-            }
-            for item in items
-        ],
-        "total": len(items),
+        "total_threads": total_threads or 0,
+        "unread_count": unread_count or 0,
+        "with_attachments": with_attachments or 0,
     }
+
+
+@router.post("/sync")
+async def sync_emails(
+    current_user: dict = Depends(get_current_user),
+    tenant_id: uuid.UUID = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Trigger email synchronization from Gmail and Outlook."""
+    user_id = (
+        current_user["user_id"]
+        if isinstance(current_user["user_id"], uuid.UUID)
+        else uuid.UUID(str(current_user["user_id"]))
+    )
+    results: dict = {"google": None, "microsoft": None}
+
+    try:
+        from apps.api.services.gmail_sync_service import get_gmail_sync_service
+
+        gmail_sync = get_gmail_sync_service()
+        results["google"] = await gmail_sync.sync_emails(db, tenant_id, user_id)
+    except Exception as e:
+        results["google"] = {"error": str(e)}
+
+    try:
+        from apps.api.services.microsoft_outlook_sync_service import (
+            get_microsoft_outlook_sync_service,
+        )
+
+        outlook_sync = get_microsoft_outlook_sync_service()
+        results["microsoft"] = await outlook_sync.sync_to_db(db, tenant_id, user_id)
+    except Exception as e:
+        results["microsoft"] = {"error": str(e)}
+
+    return {"status": "success", "results": results}
