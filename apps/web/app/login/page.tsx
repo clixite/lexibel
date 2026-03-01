@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Scale, Loader2, AlertCircle, Eye, EyeOff } from "lucide-react";
 import { loginApi } from "@/lib/auth-core";
 import { useAuth } from "@/lib/useAuth";
@@ -135,6 +136,15 @@ export default function LoginPage() {
                   )}
                 </button>
               </div>
+            </div>
+
+            <div className="flex items-center justify-end">
+              <Link
+                href="/forgot-password"
+                className="text-sm text-accent hover:text-accent-600 transition-colors"
+              >
+                Mot de passe oubli&eacute; ?
+              </Link>
             </div>
 
             <button

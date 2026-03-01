@@ -129,127 +129,6 @@ const FALLBACK_BRAIN: BrainSummaryResponse = {
   stats: {},
 };
 
-const PLACEHOLDER_DEADLINES: CriticalDeadline[] = [
-  {
-    id: "ph-1",
-    title: "Conclusions -- Dupont c/ Immobel",
-    case_name: "Dupont c/ Immobel SA",
-    due_date: "2026-02-21",
-    days_remaining: 2,
-    urgency: "critical",
-  },
-  {
-    id: "ph-2",
-    title: "Audience -- TPI Bruxelles",
-    case_name: "TPI Bruxelles - Janssens",
-    due_date: "2026-02-24",
-    days_remaining: 5,
-    urgency: "urgent",
-  },
-  {
-    id: "ph-3",
-    title: "Delai d'appel -- Janssens",
-    case_name: "Janssens c/ Etat belge",
-    due_date: "2026-02-28",
-    days_remaining: 9,
-    urgency: "attention",
-  },
-  {
-    id: "ph-4",
-    title: "Depot de bilan -- SA Construct",
-    case_name: "SA Construct - Faillite",
-    due_date: "2026-03-05",
-    days_remaining: 14,
-    urgency: "normal",
-  },
-  {
-    id: "ph-5",
-    title: "Mediation -- Famille Peeters",
-    case_name: "Peeters - Divorce",
-    due_date: "2026-03-10",
-    days_remaining: 19,
-    urgency: "normal",
-  },
-];
-
-const PLACEHOLDER_ACTIONS: BrainAction[] = [
-  {
-    id: "pa-1",
-    type: "alert",
-    title: "Risque de prescription -- Dossier Lambert",
-    description:
-      "Le delai de prescription de 5 ans expire dans 12 jours. Une action en justice doit etre initiee avant le 3 mars 2026.",
-    priority: "critical",
-    case_name: "Lambert c/ AXA Belgium",
-  },
-  {
-    id: "pa-2",
-    type: "draft",
-    title: "Projet de conclusions a relire",
-    description:
-      "Les conclusions de synthese pour le dossier Dupont c/ Immobel sont pretes pour relecture. Echeance de depot : 21 fevrier.",
-    priority: "high",
-    case_name: "Dupont c/ Immobel SA",
-  },
-  {
-    id: "pa-3",
-    type: "suggestion",
-    title: "Jurisprudence pertinente detectee",
-    description:
-      "Un nouvel arret de la Cour de cassation (C.24.0312.F) pourrait renforcer votre argumentation dans le dossier Janssens.",
-    priority: "medium",
-    case_name: "Janssens c/ Etat belge",
-  },
-  {
-    id: "pa-4",
-    type: "follow_up",
-    title: "Relance client -- SA Construct",
-    description:
-      "Aucune reponse du client depuis 14 jours concernant les documents requis pour la procedure de faillite.",
-    priority: "medium",
-    case_name: "SA Construct - Faillite",
-  },
-];
-
-const PLACEHOLDER_INSIGHTS: BrainInsight[] = [
-  {
-    id: "pi-1",
-    severity: "critical",
-    title: "Conflit d'interets potentiel",
-    description:
-      "Le nouveau contact M. Verhoeven est lie a la partie adverse dans le dossier Dupont. Verification recommandee.",
-    case_name: "Dupont c/ Immobel SA",
-  },
-  {
-    id: "pi-2",
-    severity: "high",
-    title: "Surcharge la semaine prochaine",
-    description:
-      "7 echeances concentrees entre le 24 et le 28 fevrier. Envisagez de deleguer ou reporter certaines taches.",
-  },
-  {
-    id: "pi-3",
-    severity: "medium",
-    title: "Honoraires impayees -- 3 dossiers",
-    description:
-      "Les factures des dossiers Lambert, Peeters et SA Construct sont en retard de plus de 30 jours.",
-  },
-  {
-    id: "pi-4",
-    severity: "low",
-    title: "Taux de reussite en hausse",
-    description:
-      "Votre taux de reussite est passe de 72% a 81% ce trimestre. La specialisation en droit commercial semble porter ses fruits.",
-  },
-];
-
-const PLACEHOLDER_WORKLOAD: WorkloadWeek[] = [
-  { week_label: "17-21 fev", deadline_count: 4, capacity: 5 },
-  { week_label: "24-28 fev", deadline_count: 7, capacity: 5 },
-  { week_label: "3-7 mar", deadline_count: 3, capacity: 5 },
-  { week_label: "10-14 mar", deadline_count: 2, capacity: 5 },
-];
-
 /* ─────────────────────────── Helpers ─────────────────────────── */
 
 const urgencyConfig: Record<
@@ -344,8 +223,6 @@ export default function DashboardPage() {
 
   // Brain data
   const [brainData, setBrainData] = useState<BrainSummaryResponse>(FALLBACK_BRAIN);
-  const [usePlaceholders, setUsePlaceholders] = useState(false);
-
   // Existing data
   const [recentCases, setRecentCases] = useState<RecentCase[]>([]);
   const [inboxItems, setInboxItems] = useState<InboxItem[]>([]);
@@ -365,10 +242,7 @@ export default function DashboardPage() {
       const [brainRes, statsRes, recentRes, inboxRes] = await Promise.all([
         apiFetch<BrainSummaryResponse>("/brain/summary", accessToken, {
           tenantId,
-        }).catch(() => {
-          setUsePlaceholders(true);
-          return FALLBACK_BRAIN;
-        }),
+        }).catch(() => FALLBACK_BRAIN),
         apiFetch<DashboardResponse>("/dashboard/stats", accessToken, {
           tenantId,
         }).catch(() => ({})),
@@ -385,27 +259,8 @@ export default function DashboardPage() {
       ]);
 
       setBrainData(brainRes);
-
-      // Determine deadlines, actions, insights - use API data or placeholders
-      const isBrainEmpty =
-        brainRes.critical_deadlines.length === 0 &&
-        brainRes.pending_actions.length === 0 &&
-        brainRes.recent_insights.length === 0;
-
-      if (isBrainEmpty) {
-        setUsePlaceholders(true);
-      }
-
-      setInsights(
-        brainRes.recent_insights.length > 0
-          ? brainRes.recent_insights
-          : PLACEHOLDER_INSIGHTS
-      );
-      setActions(
-        brainRes.pending_actions.length > 0
-          ? brainRes.pending_actions
-          : PLACEHOLDER_ACTIONS
-      );
+      setInsights(brainRes.recent_insights);
+      setActions(brainRes.pending_actions);
 
       setDashboardStats(
         "stats" in statsRes && (statsRes as DashboardResponse).stats
@@ -498,15 +353,8 @@ export default function DashboardPage() {
     year: "numeric",
   });
 
-  const deadlines =
-    brainData.critical_deadlines.length > 0
-      ? brainData.critical_deadlines
-      : PLACEHOLDER_DEADLINES;
-
-  const workload =
-    brainData.workload_next_weeks.length > 0
-      ? brainData.workload_next_weeks
-      : PLACEHOLDER_WORKLOAD;
+  const deadlines = brainData.critical_deadlines;
+  const workload = brainData.workload_next_weeks;
 
   const totalActiveCases =
     brainData.total_active_cases || dashboardStats?.total_cases || 0;
@@ -514,14 +362,11 @@ export default function DashboardPage() {
   const criticalDeadlinesCount = deadlines.filter(
     (d) => d.days_remaining <= 7
   ).length;
-  const healthScore =
-    brainData.health_score ||
-    (usePlaceholders ? 74 : 0);
+  const healthScore = brainData.health_score || 0;
 
   const riskCases =
     (brainData.risk_distribution.high || 0) +
-    (brainData.risk_distribution.critical || 0) ||
-    (usePlaceholders ? 3 : 0);
+    (brainData.risk_distribution.critical || 0);
 
   const maxWorkload = Math.max(
     ...workload.map((w) => Math.max(w.deadline_count, w.capacity)),
@@ -590,7 +435,7 @@ export default function DashboardPage() {
           </div>
           {riskCases > 0 && (
             <p className="text-xs text-danger-600 mt-2 font-medium">
-              {brainData.risk_distribution.critical || (usePlaceholders ? 1 : 0)}{" "}
+              {brainData.risk_distribution.critical || 0}{" "}
               critique(s)
             </p>
           )}
@@ -1036,19 +881,28 @@ export default function DashboardPage() {
                 Charge de travail -- 4 prochaines semaines
               </h3>
             </div>
-            <div className="flex items-center gap-4 text-xs text-neutral-500">
-              <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 bg-accent-500 rounded-sm" />
-                Echeances
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 bg-neutral-200 rounded-sm border border-dashed border-neutral-400" />
-                Capacite
-              </span>
-            </div>
+            {workload.length > 0 && (
+              <div className="flex items-center gap-4 text-xs text-neutral-500">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 bg-accent-500 rounded-sm" />
+                  Echeances
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 bg-neutral-200 rounded-sm border border-dashed border-neutral-400" />
+                  Capacite
+                </span>
+              </div>
+            )}
           </div>
         }
       >
+        {workload.length === 0 ? (
+          <EmptyState
+            title="Aucune donnee de charge"
+            description="Les previsions de charge apparaitront ici"
+            icon={<Briefcase className="h-12 w-12 text-neutral-300" />}
+          />
+        ) : (
         <div className="space-y-4">
           {workload.map((week, index) => {
             const isOverloaded = week.deadline_count > week.capacity;
@@ -1103,6 +957,7 @@ export default function DashboardPage() {
             );
           })}
         </div>
+        )}
       </Card>
     </div>
   );

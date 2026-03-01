@@ -36,6 +36,7 @@ ALGORITHM: str = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 MFA_TOKEN_EXPIRE_MINUTES: int = 5
+RESET_TOKEN_EXPIRE_MINUTES: int = 30
 
 
 class TokenError(Exception):
@@ -97,6 +98,38 @@ def create_mfa_token(
         "exp": now + timedelta(minutes=MFA_TOKEN_EXPIRE_MINUTES),
     }
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def create_reset_token(user_id: uuid.UUID, email: str) -> str:
+    """Create a short-lived password reset token (30 min)."""
+    now = datetime.now(timezone.utc)
+    payload = {
+        "sub": str(user_id),
+        "email": email,
+        "type": "reset",
+        "jti": secrets.token_urlsafe(16),
+        "iat": now,
+        "exp": now + timedelta(minutes=RESET_TOKEN_EXPIRE_MINUTES),
+    }
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+
+
+async def consume_reset_token(jti: str) -> bool:
+    """Mark a reset token as consumed (single-use).
+
+    Returns True if this is the first use. False if already consumed.
+    """
+    redis = await get_redis()
+    if redis is None:
+        return True  # Fail-open if Redis unavailable
+    try:
+        result = await redis.set(
+            f"reset_used:{jti}", "1", nx=True, ex=RESET_TOKEN_EXPIRE_MINUTES * 60
+        )
+        return bool(result)
+    except Exception as e:
+        _logger.warning("Redis reset token consumption check failed: %s", e)
+        return True
 
 
 def verify_token(token: str, expected_type: str = "access") -> dict:

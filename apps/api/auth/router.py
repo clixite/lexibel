@@ -1,11 +1,14 @@
-"""Auth router — login, refresh, logout, and /me endpoints.
+"""Auth router — login, refresh, logout, password reset, and /me endpoints.
 
-POST /api/v1/auth/login   — email + password → JWT pair (or MFA challenge)
-POST /api/v1/auth/refresh — refresh token → new access token
-POST /api/v1/auth/logout  — revoke current token via Redis blacklist
-GET  /api/v1/auth/me      — current user profile from JWT
+POST /api/v1/auth/login           — email + password → JWT pair (or MFA challenge)
+POST /api/v1/auth/refresh         — refresh token → new access token
+POST /api/v1/auth/logout          — revoke current token via Redis blacklist
+GET  /api/v1/auth/me              — current user profile from JWT
+POST /api/v1/auth/forgot-password — request a password reset token
+POST /api/v1/auth/reset-password  — reset password using token
 """
 
+import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -14,22 +17,30 @@ from sqlalchemy import select
 from apps.api.auth.jwt import (
     TokenError,
     blacklist_token,
+    consume_reset_token,
     create_access_token,
     create_mfa_token,
     create_refresh_token,
+    create_reset_token,
     verify_token,
 )
-from apps.api.auth.passwords import verify_password
+from apps.api.auth.passwords import hash_password, verify_password
 from apps.api.auth.schemas import (
     AccessTokenResponse,
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
     LoginRequest,
     LoginResponse,
     RefreshRequest,
+    ResetPasswordRequest,
+    ResetPasswordResponse,
     UserProfile,
 )
 from apps.api.dependencies import get_current_user
 from packages.db.models.user import User
 from packages.db.session import async_session_factory
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -168,3 +179,74 @@ async def logout(
     if auth_header.startswith("Bearer "):
         token = auth_header[7:]
         await blacklist_token(token)
+
+
+@router.post("/forgot-password", response_model=ForgotPasswordResponse)
+async def forgot_password(body: ForgotPasswordRequest) -> ForgotPasswordResponse:
+    """Request a password reset token.
+
+    Always returns success to prevent email enumeration.
+    If the email exists, a reset token is generated. In production,
+    this token should be sent via email. For now, it's logged.
+    """
+    user = await _get_user_by_email(body.email)
+
+    if user and user.hashed_password:
+        token = create_reset_token(user_id=user.id, email=user.email)
+        # In production: send email with reset link containing this token
+        # For now, log the token for development/testing
+        logger.info(
+            "Password reset token generated for %s: %s",
+            body.email,
+            token,
+        )
+
+    # Always return same response to prevent email enumeration
+    return ForgotPasswordResponse(
+        message="If an account with that email exists, a reset link has been sent."
+    )
+
+
+@router.post("/reset-password", response_model=ResetPasswordResponse)
+async def reset_password(body: ResetPasswordRequest) -> ResetPasswordResponse:
+    """Reset password using a valid reset token."""
+    if len(body.new_password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must be at least 8 characters",
+        )
+
+    try:
+        claims = verify_token(body.token, expected_type="reset")
+    except TokenError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token",
+        )
+
+    # Enforce single-use
+    jti = claims.get("jti")
+    if jti:
+        is_first_use = await consume_reset_token(jti)
+        if not is_first_use:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Reset token already used",
+            )
+
+    user_id = uuid.UUID(claims["sub"])
+
+    async with async_session_factory() as session:
+        async with session.begin():
+            result = await session.execute(
+                select(User).where(User.id == user_id, User.is_active.is_(True))
+            )
+            user = result.scalar_one_or_none()
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="User not found or account deactivated",
+                )
+            user.hashed_password = hash_password(body.new_password)
+
+    return ResetPasswordResponse(message="Password has been reset successfully.")
