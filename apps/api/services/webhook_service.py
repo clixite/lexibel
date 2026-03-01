@@ -2,14 +2,18 @@
 
 import hashlib
 import hmac
+import logging
 import re
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from apps.api.services.redis_client import get_redis
 from packages.db.models.contact import Contact
 
-# In-memory idempotency store (production: Redis SETNX with 24h TTL)
+logger = logging.getLogger(__name__)
+
+# In-memory idempotency store (fallback when Redis unavailable)
 _idempotency_store: dict[str, bool] = {}
 
 
@@ -86,13 +90,18 @@ async def check_idempotency(key: str) -> bool:
     """Check if a webhook has already been processed.
 
     Returns True if this is a duplicate (already processed).
-    In production, this uses Redis SETNX with 24h TTL.
+    Uses Redis SETNX with 24h TTL, falls back to in-memory.
     """
-    # TODO: Replace with Redis SETNX in production
-    # async with redis.pipeline() as pipe:
-    #     result = await pipe.set(f"idempotency:{key}", "1", nx=True, ex=86400)
-    #     return not result  # True if key already existed
+    redis = await get_redis()
+    if redis is not None:
+        try:
+            result = await redis.set(f"idempotency:{key}", "1", nx=True, ex=86400)
+            return not result  # None means key already existed → duplicate
+        except Exception as e:
+            logger.warning("Redis idempotency check failed: %s", e)
+            # Fall through to in-memory
 
+    # In-memory fallback
     if key in _idempotency_store:
         return True  # Duplicate
     _idempotency_store[key] = True

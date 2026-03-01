@@ -127,10 +127,19 @@ async def ringover_webhook(
     if event.ended_at:
         ended_at = datetime.fromisoformat(event.ended_at.replace("Z", "+00:00"))
 
-    # Extract tenant_id from context (in production, use RLS or JWT)
-    # For now, we use a default tenant UUID
-    # TODO: Extract from JWT claims or X-Tenant-ID header
-    tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
+    # Extract tenant_id from webhook payload (validated as UUID)
+    try:
+        tenant_id = uuid.UUID(event.tenant_id)
+    except ValueError:
+        # Fallback: DEFAULT_TENANT_ID env var for single-tenant deployments
+        fallback = os.getenv("DEFAULT_TENANT_ID")
+        if fallback:
+            tenant_id = uuid.UUID(fallback)
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid tenant_id format in webhook payload",
+            )
 
     interaction_event = await ringover_service.create_call_event(
         session,

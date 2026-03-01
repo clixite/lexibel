@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { getAccessToken } from "@/lib/auth-core";
 import { ConflictDetail } from "@/lib/sentinel/api-client";
 
 interface SentinelAlert {
@@ -17,8 +18,12 @@ export function useSentinelAlerts() {
   const eventSourceRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
-    // Create SSE connection
-    const eventSource = new EventSource("/api/sentinel/alerts/stream");
+    // Create SSE connection with auth token
+    const token = getAccessToken();
+    const sseUrl = token
+      ? `/api/sentinel/alerts/stream?token=${token}`
+      : "/api/sentinel/alerts/stream";
+    const eventSource = new EventSource(sseUrl);
     eventSourceRef.current = eventSource;
 
     eventSource.onopen = () => {

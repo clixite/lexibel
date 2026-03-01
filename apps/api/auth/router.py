@@ -1,17 +1,19 @@
-"""Auth router — login, refresh, and /me endpoints.
+"""Auth router — login, refresh, logout, and /me endpoints.
 
 POST /api/v1/auth/login   — email + password → JWT pair (or MFA challenge)
 POST /api/v1/auth/refresh — refresh token → new access token
+POST /api/v1/auth/logout  — revoke current token via Redis blacklist
 GET  /api/v1/auth/me      — current user profile from JWT
 """
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 
 from apps.api.auth.jwt import (
     TokenError,
+    blacklist_token,
     create_access_token,
     create_mfa_token,
     create_refresh_token,
@@ -150,3 +152,19 @@ async def me(current_user: dict = Depends(get_current_user)) -> UserProfile:
         email=current_user["email"],
         role=current_user["role"],
     )
+
+
+@router.post("/logout", status_code=204)
+async def logout(
+    request: Request,
+    _user: dict = Depends(get_current_user),
+) -> None:
+    """Revoke the current access token by adding its jti to Redis blacklist.
+
+    The token is blacklisted for its remaining TTL so it auto-expires.
+    Frontend should also clear locally stored tokens.
+    """
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:]
+        await blacklist_token(token)

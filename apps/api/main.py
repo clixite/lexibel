@@ -106,7 +106,18 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("Demo data seeding skipped: %s", e)
 
+    # Initialize Redis connection pool
+    from apps.api.services.redis_client import close_redis, get_redis
+
+    try:
+        await get_redis()
+    except Exception as e:
+        logger.warning("Redis initialization skipped: %s", e)
+
     yield
+
+    # Shutdown: close Redis
+    await close_redis()
 
 
 def create_app() -> FastAPI:

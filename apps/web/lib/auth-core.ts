@@ -128,7 +128,19 @@ export async function refreshAccessToken(): Promise<boolean> {
   }
 }
 
-export function logout(): void {
+export async function logout(): Promise<void> {
+  // Best-effort server-side token revocation
+  const token = getAccessToken();
+  if (token) {
+    try {
+      await fetch(`${API_BASE}/auth/logout`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch {
+      // Network error — still clear local tokens
+    }
+  }
   clearTokens();
   if (typeof window !== "undefined") {
     window.location.href = "/login";

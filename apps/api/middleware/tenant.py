@@ -11,7 +11,7 @@ from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import JSONResponse
 
-from apps.api.auth.jwt import TokenError, verify_token
+from apps.api.auth.jwt import TokenError, is_token_blacklisted, verify_token
 
 # X-Tenant-ID header fallback is only allowed in development/testing.
 _ALLOW_HEADER_FALLBACK = os.getenv("ENVIRONMENT", "development").lower() not in (
@@ -66,11 +66,22 @@ class TenantMiddleware(BaseHTTPMiddleware):
             request.state.user_role = None
             return await call_next(request)
 
-        # Try JWT first
+        # Try JWT from Authorization header
         token = _extract_bearer_token(request.headers.get("Authorization"))
+
+        # Fallback: ?token= query parameter (for EventSource/SSE)
+        if not token:
+            token = request.query_params.get("token")
+
         if token:
             try:
                 claims = verify_token(token, expected_type="access")
+                # Check if token has been revoked (logout)
+                if await is_token_blacklisted(claims):
+                    return JSONResponse(
+                        status_code=401,
+                        content={"detail": "Token has been revoked"},
+                    )
                 request.state.tenant_id = uuid.UUID(claims["tid"])
                 request.state.user_id = uuid.UUID(claims["sub"])
                 request.state.user_role = claims.get("role")

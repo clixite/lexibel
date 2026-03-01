@@ -13,6 +13,7 @@ from sqlalchemy import select
 
 from apps.api.auth.jwt import (
     TokenError,
+    consume_mfa_token,
     create_access_token,
     create_refresh_token,
     verify_token,
@@ -131,6 +132,16 @@ async def mfa_challenge(body: MfaChallengeRequest) -> MfaChallengeResponse:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired MFA token",
         )
+
+    # Enforce single-use: consume the MFA token's jti in Redis
+    jti = claims.get("jti")
+    if jti:
+        is_first_use = await consume_mfa_token(jti)
+        if not is_first_use:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="MFA token already used",
+            )
 
     user_id = uuid.UUID(claims["sub"])
     tenant_id = uuid.UUID(claims["tid"])
