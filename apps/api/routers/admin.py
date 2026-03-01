@@ -1,20 +1,22 @@
-"""Admin endpoints — health, tenants, users, stats."""
+"""Admin endpoints — health, tenants, users, stats, integrations."""
 
 import logging
 import os
+import uuid
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api.auth.passwords import hash_password
-from apps.api.dependencies import get_current_user
+from apps.api.dependencies import get_current_tenant, get_current_user, get_db_session
 from packages.db.models.case import Case
 from packages.db.models.contact import Contact
 from packages.db.models.invoice import Invoice
+from packages.db.models.oauth_token import OAuthToken
 from packages.db.models.tenant import Tenant
 from packages.db.models.user import User
 from packages.db.session import async_session_factory
@@ -346,3 +348,86 @@ async def _check_neo4j() -> dict:
         return {"status": "healthy" if neo4j_uri else "not_configured"}
     except Exception:
         return {"status": "unavailable"}
+
+
+# ── Admin Integrations ──
+
+
+@router.get("/integrations")
+async def list_admin_integrations(
+    tenant_id: uuid.UUID = Depends(get_current_tenant),
+    user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+):
+    """List OAuth integrations for the current user."""
+    user_id = user.get("user_id")
+
+    result = await session.execute(
+        select(OAuthToken)
+        .where(OAuthToken.tenant_id == tenant_id, OAuthToken.user_id == user_id)
+        .order_by(OAuthToken.created_at.desc())
+    )
+    tokens = result.scalars().all()
+
+    items = [
+        {
+            "id": str(t.id),
+            "provider": t.provider,
+            "email": t.email_address or "",
+            "scopes": (t.scope or "").split(" ") if t.scope else [],
+            "connected_at": t.created_at.isoformat() if t.created_at else None,
+            "last_sync_at": t.updated_at.isoformat() if t.updated_at else None,
+            "status": t.status or "active",
+        }
+        for t in tokens
+    ]
+    return {"items": items}
+
+
+@router.post("/integrations/connect/{provider}")
+async def connect_integration(
+    provider: Literal["google", "microsoft"],
+    tenant_id: uuid.UUID = Depends(get_current_tenant),
+    user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+):
+    """Get OAuth authorization URL to connect a provider."""
+    try:
+        from apps.api.services.oauth_engine import get_oauth_engine
+        oauth_engine = get_oauth_engine()
+        user_id = user.get("user_id")
+        result = await oauth_engine.get_authorization_url(
+            session=session,
+            provider=provider,
+            tenant_id=tenant_id,
+            user_id=user_id,
+        )
+        return {"oauth_url": result.get("authorization_url", "")}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/integrations/{integration_id}", status_code=204)
+async def delete_integration(
+    integration_id: uuid.UUID,
+    tenant_id: uuid.UUID = Depends(get_current_tenant),
+    user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+):
+    """Revoke and delete an OAuth integration."""
+    user_id = user.get("user_id")
+
+    result = await session.execute(
+        select(OAuthToken).where(
+            OAuthToken.id == integration_id,
+            OAuthToken.tenant_id == tenant_id,
+            OAuthToken.user_id == user_id,
+        )
+    )
+    token = result.scalar_one_or_none()
+    if not token:
+        raise HTTPException(status_code=404, detail="Integration not found")
+
+    await session.delete(token)
+    await session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

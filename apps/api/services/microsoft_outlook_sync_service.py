@@ -323,6 +323,54 @@ class MicrosoftOutlookSyncService:
         return True
 
 
+    async def sync_to_db_with_token(
+        self,
+        session: AsyncSession,
+        tenant_id: UUID,
+        user_id: UUID,
+        access_token: str,
+        since_date: Optional[datetime] = None,
+        max_results: int = 50,
+    ) -> dict:
+        """Sync Outlook messages using a pre-obtained access token (from oauth_engine)."""
+        messages = await self.list_messages(access_token, since_date, max_results)
+        threads_created = 0
+        messages_created = 0
+        messages_updated = 0
+
+        for msg in messages:
+            external_id = msg["id"]
+            conversation_id = msg.get("conversationId", external_id)
+
+            thread = await self._get_or_create_thread(
+                session, tenant_id, conversation_id, msg.get("subject", "(No subject)"), msg
+            )
+            if thread.created_at == thread.updated_at:
+                threads_created += 1
+
+            message_created = await self._create_or_update_message(
+                session, tenant_id, thread.id, msg
+            )
+            if message_created:
+                messages_created += 1
+            else:
+                messages_updated += 1
+
+            thread.message_count = len(thread.messages) if hasattr(thread, 'messages') else (thread.message_count or 0) + 1
+            thread.last_message_at = datetime.fromisoformat(
+                msg["receivedDateTime"].replace("Z", "+00:00")
+            )
+            thread.synced_at = datetime.now(timezone.utc)
+
+        await session.commit()
+        return {
+            "threads_created": threads_created,
+            "messages_created": messages_created,
+            "messages_updated": messages_updated,
+            "total_processed": len(messages),
+        }
+
+
 # Singleton instance
 _microsoft_outlook_sync_service: MicrosoftOutlookSyncService | None = None
 

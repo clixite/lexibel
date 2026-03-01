@@ -205,40 +205,196 @@ class CalendarSyncService:
             "total_processed": len(events),
         }
 
+    async def sync_google_calendar_with_token(
+        self,
+        session: AsyncSession,
+        tenant_id: UUID,
+        user_id: UUID,
+        access_token: str,
+        max_results: int = 100,
+    ) -> dict:
+        """Sync Google Calendar using a pre-obtained access token (from oauth_engine)."""
+        from google.oauth2.credentials import Credentials
+
+        credentials = Credentials(token=access_token)
+        return await self._sync_google_with_credentials(
+            session, tenant_id, user_id, credentials, max_results
+        )
+
+    async def _sync_google_with_credentials(
+        self,
+        session: AsyncSession,
+        tenant_id: UUID,
+        user_id: UUID,
+        credentials,
+        max_results: int,
+    ) -> dict:
+        """Core Google Calendar sync logic."""
+        service = build("calendar", "v3", credentials=credentials)
+        now = datetime.utcnow().isoformat() + "Z"
+        events_result = (
+            service.events()
+            .list(
+                calendarId="primary",
+                timeMin=now,
+                maxResults=max_results,
+                singleEvents=True,
+                orderBy="startTime",
+            )
+            .execute()
+        )
+        events = events_result.get("items", [])
+        events_created = 0
+
+        for event in events:
+            external_id = event["id"]
+            stmt = select(CalendarEvent).where(
+                CalendarEvent.tenant_id == tenant_id,
+                CalendarEvent.external_id == external_id,
+                CalendarEvent.provider == "google",
+            )
+            result = await session.execute(stmt)
+            if result.scalar_one_or_none():
+                continue
+
+            start = event["start"].get("dateTime", event["start"].get("date"))
+            end = event["end"].get("dateTime", event["end"].get("date"))
+            is_all_day = "date" in event["start"]
+
+            calendar_event = CalendarEvent(
+                id=uuid4(),
+                tenant_id=tenant_id,
+                user_id=user_id,
+                external_id=external_id,
+                provider="google",
+                title=event.get("summary", "(No title)"),
+                description=event.get("description"),
+                start_time=datetime.fromisoformat(start.replace("Z", "+00:00")),
+                end_time=datetime.fromisoformat(end.replace("Z", "+00:00")),
+                location=event.get("location"),
+                attendees=event.get("attendees", []),
+                is_all_day=is_all_day,
+            )
+            session.add(calendar_event)
+            events_created += 1
+
+        await session.commit()
+        return {"events_created": events_created, "total_processed": len(events)}
+
+    async def sync_outlook_calendar_with_token(
+        self,
+        session: AsyncSession,
+        tenant_id: UUID,
+        user_id: UUID,
+        access_token: str,
+        max_results: int = 100,
+    ) -> dict:
+        """Sync Outlook Calendar using a pre-obtained access token (from oauth_engine)."""
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json",
+        }
+        params = {
+            "$top": max_results,
+            "$orderby": "start/dateTime",
+            "$filter": f"start/dateTime ge '{datetime.utcnow().isoformat()}Z'",
+        }
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(
+                "https://graph.microsoft.com/v1.0/me/events",
+                headers=headers,
+                params=params,
+            )
+            response.raise_for_status()
+            data = response.json()
+
+        events = data.get("value", [])
+        events_created = 0
+
+        for event in events:
+            external_id = event["id"]
+            stmt = select(CalendarEvent).where(
+                CalendarEvent.tenant_id == tenant_id,
+                CalendarEvent.external_id == external_id,
+                CalendarEvent.provider == "outlook",
+            )
+            result = await session.execute(stmt)
+            if result.scalar_one_or_none():
+                continue
+
+            start = event["start"]["dateTime"]
+            end = event["end"]["dateTime"]
+            calendar_event = CalendarEvent(
+                id=uuid4(),
+                tenant_id=tenant_id,
+                user_id=user_id,
+                external_id=external_id,
+                provider="outlook",
+                title=event.get("subject", "(No title)"),
+                description=event.get("bodyPreview"),
+                start_time=datetime.fromisoformat(start),
+                end_time=datetime.fromisoformat(end),
+                location=event.get("location", {}).get("displayName"),
+                attendees=event.get("attendees", []),
+                is_all_day=event.get("isAllDay", False),
+            )
+            session.add(calendar_event)
+            events_created += 1
+
+        await session.commit()
+        return {"events_created": events_created, "total_processed": len(events)}
+
     async def sync_all(
         self,
         session: AsyncSession,
         tenant_id: UUID,
         user_id: UUID,
     ) -> dict:
-        """Sync both Google and Outlook calendars.
+        """Sync both Google and Outlook calendars using oauth_engine for token retrieval."""
+        from sqlalchemy import select as sa_select
+        from packages.db.models.oauth_token import OAuthToken
+        from apps.api.services.oauth_engine import get_oauth_engine
 
-        Args:
-            session: Database session
-            tenant_id: Tenant ID
-            user_id: User ID
+        results: dict = {"google": None, "outlook": None}
+        oauth_engine = get_oauth_engine()
 
-        Returns:
-            Combined sync statistics
-        """
-        results = {
-            "google": None,
-            "outlook": None,
-        }
-
-        # Try Google
+        # Google Calendar
         try:
-            results["google"] = await self.sync_google_calendar(
-                session, tenant_id, user_id
+            g_result = await session.execute(
+                sa_select(OAuthToken).where(
+                    OAuthToken.tenant_id == tenant_id,
+                    OAuthToken.user_id == user_id,
+                    OAuthToken.provider == "google",
+                )
             )
+            g_token = g_result.scalar_one_or_none()
+            if g_token:
+                access_token = await oauth_engine.get_valid_token(session, g_token.id)
+                results["google"] = await self.sync_google_calendar_with_token(
+                    session, tenant_id, user_id, access_token
+                )
+            else:
+                results["google"] = {"error": "No Google account connected."}
         except Exception as e:
             results["google"] = {"error": str(e)}
 
-        # Try Outlook
+        # Outlook Calendar
         try:
-            results["outlook"] = await self.sync_outlook_calendar(
-                session, tenant_id, user_id
+            ms_result = await session.execute(
+                sa_select(OAuthToken).where(
+                    OAuthToken.tenant_id == tenant_id,
+                    OAuthToken.user_id == user_id,
+                    OAuthToken.provider == "microsoft",
+                )
             )
+            ms_token = ms_result.scalar_one_or_none()
+            if ms_token:
+                access_token = await oauth_engine.get_valid_token(session, ms_token.id)
+                results["outlook"] = await self.sync_outlook_calendar_with_token(
+                    session, tenant_id, user_id, access_token
+                )
+            else:
+                results["outlook"] = {"error": "No Microsoft account connected."}
         except Exception as e:
             results["outlook"] = {"error": str(e)}
 

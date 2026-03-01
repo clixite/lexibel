@@ -97,29 +97,65 @@ async def sync_emails(
     tenant_id: uuid.UUID = Depends(get_current_tenant),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Trigger email synchronization from Gmail and Outlook."""
+    """Trigger email synchronization from Gmail and Outlook.
+
+    Uses oauth_engine to retrieve valid tokens (handles auto-refresh).
+    """
+    from sqlalchemy import select as sa_select
+    from packages.db.models.oauth_token import OAuthToken
+    from apps.api.services.oauth_engine import get_oauth_engine
+
     user_id = (
         current_user["user_id"]
         if isinstance(current_user["user_id"], uuid.UUID)
         else uuid.UUID(str(current_user["user_id"]))
     )
     results: dict = {"google": None, "microsoft": None}
+    oauth_engine = get_oauth_engine()
 
+    # ── Google Gmail sync ──
     try:
-        from apps.api.services.gmail_sync_service import get_gmail_sync_service
+        g_result = await db.execute(
+            sa_select(OAuthToken).where(
+                OAuthToken.tenant_id == tenant_id,
+                OAuthToken.user_id == user_id,
+                OAuthToken.provider == "google",
+            )
+        )
+        g_token = g_result.scalar_one_or_none()
 
-        gmail_sync = get_gmail_sync_service()
-        results["google"] = await gmail_sync.sync_emails(db, tenant_id, user_id)
+        if not g_token:
+            results["google"] = {"error": "No Google account connected."}
+        else:
+            access_token = await oauth_engine.get_valid_token(db, g_token.id)
+            from apps.api.services.gmail_sync_service import get_gmail_sync_service
+            results["google"] = await get_gmail_sync_service().sync_emails_with_token(
+                db, tenant_id, user_id, access_token
+            )
     except Exception as e:
         results["google"] = {"error": str(e)}
 
+    # ── Microsoft Outlook sync ──
     try:
-        from apps.api.services.microsoft_outlook_sync_service import (
-            get_microsoft_outlook_sync_service,
+        ms_result = await db.execute(
+            sa_select(OAuthToken).where(
+                OAuthToken.tenant_id == tenant_id,
+                OAuthToken.user_id == user_id,
+                OAuthToken.provider == "microsoft",
+            )
         )
+        ms_token = ms_result.scalar_one_or_none()
 
-        outlook_sync = get_microsoft_outlook_sync_service()
-        results["microsoft"] = await outlook_sync.sync_to_db(db, tenant_id, user_id)
+        if not ms_token:
+            results["microsoft"] = {"error": "No Microsoft account connected."}
+        else:
+            access_token = await oauth_engine.get_valid_token(db, ms_token.id)
+            from apps.api.services.microsoft_outlook_sync_service import (
+                get_microsoft_outlook_sync_service,
+            )
+            results["microsoft"] = await get_microsoft_outlook_sync_service().sync_to_db_with_token(
+                db, tenant_id, user_id, access_token
+            )
     except Exception as e:
         results["microsoft"] = {"error": str(e)}
 

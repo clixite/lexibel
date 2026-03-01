@@ -97,29 +97,30 @@ async def list_calls(
 
                 # Enrich API data with DB information
                 for call in api_response.calls:
-                    # Find matching InteractionEvent by call_id
+                    # Find matching InteractionEvent by cdr_id stored in metadata
                     event_query = select(InteractionEvent).where(
                         and_(
                             InteractionEvent.source == "RINGOVER",
-                            InteractionEvent.metadata_["call_id"].astext == call.id,
+                            InteractionEvent.metadata_["call_id"].astext == call.call_id,
                         )
                     )
                     event_result = await session.execute(event_query)
                     event = event_result.scalar_one_or_none()
 
-                    # Get metadata from event or build from API data
+                    # Build metadata from API response fields
                     metadata = event.metadata_ if event else {}
                     if not metadata:
                         metadata = {
-                            "call_id": call.id,
+                            "call_id": call.call_id,
+                            "cdr_id": call.cdr_id,
                             "direction": call.direction,
-                            "caller_number": call.caller_number,
-                            "callee_number": call.callee_number,
-                            "duration_seconds": call.duration_seconds,
-                            "call_type": call.call_type,
+                            "caller_number": call.from_number,
+                            "callee_number": call.to_number,
+                            "duration_seconds": call.duration,
+                            "call_type": call.internal_call_type,
                             "recording_url": None,
-                            "started_at": call.started_at,
-                            "ended_at": call.ended_at,
+                            "started_at": call.start_date,
+                            "ended_at": call.end_date,
                         }
 
                     # Get contact details
@@ -144,25 +145,29 @@ async def list_calls(
                     if case_id and (not event or event.case_id != case_id):
                         continue
 
+                    # Parse start time safely
+                    try:
+                        occurred_at = datetime.fromisoformat(
+                            call.start_date.replace("Z", "+00:00")
+                        ) if call.start_date else datetime.utcnow()
+                    except (ValueError, AttributeError):
+                        occurred_at = datetime.utcnow()
+
                     items.append(
                         CallEventDetail(
-                            id=event.id
-                            if event
-                            else uuid.uuid4(),  # Temp ID if not in DB
+                            id=event.id if event else uuid.uuid4(),
                             case_id=event.case_id if event else None,
                             contact_id=uuid.UUID(contact_id_from_event)
                             if contact_id_from_event
                             else None,
                             contact_name=contact.full_name if contact else None,
                             direction=call.direction,
-                            call_type=call.call_type,
+                            call_type=call.internal_call_type,
                             duration_formatted=ringover_service.format_call_duration(
-                                call.duration_seconds
+                                call.duration
                             ),
-                            phone_number=call.caller_number,
-                            occurred_at=datetime.fromisoformat(
-                                call.started_at.replace("Z", "+00:00")
-                            ),
+                            phone_number=call.from_number,
+                            occurred_at=occurred_at,
                             has_recording=call.recording_available,
                             has_transcript=metadata.get("transcript_status")
                             == "completed",
@@ -321,16 +326,18 @@ async def get_call_details(
             async with RingoverClient() as client:
                 api_call = await client.get_call(call_id)
 
-                # Update metadata with fresh API data
+                # Update metadata with fresh API data (map v2 field names)
                 metadata.update(
                     {
+                        "call_id": api_call.call_id,
+                        "cdr_id": api_call.cdr_id,
                         "direction": api_call.direction,
-                        "caller_number": api_call.caller_number,
-                        "callee_number": api_call.callee_number,
-                        "duration_seconds": api_call.duration_seconds,
-                        "call_type": api_call.call_type,
-                        "started_at": api_call.started_at,
-                        "ended_at": api_call.ended_at,
+                        "caller_number": api_call.from_number,
+                        "callee_number": api_call.to_number,
+                        "duration_seconds": api_call.duration,
+                        "call_type": api_call.internal_call_type,
+                        "started_at": api_call.start_date,
+                        "ended_at": api_call.end_date,
                     }
                 )
 

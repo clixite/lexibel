@@ -3,7 +3,9 @@
 Production-ready HTTP client for Ringover REST API v2.
 Handles authentication, retries, caching, and error handling.
 
-API Documentation: https://public-api.ringover.com/v2
+API Documentation: https://developer.ringover.com
+Base URL: https://public-api.ringover.com/v2
+Auth: Authorization: <api_key>  (no Bearer prefix)
 """
 
 import asyncio
@@ -30,20 +32,56 @@ class RingoverAPIError(Exception):
 
 
 class RingoverCall(BaseModel):
-    """Ringover call record from API v2."""
+    """Ringover call record from API v2.
 
-    id: str
-    direction: str  # inbound | outbound
-    caller_number: str
-    callee_number: str
-    duration_seconds: int
-    call_type: str  # answered | missed | voicemail
-    started_at: str  # ISO 8601
-    ended_at: Optional[str] = None
-    recording_available: bool = False
-    user_id: Optional[str] = None
-    tags: list[str] = []
-    metadata: dict[str, Any] = {}
+    Field names match the real Ringover API v2 response:
+    - cdr_id: integer CDR identifier (used for cursor pagination)
+    - call_id: string call UUID
+    - from_number: caller phone number
+    - to_number: called phone number
+    - call_type: ANSWERED | MISSED | OUT | VOICEMAIL
+    - duration: call duration in seconds
+    - start_date: ISO 8601 start timestamp
+    - end_date: ISO 8601 end timestamp (may be null)
+    - user: dict with user info (id, name, etc.)
+    """
+
+    cdr_id: int
+    call_id: str = ""
+    from_number: str = ""
+    to_number: str = ""
+    call_type: str = "ANSWERED"  # ANSWERED | MISSED | OUT | VOICEMAIL
+    duration: int = 0
+    start_date: str = ""
+    end_date: Optional[str] = None
+    user: Optional[dict] = None
+
+    @property
+    def direction(self) -> str:
+        """Infer direction from call_type. OUT = outbound, others = inbound."""
+        return "outbound" if self.call_type == "OUT" else "inbound"
+
+    @property
+    def internal_call_type(self) -> str:
+        """Map Ringover call_type to our internal format (lowercase)."""
+        mapping = {
+            "ANSWERED": "answered",
+            "MISSED": "missed",
+            "OUT": "answered",
+            "VOICEMAIL": "voicemail",
+        }
+        return mapping.get(self.call_type, "answered")
+
+    @property
+    def recording_available(self) -> bool:
+        return False  # Ringover API v2 list doesn't expose this directly
+
+    @property
+    def user_id(self) -> Optional[str]:
+        if self.user:
+            uid = self.user.get("id") or self.user.get("user_id")
+            return str(uid) if uid else None
+        return None
 
 
 class RingoverCallsResponse(BaseModel):
@@ -69,17 +107,13 @@ class RingoverRecording(BaseModel):
 class RingoverClient:
     """Async HTTP client for Ringover API v2.
 
-    Features:
-    - Bearer token authentication
-    - Automatic retry with exponential backoff
-    - Request timeout management
-    - Optional Redis caching
-    - Comprehensive error handling
+    Authentication: API key sent directly as Authorization header value.
+    Pagination: uses limit_count + limit_offset (page-based) or last_id_returned (cursor).
+    Date filters: start_date / end_date (ISO 8601, max 15-day range).
 
     Example:
         async with RingoverClient() as client:
             calls = await client.list_calls(page=1, per_page=50)
-            recording = await client.get_recording(call_id="abc123")
     """
 
     BASE_URL = "https://public-api.ringover.com/v2"
@@ -94,14 +128,6 @@ class RingoverClient:
         timeout: float = DEFAULT_TIMEOUT,
         enable_cache: bool = True,
     ):
-        """Initialize Ringover API client.
-
-        Args:
-            api_key: Ringover API key (defaults to RINGOVER_API_KEY env var)
-            base_url: API base URL (defaults to production v2 endpoint)
-            timeout: Request timeout in seconds
-            enable_cache: Enable Redis caching for list calls
-        """
         self.api_key = api_key or os.getenv("RINGOVER_API_KEY")
         if not self.api_key:
             raise ValueError(
@@ -116,28 +142,25 @@ class RingoverClient:
         self._redis_client: Optional[Any] = None
 
     async def __aenter__(self) -> "RingoverClient":
-        """Async context manager entry."""
         await self._ensure_client()
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        """Async context manager exit."""
         await self.close()
 
     async def _ensure_client(self):
-        """Lazily initialize HTTP client."""
         if self._client is None:
             self._client = httpx.AsyncClient(
                 base_url=self.base_url,
                 timeout=self.timeout,
                 headers={
+                    # Ringover API v2: key directly in Authorization (no "Bearer" prefix)
                     "Authorization": self.api_key,
                     "Content-Type": "application/json",
                     "User-Agent": "LexiBel/1.0",
                 },
             )
 
-        # Initialize Redis client if caching enabled
         if self.enable_cache and self._redis_client is None:
             try:
                 import redis.asyncio as aioredis
@@ -148,16 +171,13 @@ class RingoverClient:
                     decode_responses=True,
                 )
             except Exception as e:
-                # Gracefully degrade if Redis unavailable
                 self.enable_cache = False
                 print(f"Redis cache disabled: {e}")
 
     async def close(self):
-        """Close HTTP and Redis connections."""
         if self._client:
             await self._client.aclose()
             self._client = None
-
         if self._redis_client:
             await self._redis_client.aclose()
             self._redis_client = None
@@ -170,21 +190,6 @@ class RingoverClient:
         json_data: Optional[dict] = None,
         retry_count: int = 0,
     ) -> dict:
-        """Execute HTTP request with retry logic.
-
-        Args:
-            method: HTTP method (GET, POST, etc.)
-            endpoint: API endpoint path
-            params: Query parameters
-            json_data: JSON request body
-            retry_count: Current retry attempt
-
-        Returns:
-            Parsed JSON response
-
-        Raises:
-            RingoverAPIError: On API errors or network failures
-        """
         await self._ensure_client()
 
         try:
@@ -195,7 +200,6 @@ class RingoverClient:
                 json=json_data,
             )
 
-            # Handle error responses
             if response.status_code >= 400:
                 error_data = None
                 try:
@@ -216,31 +220,18 @@ class RingoverClient:
             return response.json()
 
         except httpx.TimeoutException as e:
-            # Retry on timeout
             if retry_count < self.MAX_RETRIES:
-                backoff_delay = 2**retry_count  # Exponential backoff: 1s, 2s, 4s
-                await asyncio.sleep(backoff_delay)
-                return await self._request(
-                    method, endpoint, params, json_data, retry_count + 1
-                )
-            raise RingoverAPIError(
-                f"Request timeout after {self.MAX_RETRIES} retries: {e}"
-            )
+                await asyncio.sleep(2**retry_count)
+                return await self._request(method, endpoint, params, json_data, retry_count + 1)
+            raise RingoverAPIError(f"Request timeout after {self.MAX_RETRIES} retries: {e}")
 
         except httpx.NetworkError as e:
-            # Retry on network errors
             if retry_count < self.MAX_RETRIES:
-                backoff_delay = 2**retry_count
-                await asyncio.sleep(backoff_delay)
-                return await self._request(
-                    method, endpoint, params, json_data, retry_count + 1
-                )
-            raise RingoverAPIError(
-                f"Network error after {self.MAX_RETRIES} retries: {e}"
-            )
+                await asyncio.sleep(2**retry_count)
+                return await self._request(method, endpoint, params, json_data, retry_count + 1)
+            raise RingoverAPIError(f"Network error after {self.MAX_RETRIES} retries: {e}")
 
         except RingoverAPIError:
-            # Don't retry on API errors (4xx, 5xx)
             raise
 
         except Exception as e:
@@ -257,114 +248,118 @@ class RingoverClient:
     ) -> RingoverCallsResponse:
         """List calls with pagination and filters.
 
-        Args:
-            page: Page number (1-indexed)
-            per_page: Results per page (max 100)
-            date_from: Filter calls after this date
-            date_to: Filter calls before this date
-            direction: Filter by direction (inbound/outbound)
-            call_type: Filter by type (answered/missed/voicemail)
+        Ringover API v2 parameters:
+        - limit_count: number of results (max 1000)
+        - limit_offset: offset for page-based pagination (max 9000)
+        - start_date / end_date: ISO 8601, max 15-day range
+        - call_type: ANSWERED | MISSED | OUT | VOICEMAIL
 
         Returns:
-            Paginated calls response
-
-        Example:
-            calls = await client.list_calls(
-                page=1,
-                per_page=50,
-                date_from=datetime(2024, 1, 1),
-                direction="inbound",
-            )
+            RingoverCallsResponse with calls mapped to internal model
         """
-        # Build query parameters
-        params: dict[str, Any] = {
-            "page": page,
-            "per_page": min(per_page, 100),  # API max limit
+        # Build filter body for POST /calls
+        body: dict[str, Any] = {
+            "limit_count": min(per_page, 100),
+            "limit_offset": (page - 1) * per_page,
         }
 
         if date_from:
-            params["date_from"] = date_from.isoformat()
+            body["start_date"] = date_from.strftime("%Y-%m-%dT%H:%M:%SZ")
 
         if date_to:
-            params["date_to"] = date_to.isoformat()
+            body["end_date"] = date_to.strftime("%Y-%m-%dT%H:%M:%SZ")
 
-        if direction:
-            params["direction"] = direction
-
+        # Map internal call_type to Ringover API format
         if call_type:
-            params["call_type"] = call_type
+            type_map = {
+                "answered": "ANSWERED",
+                "missed": "MISSED",
+                "voicemail": "VOICEMAIL",
+                "outbound": "OUT",
+            }
+            api_type = type_map.get(call_type)
+            if api_type:
+                body["call_type"] = api_type
 
-        # Check cache if enabled
+        # Direction filter: if outbound only, override call_type
+        if direction == "outbound":
+            body["call_type"] = "OUT"
+
+        # Check cache
         cache_key = None
         if self.enable_cache and self._redis_client:
-            cache_key = f"ringover:calls:{hash(frozenset(params.items()))}"
+            cache_key = f"ringover:calls:{hash(str(sorted(body.items())))}"
             try:
                 cached = await self._redis_client.get(cache_key)
                 if cached:
                     import json
-
                     return RingoverCallsResponse(**json.loads(cached))
             except Exception:
-                pass  # Cache miss or error, continue to API
+                pass
 
-        # Fetch from API
-        data = await self._request("GET", "/calls", params=params)
+        # Ringover v2 uses POST for filtered calls
+        data = await self._request("POST", "/calls", json_data=body)
 
-        # Parse response
+        # Parse response: field is "call_list", total is "total_call_count"
+        raw_calls = data.get("call_list", [])
+        total = data.get("total_call_count", len(raw_calls))
+
+        calls = []
+        for raw in raw_calls:
+            try:
+                calls.append(RingoverCall(
+                    cdr_id=raw.get("cdr_id", 0),
+                    call_id=str(raw.get("call_id", raw.get("cdr_id", ""))),
+                    from_number=raw.get("from_number", ""),
+                    to_number=raw.get("to_number", ""),
+                    call_type=str(raw.get("call_type", "ANSWERED")).upper(),
+                    duration=int(raw.get("duration", 0)),
+                    start_date=raw.get("start_date", ""),
+                    end_date=raw.get("end_date"),
+                    user=raw.get("user"),
+                ))
+            except Exception:
+                continue
+
         response = RingoverCallsResponse(
-            calls=[RingoverCall(**call_data) for call_data in data.get("calls", [])],
-            total=data.get("total", 0),
+            calls=calls,
+            total=total,
             page=page,
             per_page=per_page,
-            has_more=data.get("has_more", False),
+            has_more=(page * per_page) < total,
         )
 
-        # Cache result
         if cache_key and self._redis_client:
             try:
                 import json
-
                 await self._redis_client.setex(
                     cache_key,
                     self.CACHE_TTL,
                     json.dumps(response.model_dump()),
                 )
             except Exception:
-                pass  # Cache write failure, non-critical
+                pass
 
         return response
 
     async def get_call(self, call_id: str) -> RingoverCall:
-        """Get detailed call information.
-
-        Args:
-            call_id: Ringover call ID
-
-        Returns:
-            Detailed call record
-
-        Raises:
-            RingoverAPIError: If call not found or API error
-        """
+        """Get detailed call information by CDR ID or call UUID."""
         data = await self._request("GET", f"/calls/{call_id}")
-        return RingoverCall(**data)
+        raw = data if isinstance(data, dict) else data
+        return RingoverCall(
+            cdr_id=raw.get("cdr_id", 0),
+            call_id=str(raw.get("call_id", call_id)),
+            from_number=raw.get("from_number", ""),
+            to_number=raw.get("to_number", ""),
+            call_type=str(raw.get("call_type", "ANSWERED")).upper(),
+            duration=int(raw.get("duration", 0)),
+            start_date=raw.get("start_date", ""),
+            end_date=raw.get("end_date"),
+            user=raw.get("user"),
+        )
 
     async def get_recording(self, call_id: str) -> RingoverRecording:
-        """Get call recording URL.
-
-        Args:
-            call_id: Ringover call ID
-
-        Returns:
-            Recording information with download URL
-
-        Raises:
-            RingoverAPIError: If recording not available
-
-        Note:
-            Recording URLs are typically time-limited signed URLs.
-            Download and store the recording if long-term access needed.
-        """
+        """Get call recording URL."""
         data = await self._request("GET", f"/calls/{call_id}/recording")
         return RingoverRecording(
             call_id=call_id,
@@ -375,29 +370,18 @@ class RingoverClient:
         )
 
     async def invalidate_cache(self):
-        """Clear all cached call data.
-
-        Useful after webhook events to force fresh data fetch.
-        """
+        """Clear all cached call data."""
         if self._redis_client:
             try:
                 keys = await self._redis_client.keys("ringover:calls:*")
                 if keys:
                     await self._redis_client.delete(*keys)
             except Exception:
-                pass  # Non-critical
+                pass
 
 
 async def get_ringover_client() -> RingoverClient:
-    """Dependency injection helper for FastAPI routes.
-
-    Example:
-        @router.get("/calls")
-        async def list_calls(
-            client: RingoverClient = Depends(get_ringover_client),
-        ):
-            return await client.list_calls()
-    """
+    """Dependency injection helper for FastAPI routes."""
     client = RingoverClient()
     try:
         yield client
