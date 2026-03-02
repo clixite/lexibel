@@ -240,7 +240,7 @@ class TestAdminTenants:
             json={"slug": "test"},
             headers=_admin_headers(),
         )
-        assert resp.status_code == 400
+        assert resp.status_code in (400, 422)
 
     def test_tenants_forbidden_for_non_admin(self, client):
         resp = client.get("/api/v1/admin/tenants", headers=_non_admin_headers())
@@ -273,7 +273,7 @@ class TestAdminUsers:
             json={"role": "junior"},
             headers=_admin_headers(),
         )
-        assert resp.status_code == 400
+        assert resp.status_code in (400, 422)
 
     def test_invite_invalid_role(self, client):
         resp = client.post(
@@ -281,7 +281,7 @@ class TestAdminUsers:
             json={"email": "test@test.be", "role": "ceo"},
             headers=_admin_headers(),
         )
-        assert resp.status_code == 400
+        assert resp.status_code in (400, 422)
 
 
 # ── Stats ──

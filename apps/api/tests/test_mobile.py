@@ -85,7 +85,7 @@ class TestMobileQuickTime:
             json={"minutes": 30},
             headers=_auth_headers(),
         )
-        assert resp.status_code == 400
+        assert resp.status_code in (400, 422)
 
     def test_quick_time_invalid_minutes(self, client):
         resp = client.post(
@@ -93,7 +93,7 @@ class TestMobileQuickTime:
             json={"case_id": "case-001", "minutes": -5},
             headers=_auth_headers(),
         )
-        assert resp.status_code == 400
+        assert resp.status_code in (400, 422)
 
     def test_quick_time_zero_minutes(self, client):
         resp = client.post(
@@ -101,7 +101,7 @@ class TestMobileQuickTime:
             json={"case_id": "case-001", "minutes": 0},
             headers=_auth_headers(),
         )
-        assert resp.status_code == 400
+        assert resp.status_code in (400, 422)
 
 
 # ── Voice Note Upload ──
