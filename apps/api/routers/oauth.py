@@ -313,10 +313,9 @@ async def get_oauth_config(
     """Get OAuth configuration for the tenant.
 
     Only returns client IDs (not secrets).
+    Checks both tenant.config.oauth and tenant_settings table.
     """
-    # TODO: Add admin role check
-    # if user.role != "admin":
-    #     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    from apps.api.services.config_provider import get_config
 
     result = await session.execute(select(Tenant).where(Tenant.id == tenant_id))
     tenant = result.scalar_one_or_none()
@@ -326,13 +325,19 @@ async def get_oauth_config(
             status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found"
         )
 
-    oauth_config = tenant.config.get("oauth", {})
+    oauth_config = (tenant.config or {}).get("oauth", {})
+
+    # Also check tenant_settings (set via Admin → Settings page)
+    google_client_id = oauth_config.get("google", {}).get("client_id") or await get_config(session, tenant_id, "GOOGLE_CLIENT_ID")
+    google_secret = oauth_config.get("google", {}).get("client_secret") or await get_config(session, tenant_id, "GOOGLE_CLIENT_SECRET")
+    ms_client_id = oauth_config.get("microsoft", {}).get("client_id") or await get_config(session, tenant_id, "MICROSOFT_CLIENT_ID")
+    ms_secret = oauth_config.get("microsoft", {}).get("client_secret") or await get_config(session, tenant_id, "MICROSOFT_CLIENT_SECRET")
 
     return OAuthConfigResponse(
-        google_enabled=oauth_config.get("google", {}).get("enabled", False),
-        microsoft_enabled=oauth_config.get("microsoft", {}).get("enabled", False),
-        google_client_id=oauth_config.get("google", {}).get("client_id"),
-        microsoft_client_id=oauth_config.get("microsoft", {}).get("client_id"),
+        google_enabled=bool(google_client_id and google_secret),
+        microsoft_enabled=bool(ms_client_id and ms_secret),
+        google_client_id=google_client_id,
+        microsoft_client_id=ms_client_id,
     )
 
 
