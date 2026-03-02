@@ -89,9 +89,9 @@ class OAuthEngine:
             client_secret = await get_config(
                 session, tenant_id, "MICROSOFT_CLIENT_SECRET"
             )
-            microsoft_tenant_id = await get_config(
-                session, tenant_id, "MICROSOFT_TENANT_ID"
-            ) or "common"
+            microsoft_tenant_id = (
+                await get_config(session, tenant_id, "MICROSOFT_TENANT_ID") or "common"
+            )
 
         # Fallback: also check tenant.config.oauth.{provider} (legacy)
         if not client_id or not client_secret:
@@ -102,9 +102,7 @@ class OAuthEngine:
                 client_id = client_id or oauth_config.get("client_id")
                 client_secret = client_secret or oauth_config.get("client_secret")
                 if provider == "microsoft" and not microsoft_tenant_id:
-                    microsoft_tenant_id = oauth_config.get(
-                        "tenant_id", "common"
-                    )
+                    microsoft_tenant_id = oauth_config.get("tenant_id", "common")
 
         if not client_id or not client_secret:
             raise ValueError(
@@ -175,7 +173,9 @@ class OAuthEngine:
 
         else:  # microsoft — use per-tenant authority when available
             ms_tenant = config.get("microsoft_tenant_id", "common")
-            ms_auth_url = f"https://login.microsoftonline.com/{ms_tenant}/oauth2/v2.0/authorize"
+            ms_auth_url = (
+                f"https://login.microsoftonline.com/{ms_tenant}/oauth2/v2.0/authorize"
+            )
             params = {
                 "client_id": config["client_id"],
                 "redirect_uri": redirect_uri,
@@ -250,7 +250,9 @@ class OAuthEngine:
                 token_url = self.GOOGLE_TOKEN_URL
             else:
                 ms_tenant = config.get("microsoft_tenant_id", "common")
-                token_url = f"https://login.microsoftonline.com/{ms_tenant}/oauth2/v2.0/token"
+                token_url = (
+                    f"https://login.microsoftonline.com/{ms_tenant}/oauth2/v2.0/token"
+                )
 
             data = {
                 "client_id": config["client_id"],

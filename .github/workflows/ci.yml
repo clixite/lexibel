@@ -158,6 +158,8 @@ jobs:
           tags: |
             ${{ env.WEB_IMAGE }}:latest
             ${{ env.WEB_IMAGE }}:${{ github.sha }}
+          build-args: |
+            NEXT_PUBLIC_API_URL=https://lexibel.clixite.cloud/api/v1
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -176,6 +178,7 @@ jobs:
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
             cd /opt/lexibel
+            git pull origin main
             docker compose -f docker-compose.prod.yml pull api web worker
             docker compose -f docker-compose.prod.yml up -d --remove-orphans
             docker image prune -f

@@ -1,0 +1,26 @@
+# docker-compose.override.yml — Dev overrides (auto-loaded by docker compose)
+#
+# Backend services: hot-reload via volume mounts + uvicorn --reload
+# Frontend: run natively (pnpm dev) for best DX — see below
+#
+# Usage:
+#   docker compose up -d postgres redis qdrant minio neo4j api worker
+#   cd apps/web && pnpm dev
+#
+# To skip this override (e.g. for staging):
+#   docker compose -f docker-compose.yml up
+
+services:
+  api:
+    command: uvicorn apps.api.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir apps/api --reload-dir packages
+    environment:
+      ENVIRONMENT: development
+
+  worker:
+    command: watchmedo auto-restart --directory=apps/workers --pattern="*.py" --recursive -- celery -A apps.workers.main:app worker --loglevel=info -Q default,indexing,migration,peppol
+
+  # Web: disabled in Docker for dev — run natively instead:
+  #   cd apps/web && pnpm dev
+  # Next.js dev server gives instant HMR; Docker adds latency.
+  web:
+    profiles: ["prod"]

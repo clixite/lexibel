@@ -141,6 +141,7 @@ async def oauth_callback(
     except ValueError as e:
         # Redirect to frontend with error
         import urllib.parse
+
         frontend_url = (
             f"https://lexibel.clixite.cloud/dashboard/admin/integrations"
             f"?status=error&message={urllib.parse.quote(str(e))}"
@@ -328,10 +329,18 @@ async def get_oauth_config(
     oauth_config = (tenant.config or {}).get("oauth", {})
 
     # Also check tenant_settings (set via Admin → Settings page)
-    google_client_id = oauth_config.get("google", {}).get("client_id") or await get_config(session, tenant_id, "GOOGLE_CLIENT_ID")
-    google_secret = oauth_config.get("google", {}).get("client_secret") or await get_config(session, tenant_id, "GOOGLE_CLIENT_SECRET")
-    ms_client_id = oauth_config.get("microsoft", {}).get("client_id") or await get_config(session, tenant_id, "MICROSOFT_CLIENT_ID")
-    ms_secret = oauth_config.get("microsoft", {}).get("client_secret") or await get_config(session, tenant_id, "MICROSOFT_CLIENT_SECRET")
+    google_client_id = oauth_config.get("google", {}).get(
+        "client_id"
+    ) or await get_config(session, tenant_id, "GOOGLE_CLIENT_ID")
+    google_secret = oauth_config.get("google", {}).get(
+        "client_secret"
+    ) or await get_config(session, tenant_id, "GOOGLE_CLIENT_SECRET")
+    ms_client_id = oauth_config.get("microsoft", {}).get(
+        "client_id"
+    ) or await get_config(session, tenant_id, "MICROSOFT_CLIENT_ID")
+    ms_secret = oauth_config.get("microsoft", {}).get(
+        "client_secret"
+    ) or await get_config(session, tenant_id, "MICROSOFT_CLIENT_SECRET")
 
     return OAuthConfigResponse(
         google_enabled=bool(google_client_id and google_secret),

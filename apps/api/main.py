@@ -80,9 +80,26 @@ def _get_cors_origins() -> list[str]:
     return list(set(defaults))
 
 
+def _validate_env() -> None:
+    """Fail fast if critical env vars are missing in production."""
+    env = os.getenv("ENVIRONMENT", "development")
+    if env != "production":
+        return
+    required = ["SECRET_KEY", "DATABASE_URL"]
+    missing = [k for k in required if not os.getenv(k)]
+    if missing:
+        raise RuntimeError(f"Missing required env vars for production: {missing}")
+    # Warn (don't crash) for encryption keys — features degrade gracefully
+    for key in ["OAUTH_ENCRYPTION_KEY", "SETTINGS_ENCRYPTION_KEY"]:
+        if not os.getenv(key):
+            logger.warning("%s not set — related features will use ephemeral keys", key)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown lifecycle."""
+    _validate_env()
+
     # Run Alembic migrations on startup
     try:
         from alembic.config import Config
