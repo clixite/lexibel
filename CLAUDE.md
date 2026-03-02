@@ -34,7 +34,23 @@
 - Docker: 7 containers (postgres, redis, qdrant, minio, api, worker, web)
 - Web env needs: NEXTAUTH_SECRET, NEXTAUTH_URL, AUTH_TRUST_HOST, API_URL_INTERNAL
 
+## Email Sync Architecture (Fixed)
+- **Models**: EmailThread (conversation), EmailMessage (individual message)
+- **Sync Service**: EmailSyncService — handles Gmail API + Graph API (Microsoft) calls
+- **OAuth**: MicrosoftOAuthService + GoogleOAuthService for token management (encrypted storage)
+- **Endpoints** (POST /emails/sync triggers async sync):
+  - GET /emails/stats (thread counts, unread)
+  - GET /emails/threads (paginated + filtering)
+  - GET /emails/threads/{id}/messages (thread detail)
+  - POST /emails/sync (trigger all connected providers)
+  - POST /emails/sync/{integration_id} (trigger specific provider)
+  - POST /emails/{id}/link-case (associate email to case/dossier)
+  - POST /emails/{id}/mark-read (toggle read status)
+- **Workers**: Celery task `sync_emails` enqueued by scheduler every 15 minutes + touched by POST /emails/sync
+- **Key Issue Fixed**: Missing 8 endpoints on emails router → 500 errors on page load + sync button
+
 ## Sprint Status
 - Sprints 0-12 COMPLETE (LXB-001 to LXB-070)
 - 420 tests passing, ruff clean
 - CI/CD: GitHub Actions (backend + frontend + security jobs)
+- Email sync system endpoints all implemented (commit c84ac2e)
