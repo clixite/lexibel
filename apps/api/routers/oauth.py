@@ -19,10 +19,13 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sqlalchemy import text
+
 from apps.api.dependencies import get_current_tenant, get_current_user, get_db_session
 from apps.api.services.oauth_engine import get_oauth_engine
 from packages.db.models.oauth_token import OAuthToken
 from packages.db.models.tenant import Tenant
+from packages.db.session import async_session_factory
 
 
 router = APIRouter(prefix="/api/v1/oauth", tags=["oauth"])
@@ -111,37 +114,49 @@ async def oauth_callback(
         None,
         description="PKCE code verifier (optional — embedded in state JWT by default)",
     ),
-    session: AsyncSession = Depends(get_db_session),
 ):
     """Handle OAuth2 callback from Google or Microsoft.
 
     This endpoint receives the authorization code and exchanges it for tokens.
-    Then redirects to the frontend with success/error status.
+    No auth required — this is a redirect from the OAuth provider.
+    Tenant/user context is extracted from the signed state JWT.
     """
+    import urllib.parse
+
     oauth_engine = get_oauth_engine()
 
     try:
-        # Exchange code for tokens
-        oauth_token = await oauth_engine.handle_callback(
-            session=session,
-            provider=provider,
-            code=code,
-            state=state,
-            code_verifier=code_verifier,
-        )
+        # Decode state JWT to get tenant_id for RLS
+        state_data = oauth_engine.state_manager.validate_state(state)
+        tenant_id = state_data["tenant_id"]
+
+        # Create DB session with tenant RLS (no auth header needed)
+        async with async_session_factory() as session:
+            async with session.begin():
+                await session.execute(
+                    text(f"SET LOCAL app.current_tenant_id = '{tenant_id}'")
+                )
+
+                # Exchange code for tokens
+                oauth_token = await oauth_engine.handle_callback(
+                    session=session,
+                    provider=provider,
+                    code=code,
+                    state=state,
+                    code_verifier=code_verifier,
+                )
+
+                email = oauth_token.email_address or ""
 
         # Redirect to frontend integrations page with success status
-        email = oauth_token.email_address or ""
         frontend_url = (
             f"https://lexibel.clixite.cloud/dashboard/admin/integrations"
-            f"?status=success&provider={provider}&email={email}"
+            f"?status=success&provider={provider}&email={urllib.parse.quote(email)}"
         )
         return RedirectResponse(url=frontend_url)
 
-    except ValueError as e:
+    except Exception as e:
         # Redirect to frontend with error
-        import urllib.parse
-
         frontend_url = (
             f"https://lexibel.clixite.cloud/dashboard/admin/integrations"
             f"?status=error&message={urllib.parse.quote(str(e))}"
