@@ -12,7 +12,7 @@ interface EmailThread {
   id: string;
   subject: string;
   participants: string[];
-  date: string;
+  last_message_at: string | null;
   message_count: number;
   has_attachments: boolean;
 }
@@ -39,8 +39,8 @@ export default function EmailsPage() {
       try {
         setLoading(true);
         setError("");
-        const res = await apiFetch<EmailThread[]>("/emails", accessToken);
-        setThreads(res);
+        const res = await apiFetch<{ threads: EmailThread[]; total: number }>("/emails/threads", accessToken);
+        setThreads(res.threads);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Erreur de chargement");
       } finally {
@@ -157,9 +157,9 @@ export default function EmailsPage() {
                 render: (thread) => <span>{thread.participants.join(", ")}</span>,
               },
               {
-                key: "date",
+                key: "last_message_at",
                 label: "Date",
-                render: (thread) => new Date(thread.date).toLocaleDateString("fr-FR"),
+                render: (thread) => thread.last_message_at ? new Date(thread.last_message_at).toLocaleDateString("fr-FR") : "—",
               },
               {
                 key: "message_count",
