@@ -65,6 +65,9 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-asyncio pytest-cov
 
+      - name: Create lexibel role
+        run: psql postgresql://postgres:postgres@localhost:5432/lexibel_test -c "CREATE ROLE lexibel LOGIN PASSWORD 'test';"
+
       - name: Run migrations
         env:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/lexibel_test

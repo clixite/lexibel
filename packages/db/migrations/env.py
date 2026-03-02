@@ -12,12 +12,12 @@ _repo_root = str(Path(__file__).resolve().parents[3])
 if _repo_root not in sys.path:
     sys.path.insert(0, _repo_root)
 
-from alembic import context
-from sqlalchemy import pool
-from sqlalchemy.ext.asyncio import create_async_engine
+from alembic import context  # noqa: E402
+from sqlalchemy import pool  # noqa: E402
+from sqlalchemy.ext.asyncio import create_async_engine  # noqa: E402
 
 # Import all models so Alembic auto-generates migrations correctly.
-from packages.db.models import Base  # noqa: F401
+from packages.db.models import Base  # noqa: E402, F401
 
 config = context.config
 
