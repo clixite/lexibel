@@ -4,6 +4,7 @@ Tenant A must NEVER see Tenant B data.
 Uses a real PostgreSQL database with RLS policies active.
 """
 
+import os
 import uuid
 
 import pytest
@@ -19,8 +20,9 @@ from packages.db.models.audit_log import AuditLog
 
 # ── Fixtures ──
 
-TEST_DATABASE_URL = (
-    "postgresql+asyncpg://lexibel:lexibel_dev_2026@localhost:5432/lexibel_test"
+TEST_DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql+asyncpg://lexibel:lexibel_dev_2026@localhost:5432/lexibel_test",
 )
 
 TENANT_A_ID = uuid.uuid4()
