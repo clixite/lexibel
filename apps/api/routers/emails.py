@@ -133,10 +133,11 @@ async def trigger_email_sync(
     tokens = result.scalars().all()
 
     if not tokens:
-        raise HTTPException(
-            status_code=404,
-            detail="Aucun compte email connecté. Configurez Google ou Microsoft dans les Paramètres.",
-        )
+        return {
+            "status": "no_accounts",
+            "message": "Aucun compte email connecté. Configurez Google ou Microsoft dans les Paramètres.",
+            "results": [],
+        }
 
     from apps.api.services.email_sync import get_email_sync_service
 

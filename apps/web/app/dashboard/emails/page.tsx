@@ -73,8 +73,12 @@ export default function EmailsPage() {
     if (!accessToken) return;
     try {
       setSyncing(true);
-      await apiFetch("/emails/sync", accessToken, { method: "POST" });
-      toast.success("Synchronisation démarrée");
+      const res = await apiFetch<{ status: string; message?: string }>("/emails/sync", accessToken, { method: "POST" });
+      if (res.status === "no_accounts") {
+        toast.error(res.message || "Aucun compte email connecté. Configurez Google ou Microsoft dans les Paramètres.");
+      } else {
+        toast.success("Synchronisation terminée");
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erreur de synchronisation");
     } finally {
