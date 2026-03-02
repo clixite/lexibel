@@ -37,3 +37,4 @@ coverage.xml
 # Secrets
 *.pem
 *.key
+tmpclaude-*
