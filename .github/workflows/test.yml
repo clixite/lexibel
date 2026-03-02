@@ -10,6 +10,11 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    env:
+      PYTHONPATH: .
+      SECRET_KEY: ci-test-secret-key-not-for-production
+      OAUTH_ENCRYPTION_KEY: LxPgCU3gCl3VlAh2eBflR7J9CJD-yHHZqMCCBzBxDlc=
+
     services:
       postgres:
         image: postgres:16
@@ -52,7 +57,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '3.11'
           cache: 'pip'
 
       - name: Install dependencies
@@ -62,13 +67,13 @@ jobs:
 
       - name: Run migrations
         env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/lexibel_test
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/lexibel_test
         run: |
           alembic upgrade head
 
       - name: Run tests
         env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/lexibel_test
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/lexibel_test
           REDIS_URL: redis://localhost:6379
           NEO4J_URI: bolt://localhost:7687
           NEO4J_PASSWORD: testpassword

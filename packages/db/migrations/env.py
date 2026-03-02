@@ -2,7 +2,15 @@
 
 import asyncio
 import os
+import sys
 from logging.config import fileConfig
+from pathlib import Path
+
+# Ensure the repo root is on sys.path so `packages` is importable
+# regardless of the working directory when alembic is invoked.
+_repo_root = str(Path(__file__).resolve().parents[3])
+if _repo_root not in sys.path:
+    sys.path.insert(0, _repo_root)
 
 from alembic import context
 from sqlalchemy import pool

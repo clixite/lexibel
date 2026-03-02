@@ -54,12 +54,18 @@ jobs:
       - name: Ruff format check
         run: ruff format --check apps/api/ packages/ apps/workers/
 
+      - name: Run migrations
+        env:
+          DATABASE_URL: postgresql+asyncpg://lexibel:test@localhost:5432/lexibel_test
+        run: alembic upgrade head
+
       - name: Run tests with coverage
         run: pytest apps/api/tests/ packages/db/tests/ -v --tb=short --timeout=300 --cov=apps/api --cov=packages/db --cov-report=xml
         env:
           DATABASE_URL: postgresql+asyncpg://lexibel:test@localhost:5432/lexibel_test
           REDIS_URL: redis://localhost:6379/0
           SECRET_KEY: ci-test-secret-key-not-for-production
+          OAUTH_ENCRYPTION_KEY: LxPgCU3gCl3VlAh2eBflR7J9CJD-yHHZqMCCBzBxDlc=
 
       - name: Upload coverage
         if: always()
