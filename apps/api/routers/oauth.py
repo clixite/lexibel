@@ -23,7 +23,6 @@ from apps.api.dependencies import get_current_tenant, get_current_user, get_db_s
 from apps.api.services.oauth_engine import get_oauth_engine
 from packages.db.models.oauth_token import OAuthToken
 from packages.db.models.tenant import Tenant
-from packages.db.models.user import User
 
 
 router = APIRouter(prefix="/api/v1/oauth", tags=["oauth"])
@@ -70,7 +69,7 @@ async def get_authorization_url(
     provider: Literal["google", "microsoft"],
     scopes: str | None = Query(None, description="Space-separated scopes (optional)"),
     tenant_id: uuid.UUID = Depends(get_current_tenant),
-    user: User = Depends(get_current_user),
+    user: dict = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ):
     """Get OAuth2 authorization URL for the specified provider.
@@ -95,7 +94,7 @@ async def get_authorization_url(
             session=session,
             provider=provider,
             tenant_id=tenant_id,
-            user_id=user.id,
+            user_id=user["user_id"],
             scopes=scope_list,
         )
         return result
@@ -152,7 +151,7 @@ async def oauth_callback(
 @router.get("/tokens")
 async def list_oauth_tokens(
     tenant_id: uuid.UUID = Depends(get_current_tenant),
-    user: User = Depends(get_current_user),
+    user: dict = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ) -> list[OAuthTokenResponse]:
     """List all OAuth tokens for the current user.
@@ -163,7 +162,7 @@ async def list_oauth_tokens(
         select(OAuthToken)
         .where(
             OAuthToken.tenant_id == tenant_id,
-            OAuthToken.user_id == user.id,
+            OAuthToken.user_id == user["user_id"],
         )
         .order_by(OAuthToken.created_at.desc())
     )
@@ -192,7 +191,7 @@ async def list_oauth_tokens(
 async def revoke_oauth_token(
     token_id: uuid.UUID,
     tenant_id: uuid.UUID = Depends(get_current_tenant),
-    user: User = Depends(get_current_user),
+    user: dict = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ):
     """Revoke an OAuth token.
@@ -204,7 +203,7 @@ async def revoke_oauth_token(
         select(OAuthToken).where(
             OAuthToken.id == token_id,
             OAuthToken.tenant_id == tenant_id,
-            OAuthToken.user_id == user.id,
+            OAuthToken.user_id == user["user_id"],
         )
     )
     token = result.scalar_one_or_none()
@@ -227,7 +226,7 @@ async def revoke_oauth_token(
 async def test_oauth_token(
     token_id: uuid.UUID,
     tenant_id: uuid.UUID = Depends(get_current_tenant),
-    user: User = Depends(get_current_user),
+    user: dict = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ):
     """Test an OAuth token by making a simple API call.
@@ -248,7 +247,7 @@ async def test_oauth_token(
         select(OAuthToken).where(
             OAuthToken.id == token_id,
             OAuthToken.tenant_id == tenant_id,
-            OAuthToken.user_id == user.id,
+            OAuthToken.user_id == user["user_id"],
         )
     )
     token = result.scalar_one_or_none()
@@ -308,7 +307,7 @@ async def test_oauth_token(
 @router.get("/config")
 async def get_oauth_config(
     tenant_id: uuid.UUID = Depends(get_current_tenant),
-    user: User = Depends(get_current_user),
+    user: dict = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ) -> OAuthConfigResponse:
     """Get OAuth configuration for the tenant.
@@ -341,7 +340,7 @@ async def get_oauth_config(
 async def update_oauth_config(
     config_update: OAuthConfigUpdateRequest,
     tenant_id: uuid.UUID = Depends(get_current_tenant),
-    user: User = Depends(get_current_user),
+    user: dict = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ):
     """Update OAuth configuration for the tenant.
