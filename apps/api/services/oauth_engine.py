@@ -83,11 +83,15 @@ class OAuthEngine:
         if provider == "google":
             client_id = await get_config(session, tenant_id, "GOOGLE_CLIENT_ID")
             client_secret = await get_config(session, tenant_id, "GOOGLE_CLIENT_SECRET")
+            microsoft_tenant_id = None
         else:  # microsoft
             client_id = await get_config(session, tenant_id, "MICROSOFT_CLIENT_ID")
             client_secret = await get_config(
                 session, tenant_id, "MICROSOFT_CLIENT_SECRET"
             )
+            microsoft_tenant_id = await get_config(
+                session, tenant_id, "MICROSOFT_TENANT_ID"
+            ) or "common"
 
         # Fallback: also check tenant.config.oauth.{provider} (legacy)
         if not client_id or not client_secret:
@@ -97,6 +101,10 @@ class OAuthEngine:
                 oauth_config = tenant.config.get("oauth", {}).get(provider, {})
                 client_id = client_id or oauth_config.get("client_id")
                 client_secret = client_secret or oauth_config.get("client_secret")
+                if provider == "microsoft" and not microsoft_tenant_id:
+                    microsoft_tenant_id = oauth_config.get(
+                        "tenant_id", "common"
+                    )
 
         if not client_id or not client_secret:
             raise ValueError(
@@ -105,10 +113,13 @@ class OAuthEngine:
                 "in Admin → Settings or environment variables."
             )
 
-        return {
+        config: dict = {
             "client_id": client_id,
             "client_secret": client_secret,
         }
+        if microsoft_tenant_id:
+            config["microsoft_tenant_id"] = microsoft_tenant_id
+        return config
 
     async def get_authorization_url(
         self,
@@ -129,14 +140,14 @@ class OAuthEngine:
         # Get OAuth config
         config = await self.get_oauth_config(session, tenant_id, provider)
 
-        # Create state token (JWT with tenant_id, user_id, provider)
-        state = self.state_manager.create_state(tenant_id, user_id, provider)
-
         # Generate PKCE pair
         code_verifier, code_challenge = create_pkce_pair()
 
-        # Store code_verifier in session/Redis (TODO: implement Redis storage)
-        # For now, we'll pass it in the state token (not recommended for production)
+        # Embed code_verifier in state JWT — providers never echo it back,
+        # so the backend callback must retrieve it from the state token.
+        state = self.state_manager.create_state(
+            tenant_id, user_id, provider, code_verifier
+        )
 
         # Build redirect URI
         redirect_uri = f"{self.redirect_base_url}/api/v1/oauth/{provider}/callback"
@@ -162,7 +173,9 @@ class OAuthEngine:
             }
             auth_url = f"{self.GOOGLE_AUTH_URL}?{urlencode(params)}"
 
-        else:  # microsoft
+        else:  # microsoft — use per-tenant authority when available
+            ms_tenant = config.get("microsoft_tenant_id", "common")
+            ms_auth_url = f"https://login.microsoftonline.com/{ms_tenant}/oauth2/v2.0/authorize"
             params = {
                 "client_id": config["client_id"],
                 "redirect_uri": redirect_uri,
@@ -173,7 +186,7 @@ class OAuthEngine:
                 "code_challenge_method": "S256",
                 "response_mode": "query",
             }
-            auth_url = f"{self.MICROSOFT_AUTH_URL}?{urlencode(params)}"
+            auth_url = f"{ms_auth_url}?{urlencode(params)}"
 
         return {
             "authorization_url": auth_url,
@@ -187,7 +200,7 @@ class OAuthEngine:
         provider: ProviderType,
         code: str,
         state: str,
-        code_verifier: str,
+        code_verifier: str | None = None,
     ) -> OAuthToken:
         """Exchange authorization code for access/refresh tokens.
 
@@ -196,7 +209,9 @@ class OAuthEngine:
             provider: 'google' or 'microsoft'
             code: Authorization code from callback
             state: State token from callback (JWT)
-            code_verifier: PKCE code verifier (from client storage)
+            code_verifier: PKCE code verifier — if not provided it is
+                extracted from the state JWT (preferred path since providers
+                never echo it back in the redirect)
 
         Returns:
             Created OAuthToken instance
@@ -215,6 +230,14 @@ class OAuthEngine:
                 f"Provider mismatch: expected {state_data['provider']}, got {provider}"
             )
 
+        # Retrieve code_verifier from state JWT when not supplied externally
+        if not code_verifier:
+            code_verifier = state_data.get("code_verifier")
+        if not code_verifier:
+            raise ValueError(
+                "PKCE code_verifier missing — cannot exchange authorization code"
+            )
+
         # Get OAuth config
         config = await self.get_oauth_config(session, tenant_id, provider)
 
@@ -223,11 +246,11 @@ class OAuthEngine:
 
         # Exchange code for tokens
         async with httpx.AsyncClient() as client:
-            token_url = (
-                self.GOOGLE_TOKEN_URL
-                if provider == "google"
-                else self.MICROSOFT_TOKEN_URL
-            )
+            if provider == "google":
+                token_url = self.GOOGLE_TOKEN_URL
+            else:
+                ms_tenant = config.get("microsoft_tenant_id", "common")
+                token_url = f"https://login.microsoftonline.com/{ms_tenant}/oauth2/v2.0/token"
 
             data = {
                 "client_id": config["client_id"],

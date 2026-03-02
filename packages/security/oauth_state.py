@@ -31,6 +31,7 @@ class OAuthStateManager:
         tenant_id: uuid.UUID,
         user_id: uuid.UUID,
         provider: str,
+        code_verifier: str | None = None,
     ) -> str:
         """Create a signed JWT state token.
 
@@ -38,6 +39,8 @@ class OAuthStateManager:
             tenant_id: The tenant ID
             user_id: The user ID initiating OAuth flow
             provider: OAuth provider ('google' or 'microsoft')
+            code_verifier: PKCE code verifier to embed (so the backend
+                callback can retrieve it — providers never echo it back)
 
         Returns:
             JWT state token (signed)
@@ -55,6 +58,11 @@ class OAuthStateManager:
             "exp": datetime.now(timezone.utc)
             + timedelta(minutes=self.expiration_minutes),
         }
+
+        # Embed code_verifier so the backend callback can retrieve it
+        # (OAuth providers only return code + state, never the verifier)
+        if code_verifier:
+            payload["code_verifier"] = code_verifier
 
         # Sign and encode
         state_token = jwt.encode(payload, self.secret_key, algorithm=self.algorithm)

@@ -108,7 +108,10 @@ async def oauth_callback(
     provider: Literal["google", "microsoft"],
     code: str = Query(..., description="Authorization code"),
     state: str = Query(..., description="State token"),
-    code_verifier: str = Query(..., description="PKCE code verifier"),
+    code_verifier: str | None = Query(
+        None,
+        description="PKCE code verifier (optional — embedded in state JWT by default)",
+    ),
     session: AsyncSession = Depends(get_db_session),
 ):
     """Handle OAuth2 callback from Google or Microsoft.
@@ -128,13 +131,21 @@ async def oauth_callback(
             code_verifier=code_verifier,
         )
 
-        # Redirect to frontend with success
-        frontend_url = f"https://lexibel.clixite.cloud/dashboard/admin?tab=integrations&status=success&provider={provider}&email={oauth_token.email_address}"
+        # Redirect to frontend integrations page with success status
+        email = oauth_token.email_address or ""
+        frontend_url = (
+            f"https://lexibel.clixite.cloud/dashboard/admin/integrations"
+            f"?status=success&provider={provider}&email={email}"
+        )
         return RedirectResponse(url=frontend_url)
 
     except ValueError as e:
         # Redirect to frontend with error
-        frontend_url = f"https://lexibel.clixite.cloud/dashboard/admin?tab=integrations&status=error&message={str(e)}"
+        import urllib.parse
+        frontend_url = (
+            f"https://lexibel.clixite.cloud/dashboard/admin/integrations"
+            f"?status=error&message={urllib.parse.quote(str(e))}"
+        )
         return RedirectResponse(url=frontend_url)
 
 
