@@ -468,7 +468,7 @@ export default function DashboardPage() {
   /* ── Loading / Error states ── */
   if (loading) {
     return (
-      <div className="min-h-screen bg-neutral-50 p-6">
+      <div className="p-6">
         <LoadingSkeleton variant="stats" />
         <div className="mt-8">
           <LoadingSkeleton variant="card" />
@@ -479,7 +479,7 @@ export default function DashboardPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+      <div className="flex items-center justify-center py-24">
         <ErrorState message={error} onRetry={() => fetchData()} />
       </div>
     );
@@ -530,130 +530,91 @@ export default function DashboardPage() {
 
   /* ── Render ── */
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div>
       {/* ═══════════════════ Section 1: Welcome Header ═══════════════════ */}
-      <div className="mb-6 animate-fade">
-        <div className="relative overflow-hidden bg-white border border-neutral-200 p-8 md:p-10">
-          <div className="relative z-10">
-            <h1 className="text-3xl md:text-4xl font-display font-bold text-primary mb-2">
-              Bonjour, {displayName}
-            </h1>
-            <p className="text-base text-neutral-600 capitalize mb-3">
-              {dateStr}
-            </p>
-            <p className="text-sm text-neutral-500">
-              <span className="font-medium text-neutral-700">
-                {totalActiveCases}
-              </span>{" "}
+      <div className="flex items-center justify-between mb-6 animate-fade">
+        <div>
+          <h1 className="heading-page">Bonjour, {displayName}</h1>
+          <p className="label-overline mt-1.5 capitalize">{dateStr}</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-6 mr-4 text-sm text-[rgb(var(--color-text-secondary))]">
+            <span>
+              <span className="font-bold text-[rgb(var(--color-text-primary))]">{totalActiveCases}</span>{" "}
               dossiers actifs
-              <span className="mx-2 text-neutral-300">|</span>
-              <span className="font-medium text-neutral-700">
-                {pendingActionsCount}
-              </span>{" "}
+            </span>
+            <span className="text-[rgb(var(--color-border))]">|</span>
+            <span>
+              <span className="font-bold text-[rgb(var(--color-text-primary))]">{pendingActionsCount}</span>{" "}
               actions en attente
-              <span className="mx-2 text-neutral-300">|</span>
-              <span className="font-medium text-neutral-700">
+            </span>
+            <span className="text-[rgb(var(--color-border))]">|</span>
+            <span>
+              <span className={`font-bold ${criticalDeadlinesCount > 0 ? "text-danger-700" : "text-[rgb(var(--color-text-primary))]"}`}>
                 {criticalDeadlinesCount}
               </span>{" "}
-              echeances cette semaine
-            </p>
+              écheances critiques
+            </span>
           </div>
         </div>
       </div>
 
       {/* ═══════════════════ Section 2: Brain Intelligence Bar ═══════════════════ */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 animate-fade">
-        {/* Dossiers a risque */}
-        <div className="bg-white rounded shadow-sm p-5 border-l-4 border-danger-500">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
-              Dossiers a risque
-            </h3>
-            <div className="p-1.5 bg-danger-100 rounded">
-              <ShieldAlert className="w-4 h-4 text-danger-600" />
-            </div>
+        <div className="bg-white rounded-sm relative overflow-hidden p-5" style={{ boxShadow: "var(--shadow-card)" }}>
+          <div className="absolute left-0 inset-y-0 w-[3px] bg-danger-600" />
+          <div className="flex items-center justify-between mb-3 pl-2">
+            <span className="label-overline">Dossiers à risque</span>
+            <ShieldAlert className="w-4 h-4 text-danger-600" />
           </div>
-          <div className="flex items-end gap-3">
-            <p className="text-3xl font-bold text-neutral-900">{riskCases}</p>
-            {/* Mini sparkline - simple visual */}
-            <div className="flex items-end gap-0.5 pb-1">
-              {[3, 5, 4, 6, 3, 7, riskCases].map((v, i) => (
-                <div
-                  key={i}
-                  className={`w-1 rounded-sm ${
-                    i === 6 ? "bg-danger-500" : "bg-danger-200"
-                  }`}
-                  style={{ height: `${Math.max(4, (v / 8) * 20)}px` }}
-                />
-              ))}
-            </div>
+          <div className="pl-2">
+            <p className="leading-none tracking-tight text-[rgb(var(--color-text-primary))]" style={{ fontFamily: "var(--font-display)", fontSize: "1.875rem", fontWeight: 700 }}>{riskCases}</p>
+            {riskCases > 0 && (
+              <p className="text-xs text-danger-700 font-semibold mt-2 uppercase tracking-wide">
+                {brainData.risk_distribution.critical || (usePlaceholders ? 1 : 0)} critique(s) — action requise
+              </p>
+            )}
           </div>
-          {riskCases > 0 && (
-            <p className="text-xs text-danger-600 mt-2 font-medium">
-              {brainData.risk_distribution.critical || (usePlaceholders ? 1 : 0)}{" "}
-              critique(s)
-            </p>
-          )}
         </div>
 
-        {/* Echeances critiques */}
-        <div className="bg-white rounded shadow-sm p-5 border-l-4 border-warning-500">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
-              Echeances critiques
-            </h3>
-            <div className="p-1.5 bg-warning-100 rounded">
-              <Clock className="w-4 h-4 text-warning-600" />
-            </div>
+        <div className="bg-white rounded-sm relative overflow-hidden p-5" style={{ boxShadow: "var(--shadow-card)" }}>
+          <div className="absolute left-0 inset-y-0 w-[3px] bg-warning-600" />
+          <div className="flex items-center justify-between mb-3 pl-2">
+            <span className="label-overline">Échéances critiques</span>
+            <Clock className="w-4 h-4 text-warning-600" />
           </div>
-          <p className="text-3xl font-bold text-neutral-900">
-            {criticalDeadlinesCount}
-          </p>
-          <p className="text-xs text-warning-600 mt-2 font-medium">
-            sous 7 jours
-          </p>
+          <div className="pl-2">
+            <p className="leading-none tracking-tight text-[rgb(var(--color-text-primary))]" style={{ fontFamily: "var(--font-display)", fontSize: "1.875rem", fontWeight: 700 }}>{criticalDeadlinesCount}</p>
+            <p className="text-xs text-warning-700 font-semibold mt-2 uppercase tracking-wide">sous 7 jours</p>
+          </div>
         </div>
 
-        {/* Actions IA en attente */}
-        <div className="bg-white rounded shadow-sm p-5 border-l-4 border-accent-500">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
-              Actions IA en attente
-            </h3>
-            <div className="p-1.5 bg-accent-100 rounded">
-              <Brain className="w-4 h-4 text-accent-600" />
-            </div>
+        <div className="bg-white rounded-sm relative overflow-hidden p-5" style={{ boxShadow: "var(--shadow-card)" }}>
+          <div className="absolute left-0 inset-y-0 w-[3px] bg-accent" />
+          <div className="flex items-center justify-between mb-3 pl-2">
+            <span className="label-overline">Actions IA en attente</span>
+            <Brain className="w-4 h-4 text-accent-600" />
           </div>
-          <p className="text-3xl font-bold text-neutral-900">
-            {pendingActionsCount}
-          </p>
-          <p className="text-xs text-accent-600 mt-2 font-medium">
-            a traiter
-          </p>
+          <div className="pl-2">
+            <p className="leading-none tracking-tight text-[rgb(var(--color-text-primary))]" style={{ fontFamily: "var(--font-display)", fontSize: "1.875rem", fontWeight: 700 }}>{pendingActionsCount}</p>
+            <p className="text-xs text-accent-700 font-semibold mt-2 uppercase tracking-wide">à traiter</p>
+          </div>
         </div>
 
-        {/* Score de sante global */}
-        <div className="bg-white rounded shadow-sm p-5 border-l-4 border-success-500">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
-              Sante globale
-            </h3>
-            <div className="p-1.5 bg-success-100 rounded">
-              <Activity className="w-4 h-4 text-success-600" />
+        <div className="bg-white rounded-sm relative overflow-hidden p-5" style={{ boxShadow: "var(--shadow-card)" }}>
+          <div className="absolute left-0 inset-y-0 w-[3px] bg-success-600" />
+          <div className="flex items-center justify-between mb-3 pl-2">
+            <span className="label-overline">Santé globale</span>
+            <Activity className="w-4 h-4 text-success-600" />
+          </div>
+          <div className="pl-2">
+            <div className="flex items-end gap-2">
+              <p className="leading-none tracking-tight text-[rgb(var(--color-text-primary))]" style={{ fontFamily: "var(--font-display)", fontSize: "1.875rem", fontWeight: 700 }}>{healthScore}</p>
+              <span className="text-sm text-[rgb(var(--color-text-secondary))] pb-0.5">/100</span>
             </div>
-          </div>
-          <div className="flex items-end gap-3">
-            <p className="text-3xl font-bold text-neutral-900">
-              {healthScore}
-            </p>
-            <span className="text-sm text-neutral-500 pb-1">/100</span>
-          </div>
-          {/* Gauge bar */}
-          <div className="mt-2 w-full bg-neutral-100 rounded-full h-2">
-            <div
-              className={`h-2 rounded-full transition-all duration-500 ${getHealthColor(healthScore)}`}
-              style={{ width: `${Math.min(healthScore, 100)}%` }}
-            />
+            <div className="mt-2.5 w-full bg-[rgb(var(--color-surface-raised))] rounded-full h-1.5">
+              <div className={`h-1.5 rounded-full transition-all duration-500 ${getHealthColor(healthScore)}`} style={{ width: `${Math.min(healthScore, 100)}%` }} />
+            </div>
           </div>
         </div>
       </div>
@@ -665,76 +626,72 @@ export default function DashboardPage() {
           {/* Prochaines echeances */}
           <Card
             className="animate-fade"
+            variant="accent-top"
             header={
               <div className="flex items-center justify-between">
-                <h3 className="font-display text-lg font-semibold text-neutral-900">
-                  Prochaines echeances
-                </h3>
-                <Badge variant="default" size="sm">
-                  {deadlines.length} total
-                </Badge>
+                <h3 className="heading-section">Prochaines échéances</h3>
+                <Badge variant="default" size="sm">{deadlines.length} total</Badge>
               </div>
             }
+            footer={undefined}
           >
             {deadlines.length === 0 ? (
               <EmptyState
-                title="Aucune echeance"
-                description="Pas d'echeances a venir"
+                title="Aucune échéance"
+                description="Pas d'échéances à venir"
                 icon={<CalendarDays className="h-12 w-12 text-neutral-300" />}
               />
             ) : (
-              <div className="space-y-2">
+              <div className="-mx-6 -mb-6">
                 {deadlines.map((deadline) => {
-                  const config = urgencyConfig[deadline.urgency] || urgencyConfig.normal;
+                  const isCritical = deadline.urgency === "critical";
+                  const isUrgent = deadline.urgency === "urgent";
+                  const dayColor = isCritical
+                    ? "text-danger-700"
+                    : isUrgent
+                    ? "text-warning-700"
+                    : "text-[rgb(var(--color-text-secondary))]";
                   return (
                     <div
                       key={deadline.id}
-                      className={`flex items-center gap-4 p-3 rounded border transition-colors duration-150 cursor-pointer group ${
-                        deadline.urgency === "critical"
-                          ? "border-danger-200 bg-danger-50/50 hover:bg-danger-50"
-                          : deadline.urgency === "urgent"
-                            ? "border-warning-200 bg-warning-50/30 hover:bg-warning-50/50"
-                            : "border-neutral-200 hover:bg-neutral-50"
+                      className={`flex items-center gap-0 border-b border-[rgb(var(--color-border))]/50 last:border-0 transition-colors duration-100 cursor-pointer group ${
+                        isCritical
+                          ? "bg-danger-50/60 hover:bg-danger-50"
+                          : "hover:bg-[rgb(var(--color-surface-raised))]"
                       }`}
                     >
-                      <div
-                        className={`p-2 rounded flex-shrink-0 ${
-                          deadline.urgency === "critical"
-                            ? "bg-danger-100"
-                            : deadline.urgency === "urgent"
-                              ? "bg-warning-100"
-                              : "bg-primary/10"
-                        }`}
-                      >
-                        <CalendarDays
-                          className={`w-4 h-4 ${
-                            deadline.urgency === "critical"
-                              ? "text-danger-600"
-                              : deadline.urgency === "urgent"
-                                ? "text-warning-600"
-                                : "text-primary"
-                          }`}
-                        />
+                      {/* Date column */}
+                      <div className="w-16 flex-shrink-0 text-center py-3 px-2">
+                        <p className="text-[10px] font-bold uppercase tracking-wide text-[rgb(var(--color-text-secondary))]">
+                          {new Date(deadline.due_date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
+                        </p>
+                        <p className={`font-bold leading-none mt-0.5 ${dayColor} ${isCritical ? "animate-critical" : ""}`}
+                           style={{ fontFamily: "var(--font-display)", fontSize: "1.25rem" }}>
+                          {deadline.days_remaining}j
+                        </p>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-neutral-900 group-hover:text-primary transition-colors duration-150 truncate">
+
+                      {/* Vertical divider */}
+                      <div className={`w-px self-stretch flex-shrink-0 ${isCritical ? "bg-danger-200" : "bg-[rgb(var(--color-border))]/50"}`} />
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0 py-3 px-4">
+                        <p className="text-sm font-semibold text-[rgb(var(--color-text-primary))] truncate group-hover:text-accent transition-colors duration-100">
                           {deadline.title}
                         </p>
-                        <p className="text-xs text-neutral-500 mt-0.5 truncate">
+                        <p className="text-xs text-[rgb(var(--color-text-secondary))] truncate mt-0.5">
                           {deadline.case_name}
                         </p>
                       </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className="text-xs text-neutral-500 hidden sm:inline">
-                          {new Date(deadline.due_date).toLocaleDateString(
-                            "fr-FR",
-                            { day: "numeric", month: "short" }
-                          )}
-                        </span>
-                        <Badge variant={config.variant} size="sm">
-                          {deadline.days_remaining}j
-                        </Badge>
-                      </div>
+
+                      {/* Badge — only for critical/urgent */}
+                      {(isCritical || isUrgent) && (
+                        <div className="pr-4 flex-shrink-0">
+                          <Badge variant={isCritical ? "danger" : "warning"} filled={isCritical} size="sm">
+                            {isCritical ? "Critique" : "Urgent"}
+                          </Badge>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -748,14 +705,10 @@ export default function DashboardPage() {
             header={
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Brain className="w-5 h-5 text-accent-600" />
-                  <h3 className="font-display text-lg font-semibold text-neutral-900">
-                    Actions intelligentes
-                  </h3>
+                  <Brain className="w-4 h-4 text-accent-600" />
+                  <h3 className="heading-section">Actions intelligentes</h3>
                 </div>
-                <Badge variant="accent" size="sm">
-                  {actions.length} en attente
-                </Badge>
+                <Badge variant="accent" size="sm">{actions.length} en attente</Badge>
               </div>
             }
           >
@@ -861,58 +814,56 @@ export default function DashboardPage() {
             header={
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Lightbulb className="w-5 h-5 text-accent-600" />
-                  <h3 className="font-display text-lg font-semibold text-neutral-900">
-                    Insights IA
-                  </h3>
+                  <Lightbulb className="w-4 h-4 text-accent-600" />
+                  <h3 className="heading-section">Insights IA</h3>
                 </div>
-                <Badge variant="accent" size="sm">
-                  {insights.length}
-                </Badge>
+                <Badge variant="accent" size="sm">{insights.length}</Badge>
               </div>
             }
           >
             {insights.length === 0 ? (
               <EmptyState
                 title="Aucun insight"
-                description="Rien a signaler pour le moment"
+                description="Rien à signaler pour le moment"
                 icon={<Lightbulb className="h-12 w-12 text-neutral-300" />}
               />
             ) : (
               <div className="space-y-3">
                 {insights.map((insight) => {
-                  const sConfig =
-                    severityConfig[insight.severity] || severityConfig.low;
+                  const isCritical = insight.severity === "critical";
+                  const severityBarClass =
+                    isCritical ? "bg-danger-600 w-full animate-critical" :
+                    insight.severity === "high" ? "bg-warning-600 w-3/4" :
+                    insight.severity === "medium" ? "bg-yellow-500 w-1/2" :
+                    "bg-neutral-200 w-1/4";
                   return (
                     <div
                       key={insight.id}
-                      className="group relative p-3 border border-neutral-200 rounded hover:shadow-sm transition-shadow duration-150"
+                      className="group relative p-3 border border-[rgb(var(--color-border))]/60 rounded-sm hover:border-[rgb(var(--color-border))] transition-colors duration-150"
                     >
+                      {/* Severity bar */}
+                      <div className={`h-[2px] rounded-full mb-2.5 transition-all ${severityBarClass}`} />
+
                       <button
                         onClick={() => handleDismissInsight(insight.id)}
-                        className="absolute top-2 right-2 p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-neutral-100 transition-all duration-150"
+                        className="absolute top-3 right-2 p-1 rounded-sm opacity-0 group-hover:opacity-100 hover:bg-[rgb(var(--color-surface-raised))] transition-all duration-150"
                         title="Masquer"
                       >
-                        <X className="w-3.5 h-3.5 text-neutral-400" />
+                        <X className="w-3.5 h-3.5 text-[rgb(var(--color-text-secondary))]" />
                       </button>
-                      <div className="flex items-start gap-2.5 pr-6">
-                        <span
-                          className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${sConfig.dotColor}`}
-                        />
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-neutral-900 mb-0.5">
-                            {insight.title}
+                      <div className="pr-6">
+                        <p className="text-sm font-semibold text-[rgb(var(--color-text-primary))] mb-0.5">
+                          {insight.title}
+                        </p>
+                        <p className="text-xs text-[rgb(var(--color-text-secondary))] leading-relaxed">
+                          {insight.description}
+                        </p>
+                        {insight.case_name && (
+                          <p className="text-xs text-accent-600 mt-1.5 flex items-center gap-1 cursor-pointer hover:text-accent-700">
+                            <ChevronRight className="w-3 h-3" />
+                            {insight.case_name}
                           </p>
-                          <p className="text-xs text-neutral-600 leading-relaxed">
-                            {insight.description}
-                          </p>
-                          {insight.case_name && (
-                            <p className="text-xs text-accent-600 mt-1.5 flex items-center gap-1 cursor-pointer hover:text-accent-700">
-                              <ChevronRight className="w-3 h-3" />
-                              {insight.case_name}
-                            </p>
-                          )}
-                        </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -924,48 +875,36 @@ export default function DashboardPage() {
           {/* Dossiers recents */}
           <Card
             className="animate-fade"
-            header={
-              <h3 className="font-display text-lg font-semibold text-neutral-900">
-                Dossiers recents
-              </h3>
-            }
+            header={<h3 className="heading-section">Dossiers récents</h3>}
           >
             {recentCases.length === 0 ? (
               <EmptyState
-                title="Aucun dossier recent"
-                description="Vos dossiers apparaitront ici"
+                title="Aucun dossier récent"
+                description="Vos dossiers apparaîtront ici"
                 icon={<FolderOpen className="h-12 w-12 text-neutral-300" />}
               />
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-1">
                 {recentCases.slice(0, 5).map((caseItem) => (
                   <div
                     key={caseItem.id}
-                    className="flex items-center gap-3 p-3 hover:bg-neutral-50 rounded transition-colors duration-150 cursor-pointer group"
+                    className="flex items-center gap-3 py-2.5 px-2 rounded-sm hover:bg-[rgb(var(--color-surface-raised))] transition-colors duration-100 cursor-pointer group"
                   >
                     <span
-                      className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${getHealthDotColor(caseItem.health_score)}`}
-                      title={
-                        caseItem.health_score !== undefined
-                          ? `Sante: ${caseItem.health_score}/100`
-                          : "Sante non evaluee"
-                      }
+                      className={`w-2 h-2 rounded-full flex-shrink-0 ${getHealthDotColor(caseItem.health_score)}`}
+                      title={caseItem.health_score !== undefined ? `Santé: ${caseItem.health_score}/100` : "Santé non évaluée"}
                     />
-                    <Badge
-                      variant={getStatusVariant(caseItem.status)}
-                      size="sm"
-                    >
+                    <Badge variant={getStatusVariant(caseItem.status)} size="sm">
                       {caseItem.status}
                     </Badge>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm text-neutral-900 group-hover:text-primary transition-colors duration-150 truncate">
+                      <p className="font-semibold text-sm text-[rgb(var(--color-text-primary))] group-hover:text-accent transition-colors duration-100 truncate">
                         {caseItem.title}
                       </p>
-                      <p className="text-xs text-neutral-500 mt-0.5">
+                      <p className="text-xs text-[rgb(var(--color-text-secondary))] mt-0.5">
                         {getTimeAgo(caseItem.updated_at)}
                       </p>
                     </div>
-                    <TrendingUp className="w-4 h-4 text-neutral-300 flex-shrink-0" />
                   </div>
                 ))}
               </div>
@@ -977,41 +916,35 @@ export default function DashboardPage() {
             className="animate-fade"
             header={
               <div className="flex items-center justify-between">
-                <h3 className="font-display text-lg font-semibold text-neutral-900">
-                  Inbox a traiter
-                </h3>
+                <h3 className="heading-section">Inbox à traiter</h3>
                 {inboxItems.length > 0 && (
-                  <Badge variant="warning" size="sm">
-                    {inboxItems.length}
-                  </Badge>
+                  <Badge variant="warning" filled size="sm">{inboxItems.length}</Badge>
                 )}
               </div>
             }
           >
             {inboxItems.length === 0 ? (
               <EmptyState
-                title="Aucun element en attente"
+                title="Aucun élément en attente"
                 description="Votre inbox est vide"
                 icon={<InboxIcon className="h-12 w-12 text-neutral-300" />}
               />
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-1">
                 {inboxItems.slice(0, 5).map((item) => {
                   const SourceIcon = sourceIcons[item.source] || Mail;
                   return (
                     <div
                       key={item.id}
-                      className="flex items-center gap-3 p-3 hover:bg-neutral-50 rounded transition-colors duration-150 cursor-pointer group"
+                      className="flex items-center gap-3 py-2.5 px-2 rounded-sm hover:bg-[rgb(var(--color-surface-raised))] transition-colors duration-100 cursor-pointer group"
                     >
-                      <div className="p-2 bg-primary/10 rounded flex-shrink-0">
-                        <SourceIcon className="w-4 h-4 text-primary" />
-                      </div>
+                      <SourceIcon className="w-4 h-4 text-[rgb(var(--color-text-secondary))] flex-shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-neutral-900 group-hover:text-primary font-medium truncate transition-colors duration-150">
+                        <p className="text-sm font-semibold text-[rgb(var(--color-text-primary))] group-hover:text-accent truncate transition-colors duration-100">
                           {item.subject || "(Sans titre)"}
                         </p>
                         {item.from_name && (
-                          <p className="text-xs text-neutral-500 truncate">
+                          <p className="text-xs text-[rgb(var(--color-text-secondary))] truncate">
                             {item.from_name}
                           </p>
                         )}

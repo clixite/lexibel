@@ -14,9 +14,17 @@
   --color-danger: 127 29 29; /* Burgundy #7F1D1D - Serious */
   --color-background: 248 250 252; /* Pearl #F8FAFC - Quiet Luxury */
   --color-surface: 255 255 255; /* White */
+  --color-surface-raised: 241 245 249; /* Slate-100 #F1F5F9 - Card headers, filter bars */
   --color-text-primary: 15 23 42; /* Slate-900 */
   --color-text-secondary: 71 85 105; /* Slate-600 */
-  --color-border: 226 232 240; /* Steel #E2E8F0 */
+  --color-border: 203 213 225; /* Slate-300 #CBD5E1 - Visible structure */
+
+  /* Sidebar — own darker palette */
+  --sidebar-bg: 15 23 42; /* #0F172A = slate-950, nearly black-blue */
+  --sidebar-border: 30 41 59; /* #1E293B = slate-800 */
+  --sidebar-text: 203 213 225; /* #CBD5E1 = slate-300 */
+  --sidebar-text-muted: 100 116 139; /* #64748B = slate-500 */
+  --sidebar-active-bg: 30 41 59; /* #1E293B slightly lighter */
 
   /* Typography - Premium Legal */
   --font-display: 'Crimson Pro', Georgia, serif;
@@ -50,11 +58,12 @@
   --radius-lg: 6px;
   --radius-xl: 8px;
 
-  /* Shadows - Ultra-subtle (luxe discret) */
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.10);
+  /* Shadows - Architectural (ring + depth) */
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.06), 0 0 0 1px rgba(15, 23, 42, 0.03);
+  --shadow-sm: 0 1px 4px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 8px rgba(15, 23, 42, 0.10), 0 0 0 1px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 8px 16px rgba(15, 23, 42, 0.14), 0 0 0 1px rgba(15, 23, 42, 0.05);
+  --shadow-card: 0 2px 6px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(203, 213, 225, 0.5);
 
   /* Transitions - Surgical Precision */
   --duration-fast: 150ms;
@@ -62,13 +71,18 @@
   --ease: ease-out;
 }
 
-/* Dark mode variables (foundation) */
+/* Dark mode variables */
 [data-theme="dark"] {
   --color-background: 15 23 42;
   --color-surface: 30 41 59;
+  --color-surface-raised: 30 41 59;
   --color-text-primary: 248 250 252;
   --color-text-secondary: 148 163 184;
   --color-border: 51 65 85;
+  --shadow-card: 0 2px 6px rgba(0, 0, 0, 0.30), 0 0 0 1px rgba(51, 65, 85, 0.5);
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.30);
+  --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.40);
 }
 
 @layer base {
@@ -112,10 +126,48 @@
   }
 }
 
+/* Critical alert pulse — used on deadlines urgency=critical */
+@keyframes pulse-border {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.55; }
+}
+
 @layer components {
+  /* Typography utility classes */
+  .heading-page {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.025em;
+    color: rgb(var(--color-text-primary));
+  }
+
+  .heading-section {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.015em;
+    color: rgb(var(--color-text-primary));
+  }
+
+  .label-overline {
+    font-family: var(--font-body);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgb(var(--color-text-secondary));
+  }
+
+  .animate-critical {
+    animation: pulse-border 3s ease-in-out infinite;
+  }
+
   .card {
-    @apply bg-white rounded shadow-sm p-6
-           hover:shadow-md transition-shadow duration-150;
+    @apply bg-white rounded-sm transition-shadow duration-150;
+    box-shadow: var(--shadow-card);
   }
 
   .btn-primary {

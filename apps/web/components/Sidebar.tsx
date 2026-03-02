@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { logout } from "@/lib/auth-core";
-import { useState } from "react";
 import {
   Scale,
   LogOut,
@@ -27,13 +26,10 @@ import {
   ShieldAlert,
   ChevronLeft,
   ChevronRight,
-  Moon,
-  Sun,
   FolderOpen,
   BarChart3,
 } from "lucide-react";
 
-// NAV_ITEMS groupés par section
 const NAV_GROUPS = [
   {
     label: "GESTION",
@@ -60,11 +56,15 @@ const NAV_GROUPS = [
     label: "INTELLIGENCE",
     items: [
       { label: "Recherche", href: "/dashboard/search", icon: Search },
-      { label: "Graphe", href: "/dashboard/graph", icon: Share2 },
       { label: "Sentinel", href: "/dashboard/sentinel", icon: ShieldAlert },
       { label: "Intelligence IA", href: "/dashboard/brain", icon: Brain },
-      { label: "Hub IA", href: "/dashboard/ai", icon: Brain },
       { label: "Legal RAG", href: "/dashboard/legal", icon: Scale },
+      { label: "Graphe", href: "/dashboard/graph", icon: Share2 },
+    ],
+  },
+  {
+    label: "OUTILS",
+    items: [
       { label: "Transcription", href: "/dashboard/ai/transcription", icon: Mic },
       { label: "Migration", href: "/dashboard/migration", icon: Upload },
     ],
@@ -85,84 +85,132 @@ export default function Sidebar({
   onToggle,
 }: SidebarProps) {
   const pathname = usePathname();
-  const [darkMode, setDarkMode] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return document.documentElement.classList.contains("dark");
-  });
 
-  // Initials
   const initials = userEmail
-    ? userEmail.split("@")[0].split(".").map((p) => p[0]).slice(0, 2).join("").toUpperCase()
+    ? userEmail
+        .split("@")[0]
+        .split(".")
+        .map((p) => p[0])
+        .slice(0, 2)
+        .join("")
+        .toUpperCase()
     : "U";
 
   return (
     <aside
-      className={`fixed inset-y-0 left-0 z-30 flex flex-col bg-primary transition-all duration-300 ${
+      className={`fixed inset-y-0 left-0 z-30 flex flex-col transition-all duration-300 border-r ${
         collapsed ? "w-20" : "w-72"
       }`}
+      style={{
+        background: "rgb(var(--sidebar-bg))",
+        borderColor: "rgb(var(--sidebar-border))",
+      }}
     >
       {/* Logo */}
       <div
         className={`flex items-center gap-3 ${
           collapsed ? "justify-center px-4" : "px-6"
-        } py-6 border-b border-white/10`}
+        } py-5 border-b`}
+        style={{ borderColor: "rgb(var(--sidebar-border))" }}
       >
-        <div className="w-10 h-10 rounded bg-primary/10 flex items-center justify-center">
-          <Scale className="w-6 h-6 text-accent" />
+        <div
+          className="w-10 h-10 rounded-sm flex items-center justify-center flex-shrink-0"
+          style={{
+            background: "rgba(212,175,55,0.1)",
+            border: "1px solid rgba(212,175,55,0.2)",
+          }}
+        >
+          <Scale className="w-5 h-5 text-accent" />
         </div>
         {!collapsed && (
           <div>
-            <h1 className="text-xl font-display font-bold text-white">LexiBel</h1>
-            <p className="text-xs text-white/60">Legal Management</p>
+            <h1
+              className="text-lg font-bold text-white leading-none"
+              style={{ fontFamily: "var(--font-display)" }}
+            >
+              LexiBel
+            </h1>
+            <p className="text-[11px] mt-0.5" style={{ color: "rgb(var(--sidebar-text-muted))" }}>
+              Legal Management
+            </p>
           </div>
         )}
       </div>
 
       {/* Navigation Groups */}
-      <nav className="flex-1 px-3 py-4 overflow-y-auto space-y-6">
+      <nav className="flex-1 px-2 py-4 overflow-y-auto space-y-5">
         {NAV_GROUPS.map((group) => (
           <div key={group.label}>
             {!collapsed && (
-              <div className="px-3 mb-2 text-[10px] font-semibold text-white/40 tracking-wider">
+              <div
+                className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-[0.08em]"
+                style={{ color: "rgb(var(--sidebar-text-muted))" }}
+              >
                 {group.label}
               </div>
             )}
-            <div className="space-y-1">
+            <div className="space-y-0.5">
               {group.items.map((item) => {
                 const isActive =
                   pathname === item.href ||
-                  (item.href !== "/dashboard" && (pathname.startsWith(item.href + "/") || pathname === item.href));
+                  (item.href !== "/dashboard" &&
+                    (pathname.startsWith(item.href + "/") ||
+                      pathname === item.href));
 
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
                     title={collapsed ? item.label : undefined}
-                    className={`relative flex items-center gap-3 px-3 py-2.5 rounded transition-colors duration-150 group ${
+                    className={`relative flex items-center gap-3 px-3 py-2 rounded-sm transition-colors duration-150 group ${
                       isActive
-                        ? "bg-white/10 text-white"
-                        : "text-white/70 hover:bg-white/10 hover:text-white"
+                        ? "text-white"
+                        : "hover:text-white"
                     }`}
+                    style={
+                      isActive
+                        ? { background: "rgba(212,175,55,0.10)" }
+                        : { color: "rgb(var(--sidebar-text))" }
+                    }
+                    onMouseEnter={(e) => {
+                      if (!isActive) {
+                        (e.currentTarget as HTMLElement).style.background =
+                          "rgba(255,255,255,0.05)";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isActive) {
+                        (e.currentTarget as HTMLElement).style.background = "";
+                      }
+                    }}
                   >
-                    {/* Active indicator */}
+                    {/* Active indicator — 3px gold strip */}
                     {isActive && (
-                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-accent rounded-r" />
+                      <span
+                        className="absolute left-0 inset-y-1 w-[3px] bg-accent rounded-r"
+                      />
                     )}
 
                     <item.icon
-                      className={`w-5 h-5 flex-shrink-0 ${
+                      className={`w-4 h-4 flex-shrink-0 ${
                         collapsed ? "mx-auto" : ""
-                      }`}
+                      } ${isActive ? "text-accent" : ""}`}
                     />
 
                     {!collapsed && (
                       <>
-                        <span className="flex-1 text-sm font-medium">{item.label}</span>
-                        {item.badge !== undefined && item.badge > 0 && (
-                          <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-accent text-white rounded">
-                            {item.badge}
-                          </span>
-                        )}
+                        <span className="flex-1 text-sm font-medium">
+                          {item.label}
+                        </span>
+                        {"badge" in item &&
+                          item.badge !== undefined &&
+                          item.badge > 0 && (
+                            <span
+                              className="px-1.5 py-0.5 text-[10px] font-bold rounded-[2px] bg-accent text-[#0F172A]"
+                            >
+                              {item.badge}
+                            </span>
+                          )}
                       </>
                     )}
                   </Link>
@@ -176,70 +224,88 @@ export default function Sidebar({
         {userRole === "super_admin" && (
           <div>
             {!collapsed && (
-              <div className="px-3 mb-2 text-[10px] font-semibold text-white/40 tracking-wider">
+              <div
+                className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-[0.08em]"
+                style={{ color: "rgb(var(--sidebar-text-muted))" }}
+              >
                 ADMINISTRATION
               </div>
             )}
-            <div className="space-y-1">
-              <Link
-                href="/dashboard/admin"
-                className={`relative flex items-center gap-3 px-3 py-2.5 rounded transition-colors duration-150 group ${
-                  pathname === "/dashboard/admin"
-                    ? "bg-white/10 text-white"
-                    : "text-white/70 hover:bg-white/10 hover:text-white"
-                }`}
-              >
-                <Shield className="w-5 h-5 flex-shrink-0" />
-                {!collapsed && <span className="text-sm font-medium">Admin</span>}
-              </Link>
-              <Link
-                href="/dashboard/admin/settings"
-                title={collapsed ? "Paramètres" : undefined}
-                className={`relative flex items-center gap-3 px-3 py-2.5 rounded transition-colors duration-150 group ${
-                  pathname === "/dashboard/admin/settings"
-                    ? "bg-white/10 text-white"
-                    : "text-white/70 hover:bg-white/10 hover:text-white"
-                }`}
-              >
-                <Settings className="w-5 h-5 flex-shrink-0" />
-                {!collapsed && <span className="text-sm font-medium">Paramètres</span>}
-              </Link>
+            <div className="space-y-0.5">
+              {[
+                { href: "/dashboard/admin", icon: Shield, label: "Admin" },
+                {
+                  href: "/dashboard/admin/settings",
+                  icon: Settings,
+                  label: "Paramètres",
+                },
+              ].map(({ href, icon: Icon, label }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  title={collapsed ? label : undefined}
+                  className={`relative flex items-center gap-3 px-3 py-2 rounded-sm transition-colors duration-150 ${
+                    pathname === href ? "text-white" : "hover:text-white"
+                  }`}
+                  style={
+                    pathname === href
+                      ? { background: "rgba(212,175,55,0.10)" }
+                      : { color: "rgb(var(--sidebar-text))" }
+                  }
+                  onMouseEnter={(e) => {
+                    if (pathname !== href)
+                      (e.currentTarget as HTMLElement).style.background =
+                        "rgba(255,255,255,0.05)";
+                  }}
+                  onMouseLeave={(e) => {
+                    if (pathname !== href)
+                      (e.currentTarget as HTMLElement).style.background = "";
+                  }}
+                >
+                  {pathname === href && (
+                    <span className="absolute left-0 inset-y-1 w-[3px] bg-accent rounded-r" />
+                  )}
+                  <Icon className="w-4 h-4 flex-shrink-0" />
+                  {!collapsed && (
+                    <span className="text-sm font-medium">{label}</span>
+                  )}
+                </Link>
+              ))}
             </div>
           </div>
         )}
       </nav>
 
       {/* User Section */}
-      <div className="p-3 border-t border-white/10 space-y-2">
-        {/* Dark Mode Toggle */}
-        <button
-          onClick={() => {
-            const next = !darkMode;
-            setDarkMode(next);
-            if (typeof window !== "undefined") {
-              document.documentElement.classList.toggle("dark", next);
-              localStorage.setItem("lexibel_theme", next ? "dark" : "light");
-            }
-          }}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded text-white/70 hover:bg-white/5 hover:text-white transition-colors duration-150"
-        >
-          {darkMode ? (
-            <Sun className="w-4 h-4" />
-          ) : (
-            <Moon className="w-4 h-4" />
-          )}
-          {!collapsed && <span className="text-sm">Mode {darkMode ? "Clair" : "Sombre"}</span>}
-        </button>
-
+      <div
+        className="p-3 border-t space-y-1"
+        style={{ borderColor: "rgb(var(--sidebar-border))" }}
+      >
         {/* User Info */}
-        <div className={`flex items-center gap-3 ${collapsed ? "justify-center" : "px-3"} py-2`}>
-          <div className="w-9 h-9 rounded bg-primary/10 flex items-center justify-center text-sm font-semibold text-accent flex-shrink-0">
+        <div
+          className={`flex items-center gap-3 ${collapsed ? "justify-center" : "px-2"} py-2`}
+        >
+          <div
+            className="w-8 h-8 rounded-sm flex items-center justify-center text-xs font-bold flex-shrink-0"
+            style={{
+              background: "rgba(212,175,55,0.15)",
+              border: "1px solid rgba(212,175,55,0.25)",
+              color: "#D4AF37",
+            }}
+          >
             {initials}
           </div>
           {!collapsed && (
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">{userEmail}</p>
-              <p className="text-[10px] text-white/50">{userRole}</p>
+              <p className="text-sm font-medium text-white truncate leading-none">
+                {userEmail}
+              </p>
+              <p
+                className="text-[10px] mt-0.5 uppercase tracking-wide"
+                style={{ color: "rgb(var(--sidebar-text-muted))" }}
+              >
+                {userRole}
+              </p>
             </div>
           )}
         </div>
@@ -247,9 +313,17 @@ export default function Sidebar({
         {/* Logout */}
         <button
           onClick={() => logout()}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded text-white/70 hover:bg-white/5 hover:text-red-400 transition-colors duration-150"
+          className="w-full flex items-center gap-3 px-2 py-2 rounded-sm transition-colors duration-150 hover:text-red-400"
+          style={{ color: "rgb(var(--sidebar-text-muted))" }}
+          onMouseEnter={(e) =>
+            ((e.currentTarget as HTMLElement).style.background =
+              "rgba(255,255,255,0.04)")
+          }
+          onMouseLeave={(e) =>
+            ((e.currentTarget as HTMLElement).style.background = "")
+          }
         >
-          <LogOut className="w-4 h-4" />
+          <LogOut className="w-4 h-4 flex-shrink-0" />
           {!collapsed && <span className="text-sm">Déconnexion</span>}
         </button>
       </div>
@@ -257,9 +331,25 @@ export default function Sidebar({
       {/* Collapse Toggle */}
       <button
         onClick={onToggle}
-        className="absolute -right-3 top-6 w-6 h-6 bg-white rounded-full shadow-sm flex items-center justify-center text-primary hover:bg-accent hover:text-white transition-colors duration-150"
+        className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-10 flex items-center justify-center rounded-r-md transition-colors duration-150"
+        style={{
+          background: "rgb(var(--sidebar-active-bg))",
+          border: "1px solid rgb(var(--sidebar-border))",
+          color: "rgb(var(--sidebar-text-muted))",
+        }}
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLElement).style.color = "#D4AF37";
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLElement).style.color =
+            "rgb(var(--sidebar-text-muted))";
+        }}
       >
-        {collapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
+        {collapsed ? (
+          <ChevronRight className="w-3.5 h-3.5" />
+        ) : (
+          <ChevronLeft className="w-3.5 h-3.5" />
+        )}
       </button>
     </aside>
   );

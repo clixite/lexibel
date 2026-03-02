@@ -27,7 +27,7 @@ export default function DashboardLayout({
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-neutral-50">
+      <div className="min-h-screen flex items-center justify-center bg-[rgb(var(--color-background))]">
         <Loader2 className="w-10 h-10 animate-spin text-accent" />
       </div>
     );
@@ -38,7 +38,7 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen flex bg-neutral-50">
+    <div className="min-h-screen flex bg-[rgb(var(--color-background))]">
       <Sidebar
         userEmail={email}
         userRole={role}
@@ -50,11 +50,11 @@ export default function DashboardLayout({
       <ToastContainer />
       <AlertBanner />
       <main
-        className={`transition-all duration-300 pt-16 ${
+        className={`flex-1 transition-all duration-300 pt-14 ${
           sidebarCollapsed ? "ml-20" : "ml-72"
         }`}
       >
-        <div className="p-8">{children}</div>
+        <div className="px-6 py-6 max-w-[1440px]">{children}</div>
       </main>
     </div>
   );
