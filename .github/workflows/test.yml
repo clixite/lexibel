@@ -14,6 +14,7 @@ jobs:
       PYTHONPATH: .
       SECRET_KEY: ci-test-secret-key-not-for-production
       OAUTH_ENCRYPTION_KEY: LxPgCU3gCl3VlAh2eBflR7J9CJD-yHHZqMCCBzBxDlc=
+      SETTINGS_ENCRYPTION_KEY: LxPgCU3gCl3VlAh2eBflR7J9CJD-yHHZqMCCBzBxDlc=
 
     services:
       postgres:

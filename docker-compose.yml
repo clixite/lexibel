@@ -117,6 +117,7 @@ services:
       VLLM_BASE_URL: ${VLLM_BASE_URL:-http://vllm:8000/v1}
       SECRET_KEY: ${SECRET_KEY:-dev-secret-change-me-in-production}
       OAUTH_ENCRYPTION_KEY: ${OAUTH_ENCRYPTION_KEY}
+      SETTINGS_ENCRYPTION_KEY: ${SETTINGS_ENCRYPTION_KEY}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:3200}
       ENVIRONMENT: development
     depends_on:
@@ -144,6 +145,7 @@ services:
       MINIO_ENDPOINT: minio:9000
       SECRET_KEY: ${SECRET_KEY:-dev-secret-change-me-in-production}
       OAUTH_ENCRYPTION_KEY: ${OAUTH_ENCRYPTION_KEY}
+      SETTINGS_ENCRYPTION_KEY: ${SETTINGS_ENCRYPTION_KEY}
       ENVIRONMENT: development
     depends_on:
       postgres:
