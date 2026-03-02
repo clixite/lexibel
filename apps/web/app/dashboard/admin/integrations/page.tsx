@@ -147,32 +147,77 @@ export default function IntegrationsPage() {
   const [connectedTokens, setConnectedTokens] = useState<OAuthToken[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Handle OAuth callback
+  const fetchTokens = async () => {
+    if (!accessToken) return;
+    try {
+      const tokens = await apiFetch<OAuthToken[]>("/oauth/tokens", accessToken, {
+        tenantId,
+      });
+      setConnectedTokens(tokens || []);
+    } catch {
+      // Token fetch failed silently — list will remain empty
+    }
+  };
+
+  // Handle OAuth callback — two cases:
+  // 1. This page is the popup (window.opener exists): send postMessage to parent, then close
+  // 2. This page is the main window: read status from URL params
   useEffect(() => {
     const status = searchParams?.get("status");
-    const email = searchParams?.get("email");
+    if (!status) return;
 
-    if (status === "success" && email) {
+    if (typeof window !== "undefined" && window.opener) {
+      // We're in the OAuth popup — communicate result to parent window and close
+      window.opener.postMessage(
+        {
+          type: "oauth_callback",
+          status,
+          provider: searchParams?.get("provider"),
+          email: searchParams?.get("email"),
+          message: searchParams?.get("message"),
+        },
+        window.location.origin
+      );
+      window.close();
+      return;
+    }
+
+    // Main window: handle direct navigation (e.g. popup was blocked)
+    if (status === "success") {
+      const email = searchParams?.get("email") || "";
+      const provider = searchParams?.get("provider") as "google" | "microsoft" | null;
+      if (provider) setSelectedProvider(provider);
       setConnectedEmail(email);
-      setCurrentStep(3); // Go to verification step
+      setCurrentStep(3);
     }
   }, [searchParams]);
 
-  // Fetch connected tokens
+  // Listen for postMessage from OAuth popup
   useEffect(() => {
-    if (!accessToken) return;
+    const handleMessage = (event: MessageEvent) => {
+      if (typeof window === "undefined") return;
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type !== "oauth_callback") return;
 
-    const fetchTokens = async () => {
-      try {
-        const tokens = await apiFetch<OAuthToken[]>("/oauth/tokens", accessToken, {
-          tenantId,
-        });
-        setConnectedTokens(tokens || []);
-      } catch (error) {
-        // Token fetch failed silently — list will remain empty
+      const { status, provider, email } = event.data;
+      if (status === "success") {
+        if (provider) setSelectedProvider(provider as "google" | "microsoft");
+        setConnectedEmail(email || "");
+        setCurrentStep(3);
+        // Refresh the connected tokens list
+        fetchTokens();
+      } else {
+        // OAuth failed — go back to provider selection
+        setCurrentStep(0);
       }
     };
 
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [accessToken, tenantId]);
+
+  // Fetch connected tokens on mount
+  useEffect(() => {
     fetchTokens();
   }, [accessToken, tenantId]);
 
